@@ -1,3 +1,4 @@
+# distutils: language = c++
 """
 #
 # flow stability
@@ -19,8 +20,6 @@
 
 
 """
-
-# distutils: language = c++
 
 
 import numpy as np

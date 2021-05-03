@@ -27,9 +27,7 @@ from scipy.sparse import (eye,
                           isspmatrix_csr,
                           isspmatrix_csc,
                           spmatrix,
-                          lil_matrix,
-                          coo_matrix,
-                          triu)
+                          coo_matrix)
 
 from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 from copy import copy
@@ -1656,7 +1654,7 @@ class sparse_autocov_mat(object):
     def toarray(self):
         
         if self.p_scalars:
-            return self.PT.toarray() - self.p1p2
+            return self.PT.toarray() - np.ones(self.shape)*self.p1p2
         
         else:
             return self.PT.toarray() - np.outer(self.p1,self.p2)    
@@ -2010,6 +2008,9 @@ def sparse_outer(p, use_mkl=True, triu=True, verbose=False, log_message=''):
 
 @timing
 def sparse_matmul(A,B, verbose=False, log_message=''):
+    """ sparse matrix multiplication.
+        Uses sparse_dot_mkl if available, otherwise scipy sparse
+    """
     if USE_SPARSE_DOT_MKL:
         return dot_product_mkl(A,B)
     else:

@@ -1,3 +1,6 @@
+# distutils: sources = SPA.cpp
+# distutils: language = c++
+# cython: profile=False
 """
 #
 # flow stability
@@ -20,9 +23,6 @@
 
 """
 
-# distutils: sources = SPA.cpp
-# distutils: language = c++
-# cython: profile=False
 
 from SPA cimport SPA
 

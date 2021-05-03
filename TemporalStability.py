@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 #
 # flow stability
@@ -25,8 +23,7 @@
 from copy import deepcopy
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-from numpy.linalg import norm
-from itertools import product, combinations
+from itertools import combinations
 import time
 import os
 from scipy.sparse import csr_matrix, diags, isspmatrix_csr, eye, csc_matrix
@@ -35,7 +32,9 @@ from scipy.sparse.linalg import eigs
 from TemporalNetwork import inplace_csr_row_normalize, set_to_zeroes, sparse_lapl_expm
 from SparseStochMat import (sparse_stoch_mat, sparse_autocov_mat,
                             sparse_autocov_csr_mat,
-                            inplace_csr_matmul_diag, inplace_diag_matmul_csr)
+                            inplace_csr_matmul_diag, inplace_diag_matmul_csr,
+                            sparse_outer, sparse_gram_matrix, sparse_matmul,
+                            USE_SPARSE_DOT_MKL)
 from array import array
 
 
@@ -43,7 +42,7 @@ USE_CYTHON = True
 try:
     from _cython_fast_funcs import (sum_Sto, sum_Sout, compute_S, cython_nmi, 
                                     cython_nvi, compute_S_0t0)
-except Exception as e:
+except ImportError as e:
     print('Could not load cython functions')
     print(e)
     USE_CYTHON = False
@@ -1670,229 +1669,7 @@ class SparseClustering(Clustering):
 
         return self._S.is_all_zeros()      
         
-class FlowClustering(BaseClustering):
-    """ FlowClustering.
-        
-    Class to finds the best independent partitions of rows (sources) and columns (targets) 
-    that optimizes the stability of between two times computed as the 
-    classic symetric stability of S(t1->t2->t1) and S(t2->t1->t2),
-    where S is the covariance matrix.
-    
-    At least `T` must be given to initialize the clustering.
-    
-    Clusters can either be initilized with a cluster_list or a node_to_cluster_dict.
 
-
-    Parameters:
-    ----------- 
-           
-    T: numpy.ndarrays
-        NxN transition matrix, T[i,j] is the probability of going from node i to
-        node j between t1 and t2.
-        
-    Trev: numpy.ndarrays
-        NxN reverse transition matrix, Trev[i,j] is the probability of going from node i to
-        node j between t2 and t1.
-        
-    p1: numpy.ndarrays
-        Nx1 probability density at t1 for T and t2 for Trev. Default is the uniform probability.
-        
-        
-    S: numpy.ndarrays
-        NxN covariance matrix for the forward process (t1->t2->t1)
-        Default is diag(p1) @ T @ np.diag(1/p2) @ T.T @ np.diag(p1) - outer(p1,p1).
-    
-    Srev: numpy.ndarrays
-        NxN covariance matrix for the backward process (t2->t1->t2)
-        Default is diag(p1) @ Trev @ np.diag(1/p2) @ Trev.T @ np.diag(p1) - outer(p1,p1).
-            
-    source_cluster_list: list
-        list of set of nodes describing the source partition. Default is singleton
-        clusters.
-        
-    source_node_to_cluster_dict: dict
-        dictionary with mapping between nodes and source cluster number. Default is singleton
-        clusters.
-        
-    target_cluster_list: list
-        list of set of nodes describing the target partition. Default is singleton
-        clusters.
-        
-    target_node_to_cluster_dict: dict
-        dictionary with mapping between nodes and target cluster number. Default is singleton
-        clusters.
-            
-    rnd_state: np.random.RandomState
-        Random state object. Default creates a new one.
-        
-    rnd_seed: int
-        Seed for the random object. Default is a random seed.
-    
-    """    
-
-    def __init__(self, T=None, p1=None, p2=None, S=None,
-                       Trev=None, p2rev=None, Srev=None,
-                       source_cluster_list=None,
-                       source_node_to_cluster_dict=None,
-                       target_cluster_list=None, 
-                       target_node_to_cluster_dict=None,
-                       rnd_state=None, rnd_seed=None):
-        
-        super().__init__(T=T, p1=p1, p2=p2, S=S,
-                       source_cluster_list=source_cluster_list,
-                       source_node_to_cluster_dict=source_node_to_cluster_dict,
-                       target_cluster_list=target_cluster_list, 
-                       target_node_to_cluster_dict=target_node_to_cluster_dict,
-                       rnd_state=rnd_state, rnd_seed=rnd_seed)
-        
-    
-        # creates two separated clustering for sources and targets
-        assert np.all(T.sum(0) > 0), "Transition matrix must be invertible"
-        
-        if p2 is None:
-            p2 = self.p1 @ self.T
-        
-        if S is None:
-            
-            S = compute_S_0t0(self.p1, p2, self.T)
-        
-        
-        self.source_clustering = Clustering(T=self.T, p1=self.p1, p2=p2,
-                                            S=S,
-                                            cluster_list=self.source_part.cluster_list,
-                                            rnd_state=self._rnd_state,
-                                            rnd_seed=rnd_seed,
-                                            )
-        
-        if Trev is not None:
-                            
-            if not isinstance(Trev,np.ndarray):
-                raise TypeError('Trev must be a numpy array.')
-            
-            if isinstance(Trev,np.matrix):
-                raise TypeError('Trev must be a numpy array, not a numpy matrix.')
-        
-            assert T.shape == Trev.shape, "T and Trev must have the same shape"
-        
-            assert np.all(Trev.sum(0) > 0), "Transition matrix must be invertible"
-            assert T.shape == Trev.shape, "T and Trev must have the same shape"
-            
-            if p2rev is None:
-                p2rev = self.p1 @ Trev
-            
-            if Srev is None:
-                
-                Srev = compute_S_0t0(self.p1, p2rev, Trev)            
-  
-            self.target_clustering = Clustering(T = Trev, p1=self.p1, p2=p2rev,
-                                                S=Srev,
-                                                cluster_list=self.target_part.cluster_list,
-                                                rnd_state=self._rnd_state,
-                                                rnd_seed=rnd_seed,
-                                                )
-        
-    def find_louvain_source_clustering(self, 
-                                       delta_r_threshold=np.finfo(float).eps,
-                                        n_meta_iter_max=1000, 
-                                        n_sub_iter_max=1000,
-                                        verbose=False, 
-                                        rnd_seed=None,
-                                        save_progress=False):
-        
-        if verbose:
-            print('PID ', os.getpid(), 'finding source clusters.')
-        t0 = time.time()
-        
-        n_meta_loop = self.source_clustering.find_louvain_clustering(delta_r_threshold=np.finfo(float).eps,
-                                                                 n_meta_iter_max=n_meta_iter_max, 
-                                                                 n_sub_iter_max=n_sub_iter_max,
-                                                                 verbose=verbose, 
-                                                                 rnd_seed=rnd_seed,
-                                                                 save_progress=save_progress)
-        t1 = time.time()
-        
-        if verbose:
-            print('PID ', os.getpid(), 'took {0:.2f} s'.format(t1-t0))
-        
-        self.source_part = self.source_clustering.partition
-        
-        
-        
-        return n_meta_loop
-        
-        
-    def find_louvain_target_clustering(self, 
-                                       delta_r_threshold=np.finfo(float).eps,
-                                        n_meta_iter_max=1000, 
-                                        n_sub_iter_max=1000,
-                                        verbose=False, 
-                                        rnd_seed=None,
-                                        save_progress=False):
-        
-        if verbose:
-            print('PID ', os.getpid(), 'finding target clusters.')
-        t0 = time.time()
-        
-        n_meta_loop = self.target_clustering.find_louvain_clustering(delta_r_threshold=np.finfo(float).eps,
-                                                                 n_meta_iter_max=n_meta_iter_max,
-                                                                 n_sub_iter_max=n_sub_iter_max,
-                                                                 verbose=verbose, 
-                                                                 rnd_seed=rnd_seed,
-                                                                 save_progress=save_progress)
-        t1 = time.time()
-        
-        if verbose:
-            print('PID ', os.getpid(), 'took {0:.2f} s'.format(t1-t0))        
-        
-        self.target_part = self.target_clustering.partition
-        
-        return n_meta_loop
-    
-            
-
-    def find_louvain_clustering(self, delta_r_threshold=np.finfo(float).eps,
-                                n_meta_iter_max=1000, 
-                                n_sub_iter_max=1000,
-                                verbose=False, 
-                                rnd_seed=None,
-                                save_progress=False):
-        """returns n_source_meta_loop, n_target_meta_loop
-        
-           `rnd_seed` is used to set to state of the random number generator.
-           Default is to keep the current state
-           
-        """
-        
-            
-        n_s_loop = self.find_louvain_source_clustering(delta_r_threshold=delta_r_threshold,
-                            n_meta_iter_max=n_meta_iter_max, 
-                            n_sub_iter_max=n_sub_iter_max,
-                            verbose=verbose, 
-                            rnd_seed=rnd_seed,
-                            save_progress=save_progress)
-
-            
-            
-        n_t_loop = self.find_louvain_target_clustering(delta_r_threshold=delta_r_threshold,
-                            n_meta_iter_max=n_meta_iter_max, 
-                            n_sub_iter_max=n_sub_iter_max,
-                            verbose=verbose, 
-                            rnd_seed=rnd_seed,
-                            save_progress=save_progress)
-        
-        return n_s_loop, n_t_loop
-        
-    def compute_stability(self, Rs=None, Rt=None):
-        """ returns the stability for source clusters and target clusters
-            
-        """
-        
-        rs = self.source_clustering.compute_stability(Rs)
-        rt = self.target_clustering.compute_stability(Rt)
-        
-        return (rs, rt)
-    
-    
     
         
 class FlowIntegralClustering(object):
@@ -1930,23 +1707,12 @@ class FlowIntegralClustering(object):
     integral_time_grid: list
         list of times until which to compute the integral. The final times and
         indices used are stored in _t_integral_grid and _k_integral_grid.
-
-    cluster_list: list
-        list of set of nodes describing the source partition. Default is singleton
-        clusters.
         
-    node_to_cluster_dict: dict
-        dictionary with mapping between nodes and source cluster number. Default is singleton
-        clusters.
-
-    rnd_state: np.random.RandomState
-        Random state object. Default creates a new one.
-        
-    rnd_seed: int
-        Seed for the random object. Default is a random seed.
-        
-    S_threshold: float
-        Smallest values of S. Used to trim insignificantly small values.
+    reverse_time: bool
+        Whether to reverse time when computing T_list and I_list from T_inter_list,
+        for backward flow stability. Default is False (forward flow stability).
+        If T_list is provided in input, it must have been computed with the 
+        corresponding time direction.
         
     rtol : float
         Relative tolerance to set I values to zero. 
@@ -1958,7 +1724,8 @@ class FlowIntegralClustering(object):
     def __init__(self, T_list=None, p1=None, time_list=None,
                        T_inter_list=None,
                        integral_time_grid=None,
-                       rtol=1e-6,
+                       reverse_time=False,
+                       rtol=1e-8,
                        verbose=False):
 
         if T_list is None and T_inter_list is None:
@@ -2007,9 +1774,12 @@ class FlowIntegralClustering(object):
                 raise TypeError('T_inter_list must contain numpy arrays' + \
                                      ', scipy CSR matrices or sparse_stoch_mats.')
                 
+            if reverse_time:
+                T_inter_list = T_inter_list[::-1]
+                
             self.T_inter_list=T_inter_list
             
-            self.T_list = self._compute_T_list(T_inter_list)
+            self.T_list = self._compute_T_list(T_inter_list, verbose=verbose)
             
         self.is_nparray = is_nparray
         self.is_sparse = is_sparse
@@ -2022,12 +1792,21 @@ class FlowIntegralClustering(object):
             
         self.time_list=np.array(time_list)
         
+        if reverse_time:
+            self.time_list = self.time_list[::-1]
+        
         if integral_time_grid is None:
-            # last time interval is for Tkend to Tkend+1, so we actually stop at -2
-            self.integral_time_grid = [self.time_list[-2]]
-            self._k_integral_grid = [len(self.time_list)-2] 
-            self._t_integral_grid = [self.time_list[-2]]
+            self.integral_time_grid = [self.time_list[0], self.time_list[-1]]
+            self._k_integral_grid = [0,len(self.time_list)-1] 
+            self._t_integral_grid = [self.time_list[0], self.time_list[-1]]
         else:
+            # check if the ordering of integral_time_grid matched the direction of time
+            dire = np.diff(integral_time_grid).mean()
+            if reverse_time and dire > 0:
+                integral_time_grid = integral_time_grid[::-1]
+            if not reverse_time and dire < 0:
+                integral_time_grid = integral_time_grid[::-1]
+                
             self.integral_time_grid = integral_time_grid
             # indices and times where to store the integral values
             self._k_integral_grid = []
@@ -2036,16 +1815,23 @@ class FlowIntegralClustering(object):
             for t in self.integral_time_grid:
                 if t not in self.time_list:
                 # take the largest smaller time
-                    if t <= self.time_list[0]:
+                    if not reverse_time and t <= self.time_list[0]:
+                        t = self.time_list[0]
+                    elif reverse_time and t >= self.time_list[0]:
                         t = self.time_list[0]
                     else:
-                        t = self.time_list[self.time_list <= t].max()
+                        if not reverse_time:
+                            t = self.time_list[self.time_list <= t].max()
+                        else:
+                            t = self.time_list[self.time_list >= t].min()
+
             
                 k = int(np.where(self.time_list == t)[0])
                 self._k_integral_grid.append(k)
                 self._t_integral_grid.append(t)
             
         if p1 is None:
+            #uniform distribution
             p1 = np.ones(self.num_nodes, dtype=np.float64)/self.num_nodes
             
         self.p1 = p1
@@ -2058,7 +1844,7 @@ class FlowIntegralClustering(object):
         if is_nparray:
             self.I_list = [PT - np.outer(self.p1,self.p1) for PT in PT_list]
         else:
-            # is p1 uniform:
+            # if p1 uniform:
             if (self.p1 == self.p1[0]).all():
                 pp1 = self.p1[0]
             else:
@@ -2071,16 +1857,20 @@ class FlowIntegralClustering(object):
         
         self.partition = {}
         
-    def _compute_T_list(self, T_inter_list):
+    def _compute_T_list(self, T_inter_list, verbose=False):
         """ computes the list of transition matrices Tk from t0 to tk using
             the interevent transition matrices"""
             
-            
+        
+        if verbose:
+            print('PID ', os.getpid(), ' : computing T_list')
+        
+        
         T_list = [T_inter_list[0]]
 
         
         for k in range(1,len(T_inter_list)):
-            T_list.append(T_list[-1] @ T_inter_list[k])
+            T_list.append(sparse_matmul(T_list[-1], T_inter_list[k]))
             
             # to correct precision errors
             inplace_csr_row_normalize(T_list[-1])
@@ -2088,10 +1878,10 @@ class FlowIntegralClustering(object):
         return T_list
         
     def _compute_integral(self, T_list, time_list, verbose=False,
-                          rtol=1e-6):
-        """ computes time integral of Tk @ P(1/pk) @ Tk.T as
+                          rtol=1e-8):
+        """ computes time integral of P(t1) @ Tk @ P(1/pk) @ Tk.T @ P(t1) as
         
-            \frac{1}{T}\int_0^T T(t) @ P(1/p(t)) @ T(t).T * dt
+            P(t1) @ \frac{1}{T}\int_0^T T(t) @ P(1/p(t)) @ T(t).T * dt @ P(t1)
         
             rtol : float
                 Relative tolerance to set I values to zero. 
@@ -2105,7 +1895,6 @@ class FlowIntegralClustering(object):
             #reverse time
             dt_list *= -1
             
-        # T = abs(sum(dt_list))
         
         total_time = 0
         
@@ -2119,7 +1908,7 @@ class FlowIntegralClustering(object):
         elif self.is_sparse or self.is_sparse_stoch:
             IPT = csr_matrix((self.num_nodes,self.num_nodes), dtype=np.float64)
             # diag(p)
-            keep_sparse = False
+            keep_sparse = True
 
 
         t0 = time.time()
@@ -2132,54 +1921,70 @@ class FlowIntegralClustering(object):
             # Tk is the transition from t0 to tk
             if verbose and not k%1000:
                 print('PID ', os.getpid(), ' : ',k, ' over ' , 
-                      len(T_list))
-                print(time.time()-tkm1)
+                      len(T_list), f' took {time.time()-tkm1:.2f}s')
                 tkm1 = time.time()
                 
                 
             if self.is_nparray:
+                # dense matrix version
                 pk = self.p1 @ Tk
-                # in order to avoid nan in Ik due to 0 * np.inf 
+                # in order to avoid nan in PTk due to 0 * np.inf 
                 pk[np.where(pk == 0)] = 1
             
-                Ik = Tk @ P(1/pk) @ Tk.T * dtk
+                PTk = Tk @ P(1/pk) @ Tk.T * dtk
             else:
-                pk = self.p1 @ Tk.tocsr()
-                # in order to avoid nan in Ik due to 0 * np.inf 
+                # sparse matrix version
+                pk = sparse_matmul(self.p1, Tk.tocsr(), 
+                                    verbose=verbose>=10,
+                                    log_message='pk')
+                
+                # in order to avoid nan in PTk due to 0 * np.inf 
                 pk[np.where(pk == 0)] = 1
             
+                # we compute Tk @ Pk^-1 @ Tk.T as (Tk @ Pk^-1/2) @ (Tk @ Pk^-1/2)^T
+                
                 PTk = Tk.copy().tocsr()
-                inplace_csr_matmul_diag(PTk,1/pk)
                 
-                # could be more efficient if CSR @ DIA @ CSC was implemented
-                PTk = PTk @ Tk.T
+                inplace_csr_matmul_diag(PTk,np.sqrt(1/pk))                
                 
-                Ik = PTk * dtk
+                PTk = sparse_gram_matrix(PTk, transpose=True,
+                                            verbose=verbose>=10,
+                                            log_message='ITPTk')
+                
+                PTk.data *= dtk # operating on data avoids making a copy here.
+                
             
             if keep_sparse:
-                set_to_zeroes(Ik, Ik.data.max()*rtol)
-                set_to_zeroes(IPT, IPT.data.max()*rtol)
+                set_to_zeroes(PTk, rtol, use_absolute_value=True)
+                set_to_zeroes(IPT, rtol, use_absolute_value=True)
+                PTk.eliminate_zeros()
+                IPT.eliminate_zeros()
                 
-            IPT = IPT + Ik
+            IPT = IPT + PTk
             
             total_time += dtk
             
-            if k in self._k_integral_grid:
+            if k+1 in self._k_integral_grid: # this step was the integral from tk to tk_+1
                 if self.is_nparray:
                     IPT_list.append(P(self.p1) @ IPT @ P(self.p1) * (1/total_time))
                 else:
                     # multiply on left and right by P1
-            
                     IPT_copy = IPT.copy()
                     inplace_diag_matmul_csr(IPT_copy, self.p1)
                     inplace_csr_matmul_diag(IPT_copy, self.p1)
-                    IPT_list.append(IPT_copy * (1/total_time))
+                    IPT_copy.eliminate_zeros()
+                    IPT_copy.data *= (1/total_time)
+                    if USE_SPARSE_DOT_MKL:
+                        # this means that only the upper triangular part of IPT
+                        # was computed
+                        IPT_copy = IPT_copy + IPT_copy.T - diags(IPT_copy.diagonal())                    
+                    IPT_list.append(IPT_copy)
             
             
         t1 = time.time()
         
         if verbose:
-            print("integral took ", t1-t0)
+            print(f'integral took {t1-t0:.2f}s')
         
 
             
@@ -2188,15 +1993,55 @@ class FlowIntegralClustering(object):
         
     def find_louvain_clustering(self, k=0, 
                                 delta_r_threshold=np.finfo(float).eps,
-                            n_meta_iter_max=1000, 
-                            n_sub_iter_max=1000,
-                            verbose=False, 
-                            rnd_seed=None,
-                            save_progress=False,
-                            cluster_list=None,
-                            node_to_cluster_dict=None,
-                            rnd_state=None,
-                            S_threshold=None):
+                                n_meta_iter_max=1000, 
+                                n_sub_iter_max=1000,
+                                verbose=False, 
+                                rnd_seed=None,
+                                save_progress=False,
+                                cluster_list=None,
+                                node_to_cluster_dict=None,
+                                rnd_state=None,
+                                S_threshold=None):
+        """
+        Louvain algorithm to find the best partition. 
+        
+        The best partition is saved in `self.partition[k]
+        
+
+        Parameters
+        ----------
+        k : int
+            Index of the covariance integral to cluster. self.I_list[k] will be used.
+        delta_r_threshold : float, optional
+            Minimal value for an improvement of the quality function. The default is np.finfo(float).eps.
+        n_meta_iter_max : int, optional
+            Maximum number of meta iterations. The default is 1000.
+        n_sub_iter_max : int, optional
+            Maximum number of sub iterations. The default is 1000.
+        verbose : bool, int, optional
+            Degree of verbosity. The default is False.
+        rnd_seed : int
+            Seed for the random object. Default is a random seed.
+        save_progress : TYPE, optional
+            Whether to save the progress in the Clustering.partition_progress and Clustering.stability_progress. The default is False.
+        cluster_list : list of sets, optional
+            list of set of nodes describing the partition. Default is singleton
+            clusters.
+        node_to_cluster_dict : dict, optional
+            dictionary with mapping between nodes and cluster number. Default is singleton
+            clusters.
+        rnd_state : np.random.RandomState
+            Random state object. Default creates a new one.
+        S_threshold : float.
+            Smallest values of the covariance. Used to trim insignificantly small values. Default is None (no thresholding)
+
+        Returns
+        -------
+        n_loop : int
+            Number of meta loops of the louvain algorithm.
+
+
+    """
         
         if k in self.clustering.keys():
             print(f'index {k} already computed')
@@ -2228,17 +2073,6 @@ class FlowIntegralClustering(object):
             
             return n_loop
     
-    # def compute_stability(self,  R=None):
-    #     """ returns the stability of the clusters given in `cluster_list` 
-    #         computed between times `t1` and `t2`
-            
-    #     """
-        
-    #     if R is None:
-    #         R = self.clustering._compute_clustered_autocov()
-            
-    #     return R.trace()
-
             
         
         

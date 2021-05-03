@@ -27,11 +27,6 @@ from scipy.sparse import (lil_matrix, dok_matrix, diags, eye, isspmatrix_csr, is
                           csr_matrix, coo_matrix, csc_matrix)
 from scipy.sparse.linalg import expm, eigsh
 from scipy.sparse.csgraph import connected_components
-from SaveSparse import (load_sparse_list_mat, 
-                        load_sparse_dict_list_mat, load_sparse_dict_dict_list_mat,
-                        store_sparse_list_mat,
-                        store_sparse_dict_list_mat, store_sparse_dict_dict_list_mat)
-from tables import open_file
 import gzip
 from SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
 
@@ -193,44 +188,44 @@ class ContTempNetwork(object):
         return str(self.__class__) + \
               f' with {self.num_nodes} nodes and {self.num_events} events'
         
-    def save(self, filename, sparse_as_h5=False,
+    def save(self, filename, 
              matrices_list=None,
-             attributes_list=None,
-             erase_existing=True,
-             compressed=False):
-        """ save graph event_table as pickle file 
-            `sparse_as_hdf5` : save sparse matrices separately 
-            in a hdf5 file.
-            
-            `matrices_list` can be a list of srings with names of matrices to save.
-            
-            default attribute_list is :
-                
+             attributes_list=None):
+        """ save graph event_table and matrices as pickle file
+        
+        Parameters:
+        -----------
+        
+        filename: str
+            Filename where to save. The extension is automatically added.
+
+        matrices_list: list of strings
+            List of names of matrices to save.
+            The default list is:
+                `matrices_list = ['laplacians',
+                                    'adjacencies',
+                                    'inter_T',
+                                    'inter_T_lin',
+                                    'T',
+                                    'T_lin',
+                                    '_stationary_trans',
+                                    'delta_inter_T',
+                                    'delta_inter_T_lin',]`
+        attributes_list: list of strings
+            List of attribute names to save.
+            The default list is:
                 `attributes_list = ['node_to_label_dict',
-                      'events_table',
-                      'times',
-                      'time_grid',
-                      'num_nodes',
-                      '_compute_times',
-                      '_t_start_laplacians',
-                      '_k_start_laplacians',
-                      '_t_stop_laplacians',
-                      '_k_stop_laplacians',
-                      '_overlapping_events_merged',]`
-                        
-            default matrices_list is :
-                
-                 `matrices_list = ['laplacians',
-                      'adjacencies',
-                      'inter_T',
-                      'inter_T_lin',
-                      'T',
-                      'T_lin',
-                      '_stationary_trans',
-                      'delta_inter_T',
-                      'delta_inter_T_lin',]`
-            
-            if `compressed == True`, pickle file is compressed with gzip.
+                                  'events_table',
+                                  'times',
+                                  'time_grid',
+                                  'num_nodes',
+                                  '_compute_times',
+                                  '_t_start_laplacians',
+                                  '_k_start_laplacians',
+                                  '_t_stop_laplacians',
+                                  '_k_stop_laplacians',
+                                  '_overlapping_events_merged',]`
+                                    
             
         """
         
@@ -271,60 +266,57 @@ class ContTempNetwork(object):
             if hasattr(self, attr):
                 save_dict[attr] = getattr(self,attr)
                 
-        if not sparse_as_h5:
-            for mat in matrices_list:
-                if hasattr(self, mat):
-                    save_dict[mat] = getattr(self,mat)
-                    
-            if compressed:
-                with gzip.open(os.path.splitext(filename)[0] + '.gz', 
-                               'wb', compresslevel=2) as fopen:
-                    pickle.dump(save_dict, fopen) 
-            else:
-                with open(os.path.splitext(filename)[0] + '.pickle', 'wb') as fopen:
-                    pickle.dump(save_dict, fopen)   
-                        
-        else:
-            # save attribute and sparse matrices separately
-            
-            with open(os.path.splitext(filename)[0] + '_attr.pickle', 'wb') as fopen:
-                pickle.dump(save_dict, fopen)         
-            
-            with open_file(os.path.splitext(filename)[0] + '_mat.h5', 'a') as f:
-                
-                mats_list = ['laplacians',
-                             'adjacencies',
-                             '_stationary_trans']
-                
-                for mlist in mats_list:
-                    if mlist in matrices_list and hasattr(self, mlist):
-                        
-                        store_sparse_list_mat(getattr(self,mlist), mlist, f)
-            
-            
-                mats_dict_list = ['inter_T',
-                                  'T']
-                for mdlist in mats_dict_list:
-                    if mdlist in matrices_list and hasattr(self, mdlist):
-                        
-                        store_sparse_dict_list_mat(getattr(self,mdlist), mdlist, f)
 
-    
-                mats_dict_dict_list = ['inter_T_lin',
-                                       'T_lin',]
+        for mat in matrices_list:
+            if hasattr(self, mat):
+                save_dict[mat] = getattr(self,mat)
                 
-                for mddlist in mats_dict_dict_list:
-                    if mddlist in matrices_list and hasattr(self, mddlist):
+
+        with open(os.path.splitext(filename)[0] + '.pickle', 'wb') as fopen:
+            pickle.dump(save_dict, fopen)
                         
-                        store_sparse_dict_dict_list_mat(getattr(self,mddlist), 
-                                                        mddlist, f)
-                        
+        
     @classmethod 
-    def load(cls, filename, sparse_as_h5=False,
+    def load(cls, filename,
              matrices_list=None,
              attributes_list=None):
-        """ load graph from file and returns
-            a TempNetwork instance.
+        """ load network from file and returns a ContTempNetwork instance.
+        
+        Parameters:
+        -----------
+        
+        filename: str
+            Filename where the network is saved save. The extension is automatically added.
+
+        matrices_list: list of strings
+            List of names of matrices to load.
+            The default list is:
+                `matrices_list = ['laplacians',
+                                    'adjacencies',
+                                    'inter_T',
+                                    'inter_T_lin',
+                                    'T',
+                                    'T_lin',
+                                    '_stationary_trans',
+                                    'delta_inter_T',
+                                    'delta_inter_T_lin',]`
+        attributes_list: list of strings
+            List of attribute names to load.
+            The default list is:
+                `attributes_list = ['node_to_label_dict',
+                                  'events_table',
+                                  'times',
+                                  'time_grid',
+                                  'num_nodes',
+                                  '_compute_times',
+                                  '_t_start_laplacians',
+                                  '_k_start_laplacians',
+                                  '_t_stop_laplacians',
+                                  '_k_stop_laplacians',
+                                  '_overlapping_events_merged',]`
+                                    
+            
+            
         """
         
         matrices = ['laplacians',
@@ -358,66 +350,22 @@ class ContTempNetwork(object):
             
             
         # all in a pickle file
-        if not sparse_as_h5:
-            graph_dict = pd.read_pickle(os.path.splitext(filename)[0] +'.pickle')
-            
-            events_table = graph_dict.pop('events_table')
 
-            net = cls(events_table=events_table,
-                               relabel_nodes=False,
-                               node_to_label_dict=graph_dict.pop('node_to_label_dict'))
-    
-            for k,val in graph_dict.items():
-                if k in matrices_list:
-                    setattr(net, k, val)
-                if k in attributes_list:
-                    setattr(net, k, val)
-                
-            return net
+        graph_dict = pd.read_pickle(os.path.splitext(filename)[0] +'.pickle')
         
-        else:
-            with open(os.path.splitext(filename)[0] +'_attr.pickle', 'rb') as fopen:
-                graph_dict = pickle.load(fopen)
-            
-            events_table = graph_dict.pop('events_table')
+        events_table = graph_dict.pop('events_table')
 
-            net = cls(source_nodes=events_table.source_nodes,
-                               target_nodes=events_table.target_nodes,
-                               starting_times=events_table.starting_times,
-                               ending_times=events_table.ending_times,
-                               relabel_nodes=False,
-                               node_to_label_dict=graph_dict.pop('node_to_label_dict'))
+        net = cls(events_table=events_table,
+                           relabel_nodes=False,
+                           node_to_label_dict=graph_dict.pop('node_to_label_dict'))
+
+        for k,val in graph_dict.items():
+            if k in matrices_list:
+                setattr(net, k, val)
+            if k in attributes_list:
+                setattr(net, k, val)
             
-            for k,val in graph_dict.items():
-                
-                if k in attributes_list:
-                    setattr(net, k, val)
-            
-            # now read matrices from h5 files            
-            with open_file(os.path.splitext(filename)[0] + '_mat.h5', 'r') as f:
-                
-                mats_list = ['laplacians',
-                             'adjacencies',
-                             '_stationary_trans']
-                
-                mats_dict_list = ['inter_T',
-                                  'T']
-                
-                mats_dict_dict_list = ['inter_T_lin',
-                                       'T_lin',]
-                
-                for g in f.iter_nodes(f.root):
-                    if g._v_name in mats_list:
-                        setattr(net, g._v_name, 
-                                load_sparse_list_mat(g._v_name, f))
-                    elif g._v_name in mats_dict_list:
-                        setattr(net, g._v_name, 
-                                load_sparse_dict_list_mat(g._v_name, f))
-                    elif g._v_name in mats_dict_dict_list:
-                        setattr(net, g._v_name, 
-                                load_sparse_dict_dict_list_mat(g._v_name, f))
-                
-            return net
+        return net
         
         
     def save_inter_T(self, filename, lamda=None, round_zeros=True, tol=1e-8,
@@ -546,6 +494,7 @@ class ContTempNetwork(object):
             
     def save_inter_T_lin(self, filename, lamda=None, round_zeros=True, tol=1e-8,
                                    compressed=False,
+                                   replace_existing=True,
                                    save_delta=False):
         """ creates delta_inter_T_lin if it is not already present and 
             saves it together with inter_T_lin[lamda][t_s][0] in a pickle file.
@@ -1342,7 +1291,7 @@ class ContTempNetwork(object):
                 if verbose and not k%1000:
                     print('PID ', os.getpid(), ' : ',k, ' over ' ,
                           self._k_stop_laplacians-1-self._k_start_laplacians)
-                    print('PID ', os.getpid(), ' : ',time.time()-t0)
+                    print('PID ', os.getpid(), f' : {time.time()-t0:.2f}s')
                     
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1591,7 +1540,7 @@ class ContTempNetwork(object):
             self._compute_times['trans_matrix_{0}_rev{1}'.format(lamda,reverse_time)] = t_end
             
             if verbose:
-                print('PID ', os.getpid(), ' : ','finished in ', t_end)
+                print('PID ', os.getpid(), ' : ', f'finished in {t_end:.2f}s')
         else:
             if verbose:
                 print('PID ', os.getpid(), ' : ','Transition matrices already computed for lamda={0}'.format(lamda))      
