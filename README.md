@@ -14,3 +14,9 @@ Dynamic community detection in temporal networks using the flow stability framew
 
 A jupyter notebook reproducing the example from Fig. 1 of the paper is available in [`non_stationary_example.ipynb`](https://github.com/alexbovet/flow_stability/blob/main/non_stationary_example.ipynb).
 
+
+
+
+[![DOI](https://zenodo.org/badge/330739659.svg)](https://zenodo.org/badge/latestdoi/330739659)
+
+
