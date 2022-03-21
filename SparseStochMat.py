@@ -1407,7 +1407,7 @@ class sparse_autocov_csr_mat(object):
             #         Bdata.append(self.S.data[k])
             #         Brows.append(AtoB[row])
             #         Bcols.append(AtoB[col])
-            raise NotImplemented
+            raise NotImplementedError
             
         newPT = coo_matrix((PTdata,(PTrows,PTcols)), shape=(new_size,new_size)) 
         newS = coo_matrix((Sdata,(Srows,Scols)), shape=(new_size,new_size)) 
@@ -1506,7 +1506,8 @@ class sparse_autocov_mat(object):
             assert not isinstance(p2, np.matrix)
             assert len(p2.shape) == 1
             assert len(p1.shape) == 1
-            assert PT.shape[0] == PT.shape[1] == p1.size == p2.size
+            assert PT.shape[0] == PT.shape[1] == p1.size == p2.size,\
+                f'PT.shape[0]={PT.shape[0]}, PT.shape[1]={PT.shape[1]}, p1.size={p1.size}, p2.size={p2.size}'
             self.p_scalars = False
         elif isinstance(p1, (float,int)) and isinstance(p2, (float,int)):
             self.p_scalars = True       
@@ -2031,90 +2032,3 @@ def sparse_gram_matrix(A, transpose, verbose=False, log_message=''):
             return A @ A.T
         else:
             return A.T @ A
-
-
-
-import ctypes as _ctypes
-
-# use sparse_dot_mkl to define addition
-from sparse_dot_mkl._mkl_interface import sparse_matrix_t, RETURN_CODES
-from sparse_dot_mkl._sparse_sparse import _create_mkl_sparse, _destroy_mkl_handle, _export_mkl
-
-def _add_mkl(sp_ref_a, sp_ref_b):
-    
-    ref_handle = sparse_matrix_t()
-
-    mkl = _ctypes.cdll.LoadLibrary("libmkl_rt.so")
-    
-    sparse_add = mkl.mkl_sparse_d_add
-    # https://software.intel.com/content/www/us/en/develop/documentation/mkl-developer-reference-c/top/blas-and-sparse-blas-routines/inspector-executor-sparse-blas-routines/inspector-executor-sparse-blas-execution-routines/mkl-sparse-add.html
-    #  sparse_status_t mkl_sparse_d_add (
-    #                  const sparse_operation_t operation,
-    #                  const sparse_matrix_t A,
-    #                  const double alpha,
-    #                  const sparse_matrix_t B,
-    #                  sparse_matrix_t *C);
-    #
-    # performs C := alpha*op(A) + B
-    # where alpha is a scalar, op is a matrix modifier, and A , B , and C
-    # are sparse matrices.
-
-    ret_val = sparse_add(_ctypes.c_int(10),
-                         sp_ref_a,
-                         _ctypes.c_double(1.0),
-                         sp_ref_b,
-                         _ctypes.byref(ref_handle))
-
-    # Check return
-    if ret_val != 0:
-        raise ValueError("mkl_sparse_spmm returned {v} ({e})".format(v=ret_val, e=RETURN_CODES[ret_val]))
-
-    return ref_handle    
-
-@timing
-def sparse_add(matrix_a, matrix_b, verbose=False, log_message=''):
-    """
-    
-    If USE_SPARSE_DOT_MKL uses INTEL MKL multrheaded libraries
-    
-    Parameters:
-    -----------
-    
-    matrix_a : CSR scipy matrix
-    
-    matrix_b : CSR scipy matrix
-    
-    Returns:
-    --------
-
-    matrix_c : CSR scipy matrix    
-        matrix_c = matrix_a + matrix_b
-        
-    """
-    
-    assert matrix_a.shape == matrix_b.shape, 'dimension mismatch'
-    
-    if USE_SPARSE_DOT_MKL:
-        if not isspmatrix_csr(matrix_a) and isspmatrix_csr(matrix_b):
-            raise Exception("Matrix must be in csr format")
-              
-        assert (matrix_a.dtype == np.float64) and (matrix_b.dtype == np.float64)
-    
-    
-        # Create intel MKL objects
-        mkl_a, a_dbl = _create_mkl_sparse(matrix_a)
-        mkl_b, b_dbl = _create_mkl_sparse(matrix_b)
-        
-        mkl_c = _add_mkl(mkl_a, mkl_b)
-    
-        _destroy_mkl_handle(mkl_a)
-        _destroy_mkl_handle(mkl_b)
-        
-        # Extract
-        python_c = _export_mkl(mkl_c, a_dbl or b_dbl, output_type="csr")
-        _destroy_mkl_handle(mkl_c)
-    
-        return python_c
-    
-    else:
-        return matrix_a + matrix_b

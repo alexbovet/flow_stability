@@ -23,7 +23,7 @@
 import os
 import numpy as np
 from scipy.sparse.linalg import expm_multiply, expm
-from scipy.sparse import csc_matrix, vstack, csr_matrix
+from scipy.sparse import csc_matrix, vstack, csr_matrix, isspmatrix_csc
 from scipy.sparse.csgraph import connected_components
 from multiprocessing import Pool
 from SparseStochMat import inplace_csr_row_normalize
@@ -67,12 +67,14 @@ def compute_parallel_expm(A, nproc=1, thresh_ratio=None,
     computes the exponential matrix of A by computing each column separately
     exploiting the fact that the column i of expm(A) is expm_multiply(A,delta_i)
     where delta i is the vector with zeros everywhere except on i.
+    This only works if A is equal to (minus) a Laplacian matrix
     
     
     Parameters
     ----------
     A : scipy csc sparse matrix
-        Square csc sparse matrix for .
+        Square csc sparse matrix representing (+ or -) a Laplacian.
+        If A is not csc, it will be converted to csc format.
     nproc : int, optional
         number of parallel processes. The default is 1.
     thresh_ratio: float, optional.
@@ -90,6 +92,9 @@ def compute_parallel_expm(A, nproc=1, thresh_ratio=None,
 
     """
     
+    if not isspmatrix_csc(A):
+        A = csc_matrix(A)
+        
     N = A.shape[0]
     
     # create arrays to share A between processes
@@ -103,6 +108,10 @@ def compute_parallel_expm(A, nproc=1, thresh_ratio=None,
     with Pool(nproc, initializer=_init_worker, 
               initargs=(data, indices, indptr, N)) as p:
         res = p.map(_worker, [(i,thresh_ratio) for i in range(N)])
+        
+    # delete shared arrays
+    global var_dict
+    var_dict = {}
     
     # seems faster than _stack_sparse_cols
     T = vstack(res).T.tocsr()
@@ -217,6 +226,10 @@ def compute_subspace_expm_parallel(A, n_comp=None, comp_labels=None, verbose=Fal
     with Pool(nproc, initializer=_init_worker, 
           initargs=(Adata, Aindices, Aindptr, num_nodes)) as p:
         res = p.map(_expm_worker, [cmp_indices[c] for c in small_comps])
+        
+    # delete shared arrays
+    global var_dict
+    var_dict = {}
     
     if verbose:
             print('PID ', os.getpid(), f' : small components computation took {time.time()-t0:.3f}s')
