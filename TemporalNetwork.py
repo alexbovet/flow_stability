@@ -34,14 +34,7 @@ from parallel_expm import compute_subspace_expm_parallel
 
 from functools import partial
 
-
 import time
-try :
-    from graph_tool import Graph
-except :
-    print('PID ', os.getpid(), ' : ','could not load graph-tool')
-    pass
-
 import pickle
 
 
@@ -973,7 +966,27 @@ class ContTempNetwork(object):
     def compute_static_adjacency_matrix(self,
                                start_time=None,
                                end_time=None):
-        """ returns a symmetric csr matrix """
+        """
+        Returns the adjacency matrix of the static network built from the 
+        aggregagted edge activity between `start_time` and `end_time`.
+
+        Parameters
+        ----------
+        start_time : float or int, optional
+            Starting time for the aggregation. The default is None, i.e. the 
+            start time of the entire temporal network.
+        end_time : float or int, optional
+            Ending time for the aggregation. The default is None, i.e. the 
+            end time of the entire temporal network.
+
+        Returns
+        -------
+        CSR sparse matrix
+            Symmetric adjacency matrix, where element ij is equal to the 
+            aggregated time during which egde ij was active after `start_time` 
+            and before `end_time`.
+
+        """
         
         if start_time is None:
             start_time = self.start_time
@@ -981,15 +994,15 @@ class ContTempNetwork(object):
         if end_time is None:
             end_time = self.end_time
             
-        mask = np.logical_and(self.events_table.starting_times >= start_time,
-                              self.events_table.ending_times <= end_time)
+        mask = np.logical_and(self.events_table.starting_times < end_time,
+                              self.events_table.ending_times > start_time)
         
         # loop on events
         data = []
         cols = []
         rows = []
         for ev in self.events_table.loc[mask].itertuples():
-            data.append(ev.durations)
+            data.append(min(ev.ending_times, end_time) - max(ev.starting_times, start_time))
             rows.append(ev.source_nodes)
             cols.append(ev.target_nodes)
             
@@ -997,41 +1010,13 @@ class ContTempNetwork(object):
                        shape=(self.num_nodes, self.num_nodes))
         
         return A + A.T
-    
-    
-    def compute_graph(self, directed=False,
-                           start_time=None,
-                           end_time=None):
-        """ return a graph_tool graph """
-        
-        
-        if start_time is None:
-            start_time = self.start_time
 
-        if end_time is None:
-            end_time = self.end_time
-            
-        mask = np.logical_and(self.events_table.starting_times >= start_time,
-                              self.events_table.ending_times <= end_time)                          
-        
-        G = Graph(directed=directed)
-        G.add_vertex(self.num_nodes)
-        
-        G.ep['starting_times'] = G.new_edge_property('double')
-        G.ep['durations'] = G.new_edge_property('double')
-        G.add_edge_list(self.events_table.loc[mask][['source_nodes', 
-                                            'target_nodes', 
-                                            'starting_times', 
-                                            'durations']].values, 
-                         eprops=(G.ep['starting_times'],
-                                 G.ep['durations']))
-        return G
     
     def _compute_time_grid(self):
         """ create `self.time_grid`, a dataframe with ('times', 'id') as index,
             were `id` is the index of the corresponding event in `events_table`,
             and column 'is_start' which is True is the ('times', 'id') 
-            correspinds to a starting event.
+            corresponds to a starting event.
             Also creates `self.times`, an array with all the times values.
             
         """
@@ -1184,7 +1169,7 @@ class ContTempNetwork(object):
             if verbose and not k%1000:
                 print('PID ', os.getpid(), ' : ',k, ' over ' , 
                       self._k_stop_laplacians - self._k_start_laplacians)
-                print('PID ', os.getpid(), ' : ',time.time()-t0)
+                print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                             
             meet_id = time_ev.index.get_level_values('id')
             # starting or ending events
@@ -1250,19 +1235,56 @@ class ContTempNetwork(object):
                                     fix_tau_k=False,
                                     use_sparse_stoch=False,
                                     dense_expm=True):
-        """ compute interevent transition matrices as T_k(lamda) = expm(-tau_k*lamda*L_k).
+        """
+        Computes interevent transition matrices as T_k(lamda) = expm(-tau_k*lamda*L_k).
         
-            The transition matrix T_k is saved in `self.inter_T[lamda][k]`,
-            where self.inter_T is a dictionary with lamda as keys and
-            lists of transition matrices as values.
-            
-            will compute from self.times[self._k_start_laplacians]
-            until self.times[self._k_stop_laplacians-1]
-            
-            the transition matrix at step k, is the probability transition matrix
-            between times[k] and times[k+1]
-            
-            
+        The transition matrix T_k is saved in `self.inter_T[lamda][k]`,
+        where self.inter_T is a dictionary with lamda as keys and
+        lists of transition matrices as values.
+        
+        will compute from self.times[self._k_start_laplacians]
+        until self.times[self._k_stop_laplacians-1]
+        
+        the transition matrix at step k, is the probability transition matrix
+        between times[k] and times[k+1]
+        
+
+        Parameters
+        ----------
+        lamda : float, optional
+            Random walk rate, dynamical resolution parameter. The default (None)
+            is 1 over the median inter event time.
+        t_start : float or int, optional
+            Starting time, passed to `compute_laplacian_matrices` if the 
+            Laplacians have not yet been computed.
+            Otherwise is not used.
+            The computation starts at self.times[self._k_start_laplacians].
+            The default is None, i.e. starts at the beginning of times.
+        t_stop : float or int, optional
+            Same than `t_start` but for the ending time of computations.
+            Computations stop at self.times[self._k_stop_laplacians-1].
+            Default is end of times.
+        verbose : bool, optional
+            The default is False.
+        fix_tau_k : bool, optional
+            If true, all interevent times (tau_k) in the formula above are set to 1. 
+            This decouples the dynamic scale from the length of event which
+            is useful for temporal networks with instantaneous events.
+            The default is False.
+        use_sparse_stoch : bool, optional
+            Whether to use custom sparse stochastic matrix format to save the
+            inter transition matrices. No recommended. The default is False.
+        dense_expm : bool, optional
+            Whether to use the dense version of the matrix exponential algorithm
+            at each time steps.
+            Recommended for not too large networks.
+            The inter trans. matrices are still saved as sparse scipy matrices
+            as they usually have many zero values. The default is True.
+
+        Returns
+        -------
+        None.
+
         """
         
         if not hasattr(self, 'laplacians'):
@@ -1291,7 +1313,7 @@ class ContTempNetwork(object):
                 if verbose and not k%1000:
                     print('PID ', os.getpid(), ' : ',k, ' over ' ,
                           self._k_stop_laplacians-1-self._k_start_laplacians)
-                    print('PID ', os.getpid(), f' : {time.time()-t0:.2f}s')
+                    print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                     
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1398,7 +1420,7 @@ class ContTempNetwork(object):
                 if verbose and not k%1000:
                     print('PID ', os.getpid(), ' : ',k, ' over ' , 
                           self._k_stop_laplacians-1-self._k_start_laplacians)
-                    print('PID ', os.getpid(), ' : ',time.time()-t0)
+                    print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                     
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1511,7 +1533,7 @@ class ContTempNetwork(object):
             for k in k_range:
                 if verbose and not k%1000:
                     print('PID ', os.getpid(), ' : ',k, ' over ' , len(self.inter_T[lamda]))
-                    print('PID ', os.getpid(), ' : ',time.time()-t0)
+                    print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                     
                 Tk = self.inter_T[lamda][k]
                 if tol is not None:
@@ -1605,7 +1627,7 @@ class ContTempNetwork(object):
             for k in k_range:
                 if verbose and not k%1000:
                     print('PID ', os.getpid(), ' : ',k, ' over ' , len(self.inter_T_lin[lamda][t_s]))
-                    print('PID ', os.getpid(), ' : ',time.time()-t0)
+                    print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                 if save_intermediate:
                     self.T_lin[lamda][t_s].append(self.T_lin[lamda][t_s][-1] @ \
                                       self.inter_T_lin[lamda][t_s][k])
@@ -1653,7 +1675,7 @@ class ContTempNetwork(object):
         for k in range(len(self.laplacians)):
             if verbose and not k%1000:
                 print('PID ', os.getpid(), ' : ',k, ' over ' , len(self.laplacians))
-                print('PID ', os.getpid(), ' : ',time.time()-t0)
+                print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                 
             if use_sparse_stoch:
                 self._stationary_trans.append(\
@@ -1956,7 +1978,7 @@ class ContTempInstNetwork(ContTempNetwork):
             if verbose and not k%1000:
                 print('PID ', os.getpid(), ' : ',k, ' over ' , 
                       self._k_stop_laplacians - self._k_start_laplacians)
-                print('PID ', os.getpid(), ' : ',time.time()-t0)
+                print(f'PID {os.getpid()} : {time.time()-t0:.2f}s')
                             
             meet_id = time_ev.index.get_level_values('id')
             # starting or ending events

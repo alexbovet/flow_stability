@@ -33,15 +33,17 @@ from TemporalNetwork import inplace_csr_row_normalize, set_to_zeroes, sparse_lap
 from SparseStochMat import (sparse_stoch_mat, sparse_autocov_mat,
                             sparse_autocov_csr_mat,
                             inplace_csr_matmul_diag, inplace_diag_matmul_csr,
-                            sparse_outer, sparse_gram_matrix, sparse_matmul,
+                            sparse_gram_matrix, sparse_matmul,
                             USE_SPARSE_DOT_MKL)
 from array import array
 
+from multiprocessing import Pool, RawArray
+from uuid import uuid4
 
 USE_CYTHON = True
 try:
     from _cython_fast_funcs import (sum_Sto, sum_Sout, compute_S, cython_nmi, 
-                                    cython_nvi, compute_S_0t0)
+                                    cython_nvi)
 except ImportError as e:
     print('Could not load cython functions')
     print(e)
@@ -271,8 +273,9 @@ class BaseClustering(object):
             if isinstance(T,np.matrix):
                 raise TypeError('T must be a numpy array, not a numpy matrix.')
                 
-            assert np.allclose(T.sum(1),np.ones(T.shape[1])),\
-                                "Transition matrix must be stochastic"
+            assert np.all(np.logical_or(np.isclose(T.sum(1),np.ones(T.shape[1])),
+                                        np.isclose(T.sum(1),np.zeros(T.shape[1])))),\
+                                        "Transition matrix must be stochastic with possible zero rows"
                                     
             self.T = T.copy()
             
@@ -786,7 +789,9 @@ class BaseClustering(object):
         # if the autocovariance is all zeros, return the full partiton
         if self._check_if_S_is_zero():
             self._update_to_fullpart()
-            
+            if verbose:
+                print("S is all zeros")
+                
             return 0
             
         # initial clustering
@@ -924,9 +929,9 @@ class BaseClustering(object):
         self.source_part = Partition(num_nodes=self.num_nodes,
                                      cluster_list=[set(range(self.num_nodes))])
         
-    def _check_if_S_is_zero(self):
+    def _check_if_S_is_zero(self, thresh=1e-6):
 
-        return np.allclose(self._S, np.zeros_like(self._S))        
+        return np.abs(self._S).max()< thresh/(self.num_nodes**2)   
     
 
 class Clustering(BaseClustering):
@@ -1667,7 +1672,7 @@ class SparseClustering(Clustering):
     
     def _check_if_S_is_zero(self):
 
-        return self._S.is_all_zeros()      
+        return self._S.is_all_zeros()
         
 
     
@@ -1707,6 +1712,7 @@ class FlowIntegralClustering(object):
     integral_time_grid: list
         list of times until which to compute the integral. The final times and
         indices used are stored in _t_integral_grid and _k_integral_grid.
+        Default is [time_list[0], time_list[-1]]
         
     reverse_time: bool
         Whether to reverse time when computing T_list and I_list from T_inter_list,
@@ -1779,7 +1785,7 @@ class FlowIntegralClustering(object):
                 
             self.T_inter_list=T_inter_list
             
-            self.T_list = self._compute_T_list(T_inter_list, verbose=verbose)
+            self.T_list = self._compute_T_list(T_inter_list, is_nparray, verbose=verbose)
             
         self.is_nparray = is_nparray
         self.is_sparse = is_sparse
@@ -1857,7 +1863,7 @@ class FlowIntegralClustering(object):
         
         self.partition = {}
         
-    def _compute_T_list(self, T_inter_list, verbose=False):
+    def _compute_T_list(self, T_inter_list, is_nparray, verbose=False):
         """ computes the list of transition matrices Tk from t0 to tk using
             the interevent transition matrices"""
             
@@ -1870,11 +1876,14 @@ class FlowIntegralClustering(object):
 
         
         for k in range(1,len(T_inter_list)):
-            T_list.append(sparse_matmul(T_list[-1], T_inter_list[k]))
-            
-            # to correct precision errors
-            inplace_csr_row_normalize(T_list[-1])
-            
+            if is_nparray:
+                T_list.append(T_list[-1] @ T_inter_list[k])
+            else:
+                T_list.append(sparse_matmul(T_list[-1], T_inter_list[k]))
+                
+                # to correct precision errors
+                inplace_csr_row_normalize(T_list[-1])
+                
         return T_list
         
     def _compute_integral(self, T_list, time_list, verbose=False,
@@ -2022,8 +2031,9 @@ class FlowIntegralClustering(object):
             Degree of verbosity. The default is False.
         rnd_seed : int
             Seed for the random object. Default is a random seed.
-        save_progress : TYPE, optional
-            Whether to save the progress in the Clustering.partition_progress and Clustering.stability_progress. The default is False.
+        save_progress : bool, optional
+            Whether to save the progress in the Clustering.partition_progress 
+            and Clustering.stability_progress. The default is False.
         cluster_list : list of sets, optional
             list of set of nodes describing the partition. Default is singleton
             clusters.
@@ -2049,7 +2059,7 @@ class FlowIntegralClustering(object):
         
             if self.is_nparray:
                 self.clustering[k] = Clustering(p1=self.p1, p2=None,
-                                  T=self.T_list[k].toarray(),
+                                  T=self.T_list[self._k_integral_grid[k+1]-1],
                                   S=self.I_list[k],
                                   cluster_list=cluster_list, 
                                   node_to_cluster_dict=node_to_cluster_dict,
@@ -2291,15 +2301,41 @@ def avg_norm_var_information(clusters_lists_list, num_samples=None):
 def static_clustering(A, t=1, rnd_seed=None, discrete_time_rw=False,
                       linearized=False,
                       directed=False):
-    """ create a static clustering class to optimize the continuous time 
-        stability from the graph given by the adjacency matrix `A`.
-        
-        Defined for undirected and connected graphs.
-    
-        `t` is the time associated continuous time random walk and serves as
-        the resolution paramter.
-        
-        if `directed` is True, the network must be strongly connected.
+    """
+    Initializes a clustering instance to optimize the continuous time 
+    Markov stability from the graph given by the adjacency matrix `A`.
+
+    Parameters
+    ----------
+    A : scipy sparse csr matrix or numpy ndarray
+        Adjacency matrix.
+    t : int or float, optional
+        Markov time (resolution parameter). The default is 1.
+    rnd_seed : int, optional
+        The default is None.
+    discrete_time_rw : bool, optional
+        If true, powers of the transition matrix to the power of `t` are used for varying resolution.
+        `t` must be an int. The default is False.
+    linearized : bool, optional
+        If true, the linearized version of the Markov Stability is used.
+        if linearized=false and discrete_time_rw==false, the matrix exponential
+        of the random walk Laplacian is used to compute the transition matrix (slow).
+        The default is False.
+    directed : bool, optional
+        If true, the network must be strongly connected. The default is False.
+
+    Raises
+    ------
+    TypeError
+        'A must be numpy array or scipy csr.'.
+    ValueError
+        'sum of degrees equal 0'.
+
+    Returns
+    -------
+    Instance of `Clustering' or 'SparseClustering'
+        Clustering instance initialized for Markov Stability optimization.
+
     """
     
     from scipy.linalg import expm
@@ -2383,5 +2419,63 @@ def static_clustering(A, t=1, rnd_seed=None, discrete_time_rw=False,
         return Clustering(p1=pi,p2=pi,T=T, rnd_seed=rnd_seed)
     
     
+def n_random_seeds(n):
+    # generate n random seeds
     
+    return [int.from_bytes(os.urandom(4), byteorder="big") for \
+                                      _ in range(n)]
+        
+    
+def run_multi_louvain(clustering, num_repeat, **kwargs):
+    """
+    Helper function to run multiple (serial) instances of the Louvain algorithm for the
+    clustering given in `clutering`.
+
+    Parameters
+    ----------
+    clustering : Clustering or SparseClustering instance
+        
+    num_repeat : int
+        Number of repetition of the algorithm.
+    **kwargs : key word args
+        Arguments passed when initializing the clusterings.
+
+    Returns
+    -------
+    n_loops : list
+        list with the number of louvain loop for each repetition.
+    cluster_lists : list
+        list with the cluster lists of each repetition..
+    stabilities : list
+        list with the value of the stability for each repetition.
+    seeds : list
+        list with the random seeds used in each repetition.
+
+    """
+    
+    cluster_lists = []
+    stabilities = []
+    seeds = n_random_seeds(num_repeat)
+    n_loops = []
+    
+    for seed in seeds:
+        
+        # create a copy of clustering with a different seed
+        c = clustering.__class__(p1=clustering.p1,
+                                 p2=clustering.p2,
+                                 S=clustering._S,
+                                 T=clustering.T,
+                                 rnd_seed=seed)
+        
+        n_loop = c.find_louvain_clustering(**kwargs)
+        
+        n_loops.append(n_loop)
+        stabilities.append(c.compute_stability())
+        cluster_lists.append(c.partition.cluster_list)
+        
+        
+    return n_loops, cluster_lists, stabilities, seeds
+        
+    
+
     
