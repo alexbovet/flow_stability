@@ -9,6 +9,14 @@ Dynamic community detection in temporal networks using the flow stability framew
 - Cython (optional but highly recommended)
 - [sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) (optional, allows to perform multithreaded sparse matrix multiplication)
 
+# Installation
+
+`git clone git@github.com:alexbovet/flow_stability.git`
+
+`cd flow_stability`
+
+`python setup.py build_ext --inplace` to compile the cython functions.
+
 # Usage
 
 The main classes are:
