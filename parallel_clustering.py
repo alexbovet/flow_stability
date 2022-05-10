@@ -39,7 +39,7 @@ def compute_parallel_clustering(clustering, num_repeat=50, nproc=4,
                                 n_sub_iter_max=1000, 
                                 clust_verbose=False, print_num_loops=False):
     
-    
+    global var_dict
     # create arrays to share between processes
 
     p1raw = RawArray('d', clustering.p1)
@@ -65,7 +65,7 @@ def compute_parallel_clustering(clustering, num_repeat=50, nproc=4,
                 zip(*pool.map(_compute_sym_clustering_fct, params_list,
                               chunksize=1))
                 
-        global var_dict
+
         var_dict = {} # deleting shared arrays
                 
         return clusters, stabilites, seeds        
@@ -96,7 +96,6 @@ def compute_parallel_clustering(clustering, num_repeat=50, nproc=4,
                 zip(*pool.map(_compute_sym_sparse_clustering_fct, params_list,
                               chunksize=1))
 
-        global var_dict
         var_dict = {} # deleting shared arrays
         
         return clusters, stabilites, seeds
@@ -109,6 +108,8 @@ def n_random_seeds(n):
 
 def _init_sub_worker(Sraw, Traw, N, p1raw, p2raw):
     # reconstruct A from shared arrays
+    
+    global var_dict
     
     var_dict['N'] = N
     var_dict['S'] = np.frombuffer(Sraw, dtype=np.float64).reshape((N,N))
@@ -130,6 +131,7 @@ def _init_sub_worker_sparse(PTdata, PTindices, PTindptr, N, p1raw, p2raw, PT_sym
                            np.frombuffer(p2raw, dtype=np.float64), 
                            PT_symmetric=PT_symmetric)
     
+    global var_dict
     
     var_dict['N'] = N
     var_dict['S'] = S
