@@ -1,5 +1,9 @@
 # Flow stability for dynamic community detection
-Dynamic community detection in temporal networks using the flow stability framework described in  https://arxiv.org/abs/2101.06131. 
+Dynamic community detection in temporal networks using the flow stability framework described in 
+
+Alexandre Bovet, Jean-Charles Delvenne & Renaud Lambiotte,
+[Flow stability for dynamic community detection](https://www.science.org/doi/10.1126/sciadv.abj3063),
+Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
 # Requirements:
 - Python3 (>=3.6)
