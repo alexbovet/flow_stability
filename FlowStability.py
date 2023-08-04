@@ -37,18 +37,17 @@ from SparseStochMat import (sparse_stoch_mat, sparse_autocov_mat,
                             USE_SPARSE_DOT_MKL)
 from array import array
 
-from multiprocessing import Pool, RawArray
-from uuid import uuid4
 
+import importlib.util
 USE_CYTHON = True
-try:
+if importlib.util.find_spec('cython') is not None:
     from _cython_fast_funcs import (sum_Sto, sum_Sout, compute_S, cython_nmi, 
                                     cython_nvi)
-except ImportError as e:
+else:
     print('Could not load cython functions')
-    print(e)
     USE_CYTHON = False
 
+    
 
 class Partition(object):
     """ A node partition that can be described as a list of node sets 
@@ -1871,15 +1870,16 @@ class FlowIntegralClustering(object):
         if verbose:
             print('PID ', os.getpid(), ' : computing T_list')
         
-        
-        T_list = [T_inter_list[0]]
-
+        if is_nparray:
+            T_list = [T_inter_list[0]]
+        else:
+            T_list = [T_inter_list[0].tocsr()]
         
         for k in range(1,len(T_inter_list)):
-            if is_nparray:
+            if is_nparray:    
                 T_list.append(T_list[-1] @ T_inter_list[k])
             else:
-                T_list.append(sparse_matmul(T_list[-1], T_inter_list[k]))
+                T_list.append(sparse_matmul(T_list[-1], T_inter_list[k].tocsr()))
                 
                 # to correct precision errors
                 inplace_csr_row_normalize(T_list[-1])
@@ -2157,6 +2157,14 @@ def norm_mutual_information(clusters1, clusters2):
     if isinstance(clusters2, Partition):
         clusters2 = clusters2.cluster_list
         
+    if not isinstance(clusters1[0], set):
+        # make sure it is a list of sets
+        clusters1 = [set(c) for c in clusters1]
+
+    if not isinstance(clusters2[0], set):
+        # make sure it is a list of sets
+        clusters2 = [set(c) for c in clusters2]        
+        
     # num nodes
     N = sum(len(clust) for clust in clusters1)
     n1 = len(clusters1)
@@ -2223,6 +2231,15 @@ def norm_var_information(clusters1, clusters2, N=None, use_clust_list=False):
         if isinstance(clusters2, Partition):
             clusters2 = clusters2.cluster_list
     
+    
+    if not isinstance(clusters1[0], set):
+        # make sure it is a list of sets
+        clusters1 = [set(c) for c in clusters1]
+
+    if not isinstance(clusters2[0], set):
+        # make sure it is a list of sets
+        clusters2 = [set(c) for c in clusters2]       
+        
     # num nodes
     if N is None:
         N = sum(len(clust) for clust in clusters1)
@@ -2478,4 +2495,42 @@ def run_multi_louvain(clustering, num_repeat, **kwargs):
         
     
 
+def sort_clusters(cluster_list_to_sort, cluster_list_model, thresh_ratio=0.3):
+    """ quick heuristic to sort a list of clusters in order to closely match another list
+    """
+        
+    clust_similarity_lists = []
+    for clust in cluster_list_to_sort:
+        jaccs = []
+        for class_clust in cluster_list_model:
+            jaccs.append(len(clust.intersection(class_clust))/len(clust.union(class_clust)))    
+        clust_similarity_lists.append(jaccs)
+        
+    #now sort
+    clust_similarity_matrix = np.array(clust_similarity_lists)
+    new_clust_order = []
+    all_clusts = list(range(clust_similarity_matrix.shape[0]))
+    
+    zero_clusts = (clust_similarity_matrix.sum(1) == 0).nonzero()[0].tolist()
+    for z in zero_clusts:
+        all_clusts.remove(z)
+    
+    while len(new_clust_order) < len(cluster_list_to_sort) - len(zero_clusts):
+        for cla in range(clust_similarity_matrix.shape[1]):
+            # loop on classes and sort according to most similar
+            
+            sorted_comms = clust_similarity_matrix[all_clusts,cla].argsort()[::-1]
+            scores = clust_similarity_matrix[all_clusts,cla][sorted_comms]
+            if scores.max() > 0:
+                scores /= scores.max()
+                for c, s in zip(sorted_comms,scores):
+                    if s >= thresh_ratio and all_clusts[c] not in new_clust_order:
+                            new_clust_order.append(all_clusts[c])
+                        
+        # update all_clusts
+        for n in new_clust_order:
+            if n in all_clusts:
+                all_clusts.remove(n)
+                
+    return [cluster_list_to_sort[i] for i in new_clust_order + zero_clusts]
     

@@ -31,13 +31,13 @@ Cython.Compiler.Options.annotate = False
 extensions = [
     Extension("_cython_fast_funcs", ["_cython_fast_funcs.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=["-O3","-fopenmp"],
-        extra_link_args=['-fopenmp']),
+        extra_compile_args=["-O3"],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]),
     Extension("_cython_sparse_stoch", ["_cython_sparse_stoch.pyx",
                                      "SPA.cpp"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=["-O3","-fopenmp"],
-        extra_link_args=['-fopenmp'])]
+        extra_compile_args=["-O3"],
+        define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")])]
 
 setup(
     ext_modules = cythonize(extensions,

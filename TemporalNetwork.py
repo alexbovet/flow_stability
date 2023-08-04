@@ -367,11 +367,50 @@ class ContTempNetwork(object):
                                    replace_existing=False):
         """ 
         
+            
+            Saves all the inter transition matrices in `self.inter_T[lamda]` 
+            in a pickle file togheter  with a dictionary including parameters: 
+            `_k_start_laplacians`, `_k_stop_laplacians`, `_t_start_laplacians`,
+            `_t_stop_laplacians`, `_t_stop_laplacians`, `times_k_start_to_k_stop+1` 
+            (= self.times.values[self._k_start_laplacians:self._k_stop_laplacians+1])
+            `num_nodes` and `_compute_times`.
+            
             if `save_delta` is True, creates delta_inter_T if it is 
             not already present and saves it together with 
             inter_T[lamda][0] in a pickle file.
             otherwise, saves inter_T[lamda] directly (good if used with
             sparse_stoch_matrices).
+            
+            Parameters:
+            -----------
+            
+            filename: str
+                Filename where the data is saved (.pickle or .gz).
+            lamda: float or int, optional.
+                Use to save to results for a specific lamba. If None, the results
+                for all the computed lambdas will be saved. Default is None.
+            round_zeros: bool.
+                If True, values smaller than tol*max(abs(inter_T_k)) will be set to zero
+                to preserve sparsity. Default is True.
+            tol: float
+                See round_zeros. Default is 1e-8.
+            compressed: bool
+                Used to compress the file with gzip. Default is False.
+            save_delta: bool
+                If True, creates delta_inter_T if it is 
+                not already present and saves it together with 
+                inter_T[lamda][0]. Only the differences between two consecutives
+                inter_Ts are saved in order to minimize file size. 
+                Must not be used if `use_sparse_stoch` was used in `compute_inter_transition_matrices`.
+            replace_existing: bool
+                If True, erase and replace files if they already exists. 
+                Default is False.
+            
+            Returns:
+            --------
+            
+            None
+            
                         
         """
         assert hasattr(self, 'inter_T'), f'PID {os.getpid()} : nothing saved, compute inter_T first.'
@@ -410,6 +449,10 @@ class ContTempNetwork(object):
             save_dict['_compute_times'] = self._compute_times
             
             if save_delta:
+                assert not isinstance(self.inter_T[lamda][0], 
+                                  sparse_stoch_mat),\
+                                "inter_T must not be sparse_stoch_mat"
+                
                 if not hasattr(self, 'delta_inter_T') and \
                                     hasattr(self, 'inter_T'):
                     if lamda is not None:
@@ -1023,12 +1066,12 @@ class ContTempNetwork(object):
         self.time_grid = pd.DataFrame(columns=['times','id','is_start'],
                                  index=range(self.events_table.shape[0]*2))
         self.time_grid.iloc[:self.events_table.shape[0],[0,1]] = \
-                     self.events_table.reset_index()[['starting_times','index']].values
+                     self.events_table.reset_index()[['starting_times','index']]
         self.time_grid['is_start'] = False
         self.time_grid.loc[0:self.events_table.shape[0]-1,'is_start'] = True
         
         self.time_grid.iloc[self.events_table.shape[0]:,[0,1]] = \
-                      self.events_table.reset_index()[['ending_times','index']].values
+                      self.events_table.reset_index()[['ending_times','index']]
                       
         self.time_grid.times = pd.to_numeric(self.time_grid.times)
         
@@ -1063,17 +1106,38 @@ class ContTempNetwork(object):
     def compute_laplacian_matrices(self, t_start=None,
                                        t_stop=None, verbose=False,
                                        save_adjacencies=False):
-        """ compute all laplacian matrices and
-            saves them in self.laplacians
+        """ Computes the laplacian matrices and saves them in `self.laplacians`
             
-            Computes from the first time index before or equal to t_start until
-            the time index before t_stop.
+            Computes from the first event time (in `self.times`) before or equal to `t_start` until
+            the event time index before `t_stop`.
             
-            laplacians are computed from self.times[self._k_start_laplacians]
-            until self.times[self._k_stop_laplacians-1]
+            Laplacians are computed from `self.times[self._k_start_laplacians]`
+            until `self.times[self._k_stop_laplacians-1]`.
             
-            the laplacian at step k, is the random walk laplacian
-            between times[k] and times[k+1]
+            The laplacian at step k, is the random walk laplacian
+            between `times[k]`. and `times[k+1]`.
+            
+        Parameters
+        ----------
+        t_start : float or int, optional
+            The default is None, i.e. starts at the beginning of times.
+            The computation starts from the first time index before or equal to t_start.
+            The corresponding starting time index is saved in `self._k_start_laplacians`
+            and the real starting time is `self.times[self._k_start_laplacians]` which 
+            is saved in `self._t_start_laplacians`.
+        t_stop : float or int, optional
+            Same than `t_start` but for the ending time of computations. Default is end of times.
+            Computations stop at self.times[self._k_stop_laplacians-1].
+            Similarily to `t_start`, the corresponding times are saved in 
+            `self._k_stop_laplacians` and `self._t_stop_laplacians`.
+        verbose : bool, optional
+            The default is False.
+        save_adjacencies : bool, optional
+            Default is False. Use to save adjacency matrices in `self.adjacencies`.
+
+        Returns
+        -------
+        None.            
         """
             
         if verbose:
@@ -1175,11 +1239,12 @@ class ContTempNetwork(object):
             # starting or ending events
             is_starts = time_ev.is_start.values
             
-            events_k = self.events_table.loc[meet_id,
-                              ['source_nodes','target_nodes']].astype(np.int64)
+            
+            events_k = [self.events_table.loc[mid,['source_nodes','target_nodes']].astype(np.int64) \
+                                        for mid in meet_id.values]            
             
             #update instantaneous matrices
-            for event, is_start in zip(events_k.itertuples(), is_starts):
+            for event, is_start in zip(events_k, is_starts):
                 # unweighted, undirected
                 if is_start:
                     # if they are not already connected (can happen if the 
@@ -1236,19 +1301,19 @@ class ContTempNetwork(object):
                                     use_sparse_stoch=False,
                                     dense_expm=True):
         """
+        
         Computes interevent transition matrices as T_k(lamda) = expm(-tau_k*lamda*L_k).
         
-        The transition matrix T_k is saved in `self.inter_T[lamda][k]`,
-        where self.inter_T is a dictionary with lamda as keys and
-        lists of transition matrices as values.
+        The transition matrix T_k is saved in `self.inter_T[lamda][k]`, where 
+        self.inter_T is a dictionary with lamda as keys and lists of transition
+        matrices as values.
         
-        will compute from self.times[self._k_start_laplacians]
-        until self.times[self._k_stop_laplacians-1]
+        will compute from self.times[self._k_start_laplacians] until 
+        self.times[self._k_stop_laplacians-1]
         
         the transition matrix at step k, is the probability transition matrix
         between times[k] and times[k+1]
         
-
         Parameters
         ----------
         lamda : float, optional
@@ -1273,13 +1338,15 @@ class ContTempNetwork(object):
             The default is False.
         use_sparse_stoch : bool, optional
             Whether to use custom sparse stochastic matrix format to save the
-            inter transition matrices. No recommended. The default is False.
+            inter transition matrices. Especially useful for large networks as 
+            the matrix exponential is then computed on each connected component 
+            separately (more memory efficient). The default is False.
         dense_expm : bool, optional
             Whether to use the dense version of the matrix exponential algorithm
-            at each time steps.
-            Recommended for not too large networks.
+            at each time steps. Recommended for not too large networks. 
             The inter trans. matrices are still saved as sparse scipy matrices
-            as they usually have many zero values. The default is True.
+            as they usually have many zero values. The default is True. Has no
+            effect is use_sparse_stoch is True.
 
         Returns
         -------
@@ -1909,16 +1976,15 @@ class ContTempInstNetwork(ContTempNetwork):
     def compute_laplacian_matrices(self, t_start=None,
                                        t_stop=None, verbose=False,
                                        save_adjacencies=False):
-        """ compute all laplacian matrices and
-            saves them in self.laplacians
-            
+        """ compute all laplacian matrices and saves them in self.laplacians
+        
             Computes from the first time index before or equal to t_start until
             the time index before t_stop.
             
             laplacians are computed from self.times[self._k_start_laplacians]
             until self.times[self._k_stop_laplacians-1]
             
-            the laplacian at step k, is the random walk laplacian
+            The laplacian at step k, is the random walk laplacian
             between times[k] and times[k+1]
         """
             

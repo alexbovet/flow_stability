@@ -32,9 +32,10 @@ from scipy.sparse import (eye,
 from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 from copy import copy
 
-USE_CYTHON = True    
-try:
-    # cython version
+import importlib.util
+
+USE_CYTHON = True
+if importlib.util.find_spec('cython') is not None:
     from _cython_sparse_stoch import (cython_csr_add, cython_csr_matmul,
                                       cython_stoch_mat_add,
                                       cython_stoch_mat_sub,
@@ -50,19 +51,19 @@ try:
                                       cython_compute_delta_PT_moveout,
                                       cython_compute_delta_S_moveout,
                                       cython_aggregate_csr_mat,
-                                      cython_aggregate_csr_mat_2)
-    
-except ImportError:
+                                      cython_aggregate_csr_mat_2)    
+
+else:
     print('Could not load cython functions. Some functionality might be broken.')
     USE_CYTHON = False
-    pass    
-
+    
+    
 USE_SPARSE_DOT_MKL = True
-try:
+if importlib.util.find_spec('sparse_dot_mkl') is not None:
     from sparse_dot_mkl import dot_product_mkl, gram_matrix_mkl
     from sparse_dot_mkl._mkl_interface import MKL
     print('MKL_INT_NUMPY', MKL.MKL_INT_NUMPY)
-except ImportError:
+else:
     USE_SPARSE_DOT_MKL = False
     print('Could not load sparse_dot_mkl. Will use scipy.sparse for matrix products.')
     
