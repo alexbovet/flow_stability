@@ -101,35 +101,35 @@ TAUWS=(1 60 "$((60*60))" "$((60*60*24))" "$((60*60*24*7))")
 CLUSTNUMREPEAT=50
 
 #compute laplacians and intertransition matrices
-# python3 -u $RUNDIR/run_laplacians_transmats.py \
-#         --datadir $DATADIRBASE \
-#         --savedir $LAPINTERTRANSDIR \
-#         --net_filename $NETFILENAME \
-#         --net_name $NETNAME \
-#         --not_lin_transmat \
-#         --slice_length $SLICELENGTH \
-#         --ncpu $NCPU \
-#         --tau_w_list ${TAUWS[*]} \
-#         --save_inter_T \
-#         --compress_inter_T \
-#         --use_dense_expm \
-#         --t0 0 \
-#         --tend $T_STOP \
-#         > output_${JNAME}_lptm.txt 2> error_${JNAME}_lptm.txt
+python3 -u $RUNDIR/run_laplacians_transmats.py \
+        --datadir $DATADIRBASE \
+        --savedir $LAPINTERTRANSDIR \
+        --net_filename $NETFILENAME \
+        --net_name $NETNAME \
+        --not_lin_transmat \
+        --slice_length $SLICELENGTH \
+        --ncpu $NCPU \
+        --tau_w_list ${TAUWS[*]} \
+        --save_inter_T \
+        --compress_inter_T \
+        --use_dense_expm \
+        --t0 0 \
+        --tend $T_STOP \
+        > output_${JNAME}_lptm.txt 2> error_${JNAME}_lptm.txt
 
         
 # compute covariance intervals 
-# python3 -u $RUNDIR/run_cov_integrals.py \
-#         --datadir $LAPINTERTRANSDIR \
-#         --savedir $INTEGDIR \
-#         --net_name $NETNAME \
-#         --int_length $INT_LENGTH \
-#         --ncpu $NCPU \
-#         --only_expm_transmats \
-#         --only_from_start_and_finish \
-#         --verbose \
-#         --print_mem_usage \
-#         > output_${JNAME}_intg.txt 2> error_${JNAME}_intg.txt
+python3 -u $RUNDIR/run_cov_integrals.py \
+        --datadir $LAPINTERTRANSDIR \
+        --savedir $INTEGDIR \
+        --net_name $NETNAME \
+        --int_length $INT_LENGTH \
+        --ncpu $NCPU \
+        --only_expm_transmats \
+        --only_from_start_and_finish \
+        --verbose \
+        --print_mem_usage \
+        > output_${JNAME}_intg.txt 2> error_${JNAME}_intg.txt
 
 # compute clustering of integral
 python3 -u $RUNDIR/run_clusterings.py \
