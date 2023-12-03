@@ -1,11 +1,13 @@
-name: Preview docs site on pull request
+# preview-docs.yml
+---
+name: Preview Docs
 
 on:
   workflow_run:
     types:
       - completed
     workflows:
-      - 'Create PR Artifacts'
+      - 'Artifact Upload'
 
 jobs:
   comment:
