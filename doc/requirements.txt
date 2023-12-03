@@ -1,0 +1,2 @@
+sphinx-book-theme==1.0.1
+myst-parser==2.0.0
