@@ -42,4 +42,4 @@ html_static_path = ['_static']
 autoapi_dirs = ["../../", ]
 autoapi_file_patterns = ['*.py', '*.pyx']
 autoapi_member_order = "groupwise"
-autoapi_ignore = ["*_cython*.pyx", ]
+autoapi_ignore = ["*setup.py", "*_cython*.pyx", ]

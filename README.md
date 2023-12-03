@@ -5,6 +5,7 @@ Alexandre Bovet, Jean-Charles Delvenne & Renaud Lambiotte,
 [Flow stability for dynamic community detection](https://www.science.org/doi/10.1126/sciadv.abj3063),
 Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
+<!--- quickstart --->
 ## Requirements:
 - Python3 (>=3.6)
 - pandas
