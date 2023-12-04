@@ -1,6 +1,6 @@
 # Flow Stability
 
-```{include} ../../README.md
+```{include} ../README.md
 :start-line: 1
 :end-before: <!--- quickstart --->
 

@@ -41,7 +41,7 @@ html_static_path = ['_static']
 
 # -- Sphinx AutoAPI config ---------------------------------------------------
 
-autoapi_dirs = ["../../", ]
+autoapi_dirs = ["../", ]
 autoapi_file_patterns = ['*.py', '*.pyx']
 autoapi_member_order = "groupwise"
-autoapi_ignore = ["*setup.py", "*_cython*.pyx", ]
+autoapi_ignore = ["*conf.py", "*setup.py", "*_cython*.pyx", ]

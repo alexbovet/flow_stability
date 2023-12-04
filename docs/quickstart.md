@@ -1,5 +1,5 @@
 # Quickstart
 
-```{include} ../../README.md
+```{include} ../README.md
 :start-after: <!--- quickstart --->
 ```
