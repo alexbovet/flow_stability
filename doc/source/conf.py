@@ -34,8 +34,10 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_book_theme'
+html_theme = 'insegel'
+html_logo = "_static/"
 html_static_path = ['_static']
+
 
 # -- Sphinx AutoAPI config ---------------------------------------------------
 
