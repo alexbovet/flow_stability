@@ -1,11 +1,12 @@
-# Flow stability for dynamic community detection
+## Flow stability for dynamic community detection
 Dynamic community detection in temporal networks using the flow stability framework described in 
 
 Alexandre Bovet, Jean-Charles Delvenne & Renaud Lambiotte,
 [Flow stability for dynamic community detection](https://www.science.org/doi/10.1126/sciadv.abj3063),
 Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
-# Requirements:
+<!--- quickstart --->
+## Requirements:
 - Python3 (>=3.6)
 - pandas
 - scipy
@@ -13,7 +14,7 @@ Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 - Cython (optional but highly recommended)
 - [sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) (optional, allows to perform multithreaded sparse matrix multiplication)
 
-# Installation
+## Installation
 
 `git clone git@github.com:alexbovet/flow_stability.git`
 
@@ -21,7 +22,7 @@ Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
 `python setup.py build_ext --inplace` to compile the cython functions.
 
-# Usage
+## Usage
 
 The main classes are:
 - `ContTempNetwork` in the module `TemporalNetwork` which is used to store and save temporal networks and to compute inter-event transition matrices.
