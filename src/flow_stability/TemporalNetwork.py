@@ -28,7 +28,7 @@ from scipy.sparse import (lil_matrix, dok_matrix, diags, eye, isspmatrix_csr, is
 from scipy.sparse.linalg import expm, eigsh
 from scipy.sparse.csgraph import connected_components
 import gzip
-from SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
+from .SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
 
 from parallel_expm import compute_subspace_expm_parallel
 

@@ -25,8 +25,8 @@ import numpy as np
 from multiprocessing import Pool, RawArray
 import time
 from scipy.sparse import csr_matrix
-from SparseStochMat import sparse_autocov_mat
-from FlowStability import Clustering, SparseClustering, norm_var_information
+from .SparseStochMat import sparse_autocov_mat
+from .FlowStability import Clustering, SparseClustering, norm_var_information
 from itertools import combinations
 
 

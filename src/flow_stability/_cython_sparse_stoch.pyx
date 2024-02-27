@@ -24,7 +24,7 @@
 """
 
 
-from SPA cimport SPA
+from .SPA cimport SPA
 
 import numpy as np
 cimport numpy as np
