@@ -21,9 +21,9 @@
 """
 
 import numpy as np
+from queue import Empty, PriorityQueue
 from scipy.stats import expon
 from scipy.sparse import lil_matrix
-from queue import Empty, PriorityQueue
 
 
 #%%

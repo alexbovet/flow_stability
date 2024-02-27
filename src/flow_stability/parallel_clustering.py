@@ -21,13 +21,15 @@
 """
 
 import os
-import numpy as np
-from multiprocessing import Pool, RawArray
 import time
+import numpy as np
+
+from itertools import combinations
+from multiprocessing import Pool, RawArray
 from scipy.sparse import csr_matrix
+
 from .SparseStochMat import sparse_autocov_mat
 from .FlowStability import Clustering, SparseClustering, norm_var_information
-from itertools import combinations
 
 
 # A global dictionary storing the variables passed from the initializer.
