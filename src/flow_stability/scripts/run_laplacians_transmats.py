@@ -31,18 +31,16 @@ named {savedir}/{net_name}_tau_w{tau_w}_int{slice_number}__inter_trans_mat.{ext}
 """
 import sys
 import os
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-import numpy as np
-from FlowStability import FlowIntegralClustering
 import time
+import glob
+import traceback
+import numpy as np
+import pandas as pd
+
 from multiprocessing import Pool
 from argparse import ArgumentParser, SUPPRESS, ArgumentDefaultsHelpFormatter
-import glob
-import pandas as pd
-import traceback
+
+from ..FlowStability import FlowIntegralClustering
 # raise Exception
 
 #%%
