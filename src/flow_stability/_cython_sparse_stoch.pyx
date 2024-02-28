@@ -1,4 +1,4 @@
-# distutils: sources = SPA.cpp
+# distutils: sources = src/flow_stability/SPA.cpp
 # distutils: language = c++
 # cython: profile=False
 """
@@ -35,7 +35,9 @@ from libcpp.unordered_map cimport unordered_map as umap
 from cython.operator cimport dereference as deref, preincrement as inc
 from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
-from .SPA cimport SPA
+import cython
+from cython.cimports.SPA import SPA
+#from .SPA cimport SPA
 
 import array
 import numpy as np
