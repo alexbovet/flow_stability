@@ -28,6 +28,7 @@ namespaces = false
 [tool.setuptools_scm]
 [build-system]
 requires = [
+  "numpy",
   "setuptools>=64",
   "setuptools_scm>=8",
   "cython",
