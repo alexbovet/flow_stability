@@ -978,7 +978,7 @@ def worker(file_args):
                         
     print('+++ PID ', os.getpid(), 'finished in ', time.time()-t0)
 
-def main()
+def main():
     t00 = time.time()
     print('starting pool of {0} processes'.format(nproc_files))
     with futurePool(nproc_files) as p:
