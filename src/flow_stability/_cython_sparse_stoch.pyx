@@ -1,7 +1,7 @@
-# distutils: sources = src/flow_stability/SPA.cpp
 # distutils: language = c++
 # cython: profile=False
 """
+# distutils: sources = SPA.cpp
 #
 # flow stability
 #
@@ -25,22 +25,21 @@
 
 
 cimport cython
+import array
+
+import numpy as np
 cimport numpy as np
 
 from cpython cimport array
 from libcpp cimport bool
+
 from libcpp.vector cimport vector
 from libcpp.set cimport set as cset
 from libcpp.unordered_map cimport unordered_map as umap
 from cython.operator cimport dereference as deref, preincrement as inc
 from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
-import cython
-from cython.cimports.SPA import SPA
-#from .SPA cimport SPA
-
-import array
-import numpy as np
+from flow_stability.SPA cimport SPA
 
 def cython_csr_add(double[:] Adata,
             int[:] Aindices,

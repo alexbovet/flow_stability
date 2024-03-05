@@ -42,7 +42,6 @@ from scipy.sparse import (lil_matrix,
 from scipy.sparse.linalg import expm, eigsh
 from scipy.sparse.csgraph import connected_components
 
-
 from .SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
 
 
