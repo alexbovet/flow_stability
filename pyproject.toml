@@ -1,5 +1,5 @@
 [project]
-name = "flow-stability"
+name = "flow_stability"
 # version = "2.0.0-rc.1"
 authors = [
     {name="Alexandre Bovet", email="alexandre.bovet@maths.ox.ac.uk"},
@@ -12,19 +12,26 @@ classifiers = [
 ]
 # Fields to be filled by the build backend
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
+
 [project.urls]
 Homepage = "https://github.com/alexbovet/flow_stability"
 Repository = "https://github.com/alexbovet/flow_stability.git"
 Documentation = "https://flow-stability.readthedocs.io/"
 Issues = "https://github.com/alexbovet/flow_stability/issues"
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 readme = {file = ["README.md"]}
+
 [tool.setuptools.dynamic.optional-dependencies.testing]
 file = ["tests/requirements.txt"]
+
 [tool.setuptools.packages.find]
+where = ["src"]
+include = ["flow_stability"]
 exclude = ["tests*"]
-namespaces = false
+# namespaces = false
+
 [tool.setuptools_scm]
 [build-system]
 requires = [
