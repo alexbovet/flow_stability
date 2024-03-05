@@ -16,11 +16,11 @@ Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
 ## Installation
 
-`git clone git@github.com:alexbovet/flow_stability.git`
+You can pip install flow\_stability in you virtual environment directly from
+this repository.
+Simply run:
 
-`cd flow_stability`
-
-`python setup.py build_ext --inplace` to compile the cython functions.
+    pip install git+https://github.com/alexbovet/flow_stability.git
 
 ## Usage
 
@@ -29,7 +29,7 @@ The main classes are:
 - `FlowIntegralClustering` in the module `FlowStability` which is used to computed the flow stability (integral of covariance) and to find the best forward and backward partition using the Louvain algorithm.
 
 Additional interesting classes and functions are:
-- `Clustering` and `SparseClustering` in `FlowStability` can be used to directly cluster covariances or intergrals of covariances.
+- `Clustering` and `SparseClustering` in `FlowStability` can be used to directly cluster covariances or integrals of covariances.
 - `static_clustering` in `FlowStability` is an helper function to cluster static networks using Markov Stability.
 - `run_multi_louvain` in `FlowStability` helper function to run the Louvain multiple times on the same covariance in order to check the robustness of the partition.
 - `avg_norm_var_information` in `FlowStability` computes the average Normalized Variation of Information of list of cluster lists obtained with `run_multi_louvain`.
@@ -38,7 +38,18 @@ Additional interesting classes and functions are:
 
 A jupyter notebook reproducing the example from Fig. 2 of the paper is available in [`asymmetric_example.ipynb`](https://github.com/alexbovet/flow_stability/blob/main/asymmetric_example.ipynb).
 
+### CLI scripts
 
+`flow_stability` provides also several command line hooks that can be run
+directly in the terminal after installation without the need of opening a
+python shell.
+
+**run_clusterings**:
+
+This command requires
+[sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) which relies
+on the closed-source `libmkl_rt.so` library. In Ubuntu you might need to fetch
+this library with `apt-get install libmkl-rt`.
 
 
 [![DOI](https://zenodo.org/badge/330739659.svg)](https://zenodo.org/badge/latestdoi/330739659)
