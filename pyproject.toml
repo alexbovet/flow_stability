@@ -13,6 +13,11 @@ classifiers = [
 # Fields to be filled by the build backend
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
 
+[project.scripts]
+run_clusterings = "flow_stability.scripts.run_clusterings:main"
+run_cov_integrals = "flow_stability.scripts.run_cov_integrals:main"
+run_laplacians_transmats = "flow_stability.scripts.run_laplacians_transmats:main"
+
 [project.urls]
 Homepage = "https://github.com/alexbovet/flow_stability"
 Repository = "https://github.com/alexbovet/flow_stability.git"
