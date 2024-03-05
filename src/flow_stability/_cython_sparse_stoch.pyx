@@ -1,7 +1,6 @@
 # distutils: language = c++
 # cython: profile=False
 """
-# distutils: sources = SPA.cpp
 #
 # flow stability
 #
