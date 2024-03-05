@@ -46,7 +46,7 @@ from .SparseStochMat import (sparse_stoch_mat,
 
 USE_CYTHON = True
 if importlib.util.find_spec('cython') is not None:
-    from ._cython_fast_funcs import (sum_Sto,
+    from _cython_fast_funcs import (sum_Sto,
                                      sum_Sout,
                                      compute_S,
                                      cython_nmi,

@@ -28,7 +28,6 @@ import pandas as pd
 import numpy as np
 
 from functools import partial
-from parallel_expm import compute_subspace_expm_parallel
 
 from scipy.sparse import (lil_matrix,
                           dok_matrix,
@@ -43,6 +42,7 @@ from scipy.sparse.linalg import expm, eigsh
 from scipy.sparse.csgraph import connected_components
 
 from .SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
+from .parallel_expm import compute_subspace_expm_parallel
 
 
 class ContTempNetwork(object):
