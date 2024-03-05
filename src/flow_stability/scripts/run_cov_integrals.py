@@ -709,9 +709,7 @@ def worker(ind_start_tau_w):
       
         
 #%%
-
-# combination of ind_start and all_inds
-if __name__ == '__main__':        
+def main():
     t00 = time.time()
                 
     ind_starts_tau_ws = []
@@ -745,3 +743,7 @@ if __name__ == '__main__':
             
         
     print('***** Finished! in {:.2f}'.format(time.time()-t00))
+
+# combination of ind_start and all_inds
+if __name__ == '__main__':        
+    main()

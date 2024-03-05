@@ -41,6 +41,7 @@ from multiprocessing import Pool
 from argparse import ArgumentParser, SUPPRESS, ArgumentDefaultsHelpFormatter
 
 from ..FlowStability import FlowIntegralClustering
+from ..TemporalNetwork import ContTempNetwork as NetClass
 # raise Exception
 
 #%%
@@ -199,9 +200,6 @@ save_static_adjacencies = inargs['save_static_adjacencies']
 
 if not compute_lin_transmat and not compute_expm_transmat:
     raise Exception('Nothing to compute.')
-    
-
-from TemporalNetwork import ContTempNetwork as NetClass
 
 reverse_time_list = [False, True]
 
@@ -557,7 +555,7 @@ def worker(net_start_stop):
 
 #%%
 
-if __name__ == '__main__':
+def main():
     t00 = time.time()
     print('starting pool of {0} cpus'.format(ncpu))
     with Pool(ncpu) as p:
@@ -567,3 +565,7 @@ if __name__ == '__main__':
         
         
     print('***** Finished! in {:.2f}'.format(time.time()-t00))
+
+
+if __name__ == '__main__':
+    main()

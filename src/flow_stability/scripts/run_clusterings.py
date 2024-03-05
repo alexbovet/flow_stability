@@ -977,8 +977,8 @@ def worker(file_args):
             traceback.print_exc(file=sys.stderr)
                         
     print('+++ PID ', os.getpid(), 'finished in ', time.time()-t0)
-#%% main pool
-if __name__ == '__main__':
+
+def main()
     t00 = time.time()
     print('starting pool of {0} processes'.format(nproc_files))
     with futurePool(nproc_files) as p:
@@ -989,4 +989,6 @@ if __name__ == '__main__':
         
         
     print('***** Finished! in {0}'.format(time.time()-t00))    
-    
+#%% main pool
+if __name__ == '__main__':
+    main()
