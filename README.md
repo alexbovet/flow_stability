@@ -40,16 +40,20 @@ Refer to the [examples](./examples/) folder more detailed usage examples.
 
 ### CLI scripts
 
-`flow_stability` provides also several command line hooks that can be run
+`flowstab` provides also several command line hooks that can be run
 directly in the terminal after installation without the need of opening a
-python shell.
+python shell:
 
-**run_clusterings**:
+**run\_clusterings**
 
 This command requires
-[sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) which relies
+[sparse\_dot\_mkl](https://github.com/flatironinstitute/sparse_dot) which relies
 on the closed-source `libmkl_rt.so` library. In Ubuntu you might need to fetch
 this library with `apt-get install libmkl-rt`.
+
+**run\_cov\_integrals**
+
+**run\_laplacians\_transmats**
 
 ## Content
 
