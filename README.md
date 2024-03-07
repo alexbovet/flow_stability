@@ -24,7 +24,7 @@ environment. Simply run:
 ## Usage
 
 After installation you can access the relevant classes and methods by importing
-`flowstab` into your python scripts or via command line (see #CLI-scripts for details).
+`flowstab` into your python scripts or via command line (see [CLI scripts](#cli-scripts) for details).
 
 If you want to use the `FlowIntegralClustering` class, for example, you would
 want to add the following line in your script:
