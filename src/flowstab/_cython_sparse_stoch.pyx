@@ -38,7 +38,7 @@ from libcpp.unordered_map cimport unordered_map as umap
 from cython.operator cimport dereference as deref, preincrement as inc
 from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
-from flow_stability.SPA cimport SPA
+from flowstab.SPA cimport SPA
 
 def cython_csr_add(double[:] Adata,
             int[:] Aindices,

@@ -30,12 +30,12 @@ Cython.Compiler.Options.annotate = False
 
 extensions = [
     Extension("_cython_fast_funcs",
-              sources=["./src/flow_stability/_cython_fast_funcs.pyx"],
+              sources=["./src/flowstab/_cython_fast_funcs.pyx"],
               include_dirs=[numpy.get_include()],
               extra_compile_args=["-O3"],
               define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")]),
     Extension(name="_cython_sparse_stoch",
-              sources=["./src/flow_stability/_cython_sparse_stoch.pyx"],
+              sources=["./src/flowstab/_cython_sparse_stoch.pyx"],
               include_dirs=[numpy.get_include()],
               extra_compile_args=["-O3"],
               define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")])

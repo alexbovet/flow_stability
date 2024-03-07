@@ -1,5 +1,5 @@
-## Flow stability for dynamic community detection
-Dynamic community detection in temporal networks using the flow stability framework described in 
+## flowstab - Flow stability for dynamic community detection
+Python package for the dynamic community detection in temporal networks implementing the flow stability framework described in 
 
 Alexandre Bovet, Jean-Charles Delvenne & Renaud Lambiotte,
 [Flow stability for dynamic community detection](https://www.science.org/doi/10.1126/sciadv.abj3063),
@@ -16,13 +16,42 @@ Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
 ## Installation
 
-You can pip install flow\_stability in you virtual environment directly from
-this repository.
-Simply run:
+You can pip install `flowstab` directly from this repository into your virtual
+environment. Simply run:
 
     pip install git+https://github.com/alexbovet/flow_stability.git
 
 ## Usage
+
+After installation you can access the relevant classes and methods by importing
+`flowstab` into your python scripts or via command line (see #CLI-scripts for details).
+
+If you want to use the `FlowIntegralClustering` class, for example, you would
+want to add the following line in your script:
+
+```python
+
+from flowstab.FlowStability import FlowIntegralClustering
+
+# forw_flow = FlowIntegralClustering(...
+```
+
+Refer to the [examples](./examples/) folder more detailed usage examples.
+
+### CLI scripts
+
+`flow_stability` provides also several command line hooks that can be run
+directly in the terminal after installation without the need of opening a
+python shell.
+
+**run_clusterings**:
+
+This command requires
+[sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) which relies
+on the closed-source `libmkl_rt.so` library. In Ubuntu you might need to fetch
+this library with `apt-get install libmkl-rt`.
+
+## Content
 
 The main classes are:
 - `ContTempNetwork` in the module `TemporalNetwork` which is used to store and save temporal networks and to compute inter-event transition matrices.
@@ -37,19 +66,6 @@ Additional interesting classes and functions are:
 - the `parallel_expm` module contains functions to compute the matrix exponential of very large matrices using different strategies.
 
 A jupyter notebook reproducing the example from Fig. 2 of the paper is available in [`asymmetric_example.ipynb`](https://github.com/alexbovet/flow_stability/blob/main/asymmetric_example.ipynb).
-
-### CLI scripts
-
-`flow_stability` provides also several command line hooks that can be run
-directly in the terminal after installation without the need of opening a
-python shell.
-
-**run_clusterings**:
-
-This command requires
-[sparse_dot_mkl](https://github.com/flatironinstitute/sparse_dot) which relies
-on the closed-source `libmkl_rt.so` library. In Ubuntu you might need to fetch
-this library with `apt-get install libmkl-rt`.
 
 
 [![DOI](https://zenodo.org/badge/330739659.svg)](https://zenodo.org/badge/latestdoi/330739659)

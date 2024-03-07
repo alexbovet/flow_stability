@@ -1,5 +1,5 @@
 [project]
-name = "flow_stability"
+name = "flowstab"
 # version = "2.0.0-rc.1"
 authors = [
     {name="Alexandre Bovet", email="alexandre.bovet@maths.ox.ac.uk"},
@@ -14,9 +14,9 @@ classifiers = [
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
 
 [project.scripts]
-run_clusterings = "flow_stability.scripts.run_clusterings:main"
-run_cov_integrals = "flow_stability.scripts.run_cov_integrals:main"
-run_laplacians_transmats = "flow_stability.scripts.run_laplacians_transmats:main"
+run_clusterings = "flowstab.scripts.run_clusterings:main"
+run_cov_integrals = "flowstab.scripts.run_cov_integrals:main"
+run_laplacians_transmats = "flowstab.scripts.run_laplacians_transmats:main"
 
 [project.urls]
 Homepage = "https://github.com/alexbovet/flow_stability"
@@ -33,7 +33,7 @@ file = ["tests/requirements.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["flow_stability"]
+include = ["flowstab"]
 exclude = ["tests*"]
 # namespaces = false
 
