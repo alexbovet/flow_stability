@@ -21,14 +21,14 @@
 """
 
 import os
-import numpy as np
-from scipy.sparse.linalg import expm_multiply, expm
-from scipy.sparse import csc_matrix, vstack, csr_matrix, isspmatrix_csc
-from scipy.sparse.csgraph import connected_components
-from multiprocessing import Pool
-from SparseStochMat import inplace_csr_row_normalize
-from multiprocessing import RawArray
 import time
+import numpy as np
+from multiprocessing import Pool, RawArray
+from scipy.sparse import csc_matrix, vstack, csr_matrix, isspmatrix_csc
+from scipy.sparse.linalg import expm_multiply, expm
+from scipy.sparse.csgraph import connected_components
+
+from .SparseStochMat import inplace_csr_row_normalize
 
 # A global dictionary storing the variables passed from the initializer.
 var_dict = {}

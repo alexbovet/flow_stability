@@ -21,21 +21,28 @@
 """
 
 import os
+import gzip
+import time
+import pickle
 import pandas as pd
 import numpy as np
-from scipy.sparse import (lil_matrix, dok_matrix, diags, eye, isspmatrix_csr, isspmatrix,
-                          csr_matrix, coo_matrix, csc_matrix)
-from scipy.sparse.linalg import expm, eigsh
-from scipy.sparse.csgraph import connected_components
-import gzip
-from SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
-
-from parallel_expm import compute_subspace_expm_parallel
 
 from functools import partial
 
-import time
-import pickle
+from scipy.sparse import (lil_matrix,
+                          dok_matrix,
+                          diags,
+                          eye,
+                          isspmatrix_csr,
+                          isspmatrix,
+                          csr_matrix,
+                          coo_matrix,
+                          csc_matrix)
+from scipy.sparse.linalg import expm, eigsh
+from scipy.sparse.csgraph import connected_components
+
+from .SparseStochMat import sparse_stoch_mat, inplace_csr_row_normalize
+from .parallel_expm import compute_subspace_expm_parallel
 
 
 class ContTempNetwork(object):

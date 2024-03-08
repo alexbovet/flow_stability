@@ -41,29 +41,24 @@ The value saved is the upper triangular part of:
 """
 import sys
 import os
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-import numpy as np
 import time
-from multiprocessing import Pool
-from argparse import ArgumentParser, SUPPRESS, ArgumentDefaultsHelpFormatter
-
-import pandas as pd
-from scipy.sparse import eye, csr_matrix, triu
-from itertools import product
-
-
-from TemporalNetwork import ContTempNetwork, set_to_zeroes
-from SparseStochMat import (inplace_csr_row_normalize,
-                            inplace_csr_matmul_diag,
-                            sparse_matmul,
-                            sparse_gram_matrix)
-
 import traceback
 import re
 import gc
+import numpy as np
+import pandas as pd
+
+from itertools import product
+from multiprocessing import Pool
+from argparse import ArgumentParser, SUPPRESS, ArgumentDefaultsHelpFormatter
+
+from scipy.sparse import eye, csr_matrix, triu
+
+from ..TemporalNetwork import ContTempNetwork, set_to_zeroes
+from ..SparseStochMat import (inplace_csr_row_normalize,
+                            inplace_csr_matmul_diag,
+                            sparse_matmul,
+                            sparse_gram_matrix)
 
 
 
@@ -714,9 +709,7 @@ def worker(ind_start_tau_w):
       
         
 #%%
-
-# combination of ind_start and all_inds
-if __name__ == '__main__':        
+def main():
     t00 = time.time()
                 
     ind_starts_tau_ws = []
@@ -750,3 +743,7 @@ if __name__ == '__main__':
             
         
     print('***** Finished! in {:.2f}'.format(time.time()-t00))
+
+# combination of ind_start and all_inds
+if __name__ == '__main__':        
+    main()

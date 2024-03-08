@@ -22,16 +22,17 @@
 """
 
 
-import numpy as np
-cimport numpy as np
 cimport cython
+cimport numpy as np
 from libc.math cimport log2, fmax
-from libcpp.unordered_set cimport unordered_set as cset
-from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.vector cimport vector
 from libcpp.algorithm cimport sort
+from libcpp.unordered_set cimport unordered_set as cset
 from cython.parallel import prange
 from cython.view cimport array as cvarray
+from cython.operator cimport dereference as deref, preincrement as inc
+
+import numpy as np
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing

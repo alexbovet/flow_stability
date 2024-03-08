@@ -19,30 +19,38 @@
 
 
 """
+import os
+import time
+import importlib.util
+import numpy as np
 
 from copy import deepcopy
-import numpy as np
-from scipy.optimize import linear_sum_assignment
 from itertools import combinations
-import time
-import os
+from array import array
+
+from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csr_matrix, diags, isspmatrix_csr, eye, csc_matrix
 from scipy.sparse.linalg import eigs
 
-from TemporalNetwork import inplace_csr_row_normalize, set_to_zeroes, sparse_lapl_expm
-from SparseStochMat import (sparse_stoch_mat, sparse_autocov_mat,
-                            sparse_autocov_csr_mat,
-                            inplace_csr_matmul_diag, inplace_diag_matmul_csr,
-                            sparse_gram_matrix, sparse_matmul,
-                            USE_SPARSE_DOT_MKL)
-from array import array
+from .TemporalNetwork import (inplace_csr_row_normalize,
+                              set_to_zeroes,
+                              sparse_lapl_expm)
+from .SparseStochMat import (sparse_stoch_mat,
+                             sparse_autocov_mat,
+                             sparse_autocov_csr_mat,
+                             inplace_csr_matmul_diag,
+                             inplace_diag_matmul_csr,
+                             sparse_gram_matrix,
+                             sparse_matmul,
+                             USE_SPARSE_DOT_MKL)
 
-
-import importlib.util
 USE_CYTHON = True
 if importlib.util.find_spec('cython') is not None:
-    from _cython_fast_funcs import (sum_Sto, sum_Sout, compute_S, cython_nmi, 
-                                    cython_nvi)
+    from _cython_fast_funcs import (sum_Sto,
+                                     sum_Sout,
+                                     compute_S,
+                                     cython_nmi,
+                                     cython_nvi)
 else:
     print('Could not load cython functions')
     USE_CYTHON = False

@@ -1,0 +1,48 @@
+[project]
+name = "flowstab"
+# version = "2.0.0-rc.1"
+authors = [
+    {name="Alexandre Bovet", email="alexandre.bovet@uzh.ch"},
+]
+description = "Framework for dynamic community detection in temporal networks."
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU LGPL",
+]
+# Fields to be filled by the build backend
+dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
+
+[project.scripts]
+run_clusterings = "flowstab.scripts.run_clusterings:main"
+run_cov_integrals = "flowstab.scripts.run_cov_integrals:main"
+run_laplacians_transmats = "flowstab.scripts.run_laplacians_transmats:main"
+
+[project.urls]
+Homepage = "https://github.com/alexbovet/flow_stability"
+Repository = "https://github.com/alexbovet/flow_stability.git"
+Documentation = "https://flow-stability.readthedocs.io/"
+Issues = "https://github.com/alexbovet/flow_stability/issues"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+readme = {file = ["README.md"]}
+
+[tool.setuptools.dynamic.optional-dependencies.testing]
+file = ["tests/requirements.txt"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["flowstab"]
+exclude = ["tests*"]
+# namespaces = false
+
+[tool.setuptools_scm]
+[build-system]
+requires = [
+  "numpy",
+  "setuptools>=64",
+  "setuptools_scm>=8",
+  "cython",
+]
+build-backend = "setuptools.build_meta"

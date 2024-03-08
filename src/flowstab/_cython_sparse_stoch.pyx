@@ -1,4 +1,3 @@
-# distutils: sources = SPA.cpp
 # distutils: language = c++
 # cython: profile=False
 """
@@ -24,20 +23,22 @@
 """
 
 
-from SPA cimport SPA
+cimport cython
+import array
 
 import numpy as np
 cimport numpy as np
-cimport cython
-from libcpp.vector cimport vector
-from libcpp.set cimport set as cset
-from cython.operator cimport dereference as deref, preincrement as inc
-from libcpp cimport bool
-from libcpp.unordered_map cimport unordered_map as umap
-from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
 from cpython cimport array
-import array
+from libcpp cimport bool
+
+from libcpp.vector cimport vector
+from libcpp.set cimport set as cset
+from libcpp.unordered_map cimport unordered_map as umap
+from cython.operator cimport dereference as deref, preincrement as inc
+from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
+
+from flowstab.SPA cimport SPA
 
 def cython_csr_add(double[:] Adata,
             int[:] Aindices,

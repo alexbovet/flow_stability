@@ -23,8 +23,8 @@
 
 from libcpp.vector cimport vector
 
-# cdef extern from "SPA.cpp":
-#     pass
+cdef extern from "SPA.cpp":
+    pass
 
 # Declare the class with cdef
 cdef extern from "SPA.h":
@@ -38,4 +38,3 @@ cdef extern from "SPA.h":
         vector[int] LS
         void scatter(double value, int pos)
         void reset(int current_row)
-

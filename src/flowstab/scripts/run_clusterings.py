@@ -42,31 +42,29 @@ The results are saved in files named f'{savedir}/clusters_{netname}_tau_w{tau_w:
 """
 import sys
 import os
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
+import pickle
+import time
+import traceback
+import hickle
 import numpy as np
-from FlowStability import (SparseClustering, static_clustering,
+import pandas as pd
+
+from collections import Counter
+from itertools import combinations
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
+from multiprocessing import Pool, RawArray
+from concurrent.futures import ProcessPoolExecutor as futurePool
+
+from scipy.sparse import diags, csr_matrix
+from scipy.sparse.csgraph import connected_components
+
+from ..FlowStability import (SparseClustering, static_clustering,
                                norm_var_information)
-from SparseStochMat import (sparse_autocov_mat,
+from ..SparseStochMat import (sparse_autocov_mat,
                             inplace_csr_matmul_diag, 
                             inplace_diag_matmul_csr, inplace_csr_row_normalize)
 
-from TemporalNetwork import set_to_zeroes
-
-import pickle
-import time
-from multiprocessing import Pool, RawArray
-from concurrent.futures import ProcessPoolExecutor as futurePool
-from itertools import combinations
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, SUPPRESS
-import pandas as pd
-from collections import Counter
-from scipy.sparse.csgraph import connected_components
-from scipy.sparse import diags, csr_matrix
-import traceback
-import hickle
+from ..TemporalNetwork import set_to_zeroes
 # raise Exception
 
 
@@ -979,8 +977,8 @@ def worker(file_args):
             traceback.print_exc(file=sys.stderr)
                         
     print('+++ PID ', os.getpid(), 'finished in ', time.time()-t0)
-#%% main pool
-if __name__ == '__main__':
+
+def main():
     t00 = time.time()
     print('starting pool of {0} processes'.format(nproc_files))
     with futurePool(nproc_files) as p:
@@ -991,4 +989,6 @@ if __name__ == '__main__':
         
         
     print('***** Finished! in {0}'.format(time.time()-t00))    
-    
+#%% main pool
+if __name__ == '__main__':
+    main()

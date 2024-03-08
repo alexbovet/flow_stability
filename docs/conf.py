@@ -6,7 +6,7 @@ import pathlib
 import sys
 
 # -- Add the project root for autodiscovery with sphinx.ext.autodoc ----------
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+sys.path.insert(0, pathlib.Path(__file__).parents[1].resolve().as_posix())
 autodoc_typehints = 'description'
 autodoc_class_signature = 'separated'
 
@@ -41,7 +41,7 @@ html_static_path = ['_static']
 
 # -- Sphinx AutoAPI config ---------------------------------------------------
 
-autoapi_dirs = ["../", ]
-autoapi_file_patterns = ['*.py', '*.pyx']
+autoapi_dirs = ["../src/", ]
+autoapi_file_patterns = ['*.py', ]
 autoapi_member_order = "groupwise"
-autoapi_ignore = ["*conf.py", "*setup.py", "*_cython*.pyx", ]
+# autoapi_ignore = ["*conf.py", "*setup.py" , "*_cython*.pyx", ]

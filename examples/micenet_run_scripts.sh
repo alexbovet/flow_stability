@@ -64,9 +64,6 @@ JNAME="micenet"
 # name of the temporal network file
 NETFILENAME="micenet_2017_02_28_to_2017_05_01.pickle"
 
-# path to the directory with the python scripts
-RUNDIR="../parallel_scripts"
-
 DATADIRBASE="mice_data"
 
 mkdir -p $DATADIRBASE
@@ -101,7 +98,7 @@ TAUWS=(1 60 "$((60*60))" "$((60*60*24))" "$((60*60*24*7))")
 CLUSTNUMREPEAT=50
 
 #compute laplacians and intertransition matrices
-python3 -u $RUNDIR/run_laplacians_transmats.py \
+run_laplacians_transmats \
         --datadir $DATADIRBASE \
         --savedir $LAPINTERTRANSDIR \
         --net_filename $NETFILENAME \
@@ -119,7 +116,7 @@ python3 -u $RUNDIR/run_laplacians_transmats.py \
 
         
 # compute covariance intervals 
-python3 -u $RUNDIR/run_cov_integrals.py \
+run_cov_integrals \
         --datadir $LAPINTERTRANSDIR \
         --savedir $INTEGDIR \
         --net_name $NETNAME \
@@ -132,7 +129,7 @@ python3 -u $RUNDIR/run_cov_integrals.py \
         > output_${JNAME}_intg.txt 2> error_${JNAME}_intg.txt
 
 # compute clustering of integral
-python3 -u $RUNDIR/run_clusterings.py \
+run_clusterings \
         --datadir $INTEGDIR \
         --savedir $CLUSTSDIR \
         --nproc_files $NCPU \

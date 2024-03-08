@@ -21,18 +21,19 @@
 
 """
 import os
+import time    
 import numpy as np
+import importlib.util
+from functools import wraps
+from copy import copy
+    
 from scipy.sparse import (eye,
                           csr_matrix,
                           isspmatrix_csr,
                           isspmatrix_csc,
                           spmatrix,
                           coo_matrix)
-
 from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
-from copy import copy
-
-import importlib.util
 
 USE_CYTHON = True
 if importlib.util.find_spec('cython') is not None:
@@ -66,9 +67,6 @@ if importlib.util.find_spec('sparse_dot_mkl') is not None:
 else:
     USE_SPARSE_DOT_MKL = False
     print('Could not load sparse_dot_mkl. Will use scipy.sparse for matrix products.')
-    
-from functools import wraps
-import time    
     
 # timing decorator    
 def timing(f):
