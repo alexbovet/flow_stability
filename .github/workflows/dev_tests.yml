@@ -60,6 +60,7 @@ jobs:
         name: wheel
     - name: Install package
       run: |
+        ls -ahl
         pip install dist/*.whl
     - name: Upload virtual env
       uses: actions/upload-artifact@v4
@@ -86,6 +87,7 @@ jobs:
         name: venv
     - name: Activate virtual env
       run: |
+        ls -ahl
         source .venv/bin/activate
     - name: Install test dependencies
       run: |
