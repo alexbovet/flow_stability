@@ -61,7 +61,6 @@ jobs:
         path: dist
     - name: Install package
       run: |
-        ls -ahl
         pip install dist/*.whl
     - name: Upload virtual env
       uses: actions/upload-artifact@v4
@@ -73,10 +72,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     steps:
-    - name: prepare system
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential
     - uses: actions/checkout@v2
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
@@ -89,7 +84,6 @@ jobs:
         path: .venv
     - name: Activate virtual env
       run: |
-        ls -ahl
         source .venv/bin/activate
     - name: Install test dependencies
       run: |
