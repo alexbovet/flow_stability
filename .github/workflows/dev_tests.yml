@@ -58,6 +58,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: wheel
+        path: dist
     - name: Install package
       run: |
         ls -ahl
@@ -66,7 +67,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: venv
-        path: ./.venv
+        path: .venv
         retention-days: 1
   test:
     runs-on: ubuntu-latest
@@ -85,6 +86,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: venv
+        path: .venv
     - name: Activate virtual env
       run: |
         ls -ahl
