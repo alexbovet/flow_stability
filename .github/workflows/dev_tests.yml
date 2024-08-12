@@ -60,8 +60,7 @@ jobs:
         name: wheel
     - name: Install package
       run: |
-        pip install build
-        python -m build
+        pip install dist/*.whl
     - name: Upload virtual env
       uses: actions/upload-artifact@v4
       with:
