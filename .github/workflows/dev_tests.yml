@@ -90,7 +90,7 @@ jobs:
         if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - name: Lint with ruff
       run: |
-        ruff check --select=ALL src/
+        ruff check --select=ALL --output-format=github src/
     - name: Test with pytest
       run: |
         pytest
