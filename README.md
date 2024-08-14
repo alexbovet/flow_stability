@@ -7,7 +7,7 @@ Sci. Adv., 8 (19), eabj3063. DOI: 10.1126/sciadv.abj3063
 
 <!--- quickstart --->
 ## Requirements:
-- Python3 (>=3.6)
+- Python3 (>=3.9)
 - pandas
 - scipy
 - numpy
