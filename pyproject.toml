@@ -46,3 +46,14 @@ requires = [
   "cython",
 ]
 build-backend = "setuptools.build_meta"
+
+# This is for the linting with ruff
+[tool.ruff]
+target-version = "py39"
+[tool.ruff.lint]
+# T201: complain about print statements
+ignore = ["T201"]
+[tool.ruff.lint.per-file-ignores]
+# we want to accept import violations in special contexts
+"__init__.py" = ["E402"]
+"**/{tests,docs,tools}/*" = ["E402"]
