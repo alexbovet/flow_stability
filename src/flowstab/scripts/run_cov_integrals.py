@@ -45,6 +45,7 @@ import time
 import traceback
 import re
 import gc
+import psutil
 import numpy as np
 import pandas as pd
 
@@ -141,7 +142,7 @@ optional.add_argument('--verbose_sparse_matmul', action='store_true',
                       help='show computation times of sparse matrix multiplications.')
 
 optional.add_argument('--print_mem_usage', action='store_true',
-                help="print memory usage. Requires psutil module.")
+                help="print memory usage.")
 
 optional.add_argument('--print_interval', default=100, type=int,
                 help="Controls how often memory usage is printed.")
@@ -192,12 +193,6 @@ only_from_finish = inargs['only_from_finish']
 
 
 print_mem_usage = inargs['print_mem_usage']
-if print_mem_usage:
-    try:
-        import psutil
-    except ImportError:
-        print("Could not load psutil, will not print mem usage.")
-        print_mem_usage = False
 
 print_interval = inargs['print_interval']
 #%%
