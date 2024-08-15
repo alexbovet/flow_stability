@@ -73,15 +73,12 @@ jobs:
       - name: Install package
         run: |
           venv/bin/python -m pip install dist/*.whl
-          ls -ahl ./venv
-          ls -ahl ./venv/bin/
-      - name: Upload venv as artifact
-        # now venv contains the current state of the package
-        uses: actions/upload-artifact@v4
+      - name: Cache venv
+        uses: actions/cache/save@v4
         with:
-          name: venv
-          path: venv
-          retention-days: 1
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+        if: steps.cached-venv.outputs.cache-hit != 'true'
 
   test:
     runs-on: ubuntu-latest
@@ -92,11 +89,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
-      - name: Getting the virtual env
-        uses: actions/download-artifact@v4
+      # Note: we use cache here since artifacts do not keep permissions
+      - name: Getting the venv
+        uses: actions/cache/restore@v4
         with:
-          name: venv
-          path: venv
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Test with pytest
         run: |
           venv/bin/python -m pytest
@@ -110,13 +108,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
-      - name: Getting the virtual env
-        uses: actions/download-artifact@v4
+      # Note: we use cache here since artifacts do not keep permissions
+      - name: Getting the venv
+        uses: actions/cache/restore@v4
         with:
-          name: venv
-          path: venv
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Lint with ruff
         run: |
-          ls -ahl ./venv
-          ls -ahl ./venv/bin/
           venv/bin/python -m ruff check --select=ALL --output-format=github src/
