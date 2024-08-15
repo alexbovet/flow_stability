@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - paper
+  pull_request:
+    branches: [ paper ]
 
 jobs:
   paper:
