@@ -1083,7 +1083,7 @@ def rebuild_nnz_rowcol(T_small, nonzero_indices, size, diag_val=1.0):
                     cython_rebuild_nnz_rowcol(T_small.data,
                                               T_small.indices.astype(np.int64, copy=False),
                                               T_small.indptr.astype(np.int64, copy=False),
-                                              np.array(nonzero_indices, dtype=np.int64, copy=False),
+                                              np.asarray(nonzero_indices, dtype=np.int64, copy=False),
                                               size,
                                               diag_val)
     else:                    
