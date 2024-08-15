@@ -1,4 +1,4 @@
-name: Development Tests
+name: Development Workflow
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build_venv:
+  build-venv:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml")
+          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml") }}
       - name: Build venv
         run: |
           python -m pip install --upgrade pip
@@ -43,7 +43,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml")
+          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml") }}
       - name: Activate venv
         run: |
           source .venv/bin/activate
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml")
+          key: venv-${{ runner.os }}-${{ hashFiles("**/requirements.txt") }}-${{ hashFiles("**/**.toml") }}
       - name: Activate venv
         run: |
           source .venv/bin/activate
