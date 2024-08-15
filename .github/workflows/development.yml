@@ -10,9 +10,9 @@ jobs:
   build-venv:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Try restoring cached venv
@@ -39,19 +39,16 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-venv
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Restoring venv
         uses: actions/cache/restore@v4
         with:
           path: ./venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
-      - name: Activate venv
-        run: |
-          source venv/bin/activate
       - name: Build wheel
         run: |
-          pip install build
-          python -m build
+          venv/bin/python -m pip install build
+          venv/bin/python -m build
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with: 
@@ -63,14 +60,11 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/cache/restore@v4
         with:
           path: ./venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
-      - name: Activate venv
-        run: |
-          source venv/bin/activate
       - name: Getting build wheel
         uses: actions/download-artifact@v4
         with:
@@ -78,7 +72,7 @@ jobs:
           path: dist
       - name: Install package
         run: |
-          pip install dist/*.whl
+          venv/bin/python -m pip install dist/*.whl
       - name: Upload venv as artifact
         # now venv contains the current state of the package
         uses: actions/upload-artifact@v4
@@ -91,9 +85,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Getting the virtual env
@@ -101,20 +95,17 @@ jobs:
         with:
           name: venv
           path: venv
-      - name: Activate virtual env
-        run: |
-          source venv/bin/activate
       - name: Test with pytest
         run: |
-          python -m pytest
+          venv/bin/python -m pytest
 
   lint:
     runs-on: ubuntu-latest
     needs: install
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
       - name: Getting the virtual env
@@ -122,12 +113,6 @@ jobs:
         with:
           name: venv
           path: venv
-      - name: Activate virtual env
-        run: |
-          source venv/bin/activate
-          which python
-          source venv/bin/activate
-          which python
       - name: Lint with ruff
         run: |
-          pyhton -m ruff check --select=ALL --output-format=github src/
+          venv/bin/python -m ruff check --select=ALL --output-format=github src/
