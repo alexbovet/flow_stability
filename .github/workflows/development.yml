@@ -1,0 +1,119 @@
+name: Development Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-venv:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Try restoring cached venv
+        id: cached-venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+      - name: Build venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv ./venv
+          ./venv/bin/python -m pip install .[testing]
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+      - name: Cache venv
+        uses: actions/cache/save@v4
+        with:
+          path: ./venv
+          # we can use the key from cached-venv
+          key: ${{ steps.cached-venv.outputs.cache-primary-key }}
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: build-venv
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restoring venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+      - name: Build wheel
+        run: |
+          venv/bin/python -m pip install build
+          venv/bin/python -m build
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with: 
+          name: wheel
+          path: dist
+          retention-days: 1
+
+  install:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+      - name: Getting build wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: dist
+      - name: Install package
+        run: |
+          venv/bin/python -m pip install dist/*.whl
+      - name: Cache venv
+        uses: actions/cache/save@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+
+  test:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      # Note: we use cache here since artifacts do not keep permissions
+      - name: Getting the venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+      - name: Test with pytest
+        run: |
+          venv/bin/python -m pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      # Note: we use cache here since artifacts do not keep permissions
+      - name: Getting the venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+      - name: Lint with ruff
+        run: |
+          venv/bin/python -m ruff check --select=ALL --output-format=github src/
