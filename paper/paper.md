@@ -36,12 +36,9 @@ In summary, `flowstab` ...
 
 # Validation and Testing
 
-A comprehensive set of documented case studies has been published to validate the `abn` package (see the `abn` [website](https://r-bayesian-networks.org/)).
-The numerical accuracy and quality assurance exercises were demonstrated in @kratzer_additive_2023.
-A rigorous testing and linting procedure is implemented based on the `pytest` and `ruff` packages [@pytest8.3,@cite_ruff].
-The procedure is tiede to the development and release cycle through continuous integration pipelines thus asserting no untested changes are inserted into the code base.
-Additional documentation and resources are available on the `abn` [website](https://r-bayesian-networks.org/) for further reference and guidance.
-An extended documentation and further resources (including and automated documentation of the code-base) are available on the 'flowstab` [website](https://flow-stability.readthedocs.io).
+A rigorous testing and linting procedure is implemented based on the `pytest` [@pyteest8.3] and `ruff` packages.
+The procedure is tied to the development and release cycle through continuous integration pipelines thus asserting no untested changes are inserted into the code base.
+An extended documentation and further resources (including and automated documentation of the code-base) are available on the `flowstab` [website](https://flow-stability.readthedocs.io).
 
 # Availability
 
