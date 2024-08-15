@@ -106,7 +106,7 @@ jobs:
           source venv/bin/activate
       - name: Test with pytest
         run: |
-          pytest
+          python -m pytest
 
   lint:
     runs-on: ubuntu-latest
@@ -125,6 +125,9 @@ jobs:
       - name: Activate virtual env
         run: |
           source venv/bin/activate
+          which python
+          source venv/bin/activate
+          which python
       - name: Lint with ruff
         run: |
-          ruff check --select=ALL --output-format=github src/
+          pyhton -m ruff check --select=ALL --output-format=github src/
