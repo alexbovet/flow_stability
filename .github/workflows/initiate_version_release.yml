@@ -1,0 +1,172 @@
+# Workflow triggered when we have a new release candidate
+# This action is adapted from https://github.com/t4d-gmbh/stubbed_versioning
+name: Initiate new version release process
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+-rc*"
+
+env:
+  CRAN_LABEL_CHECK: 'CRAN::check'
+  LINT_LABEL_CHECK: 'linting::check'
+  URL_LABEL_CHECK: 'URL::check'
+  MEMORY_LABEL_CHECK: 'memory::check'
+  CHGLOG_RELEASE: git-chglog_0.15.4_linux_amd64
+  CHGLOG_PATH: https://github.com/git-chglog/git-chglog/releases/download/v0.15.4
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  OWNER: ${{ github.repository_owner }}
+  REPO: ${{ github.event.repository.name }}
+
+permissions:
+  packages: read
+  contents: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  initiate_version_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    outputs:
+      EVENT:  ${{ steps.release_pr.outputs.pull-request-number }}
+    steps:
+     - uses: actions/checkout@v4
+       with:
+         fetch-depth: 0  # NOTE: This might be needed to assert that we get the full history
+                         #       for the changelog.
+                         #
+     - name: Register desired version
+       id: release_version
+       run: |
+         # get the previous clean (i.e. no -rc ) version
+         # first fetch all the tags
+         git fetch --filter=tree:0 origin +refs/tags/*:refs/tags/*
+         echo "VERSION=`echo $(echo '${{ github.ref_name }}'|grep -Eo '[0-9]+.[0-9]+.[0-9]+')`" >> $GITHUB_OUTPUT
+         echo "PREVIOUS_VERSION=`echo $(git tag --list --sort=version:refname | grep -E '^[0-9]+.[0-9]+.[0-9]+$' | tail -n1)`" >> $GITHUB_OUTPUT
+         echo "AUTHOR=`echo $(git log -1 --pretty=%an)`" >> $GITHUB_OUTPUT
+
+     - name: Get git-chglog and update CHANGELOG
+       run: |
+         wget ${{ env.CHGLOG_PATH }}/${{ env.CHGLOG_RELEASE}}.tar.gz  # get the binary for the chglog
+         tar --extract --file=${{ env.CHGLOG_RELEASE}}.tar.gz git-chglog
+         # update the changelog only for this tag
+         ./git-chglog --tag-filter-pattern="[0-9]+.[0-9]+.[0-9]+${{ '$' }}|${{ github.ref_name}}" -o _tmpCHLOG.md ${{ github.ref_name }}
+         cat _tmpCHLOG.md CHANGELOG.md > new_CHLOG.md && mv new_CHLOG.md CHANGELOG.md
+         # now we substitute the clean tag
+         sed -i -e "s/${{ github.ref_name }}/${{ steps.release_version.outputs.version}}/g" NEWS.md
+         rm git-chglog
+
+     - name: Setting up R environment
+       uses: r-lib/actions/setup-r@v2
+       with:
+         use-public-rspm: true
+
+     - name: Install desc to update DESCRIPTION file
+       run: |
+         install.packages(c("desc"))
+       shell: Rscript {0}
+
+     - name: Update DESCRIPTION file
+       run: |
+         df = desc::description$new(file='DESCRIPTION')
+         df$set("Date", Sys.Date())
+         df$set("Version", "${{ steps.release_version.outputs.version }}")
+         df$write()
+       shell: Rscript {0}
+
+     - name: Update configure.ac file
+       run: |
+         sed -i -e '/^AC_INIT/s/[0-9]\+.[0-9]\.[0-9]\+/${{ steps.release_version.outputs.version }}/g' configure.ac
+       shell: bash
+
+     - name: Generate the configure file
+       run: |
+         sudo apt-get -y install autoconf
+         autoreconf
+
+     - name: Update status badges in the readme file
+       run: | 
+         # updated the branch parameter for all badges
+         sed -i -e "s/?branch=release-[0-9]\+.[0-9]\.[0-9]\+/?branch=release-${{ steps.release_version.outputs.version}}/g" README.md
+
+     - name: Create version release Pull Request
+       id: release_pr
+       # NOTE: We might want to perform this step with gh cli natively
+       uses: peter-evans/create-pull-request@v6
+       with:
+         branch: release-${{ steps.release_version.outputs.version }}
+         commit-message: "Version ${{ steps.release_version.outputs.version }}"
+         token: ${{ secrets.GITHUB_TOKEN }}
+         add-paths: |
+           README.md
+           NEWS.md
+           DESCRIPTION
+           configure.ac
+           configure
+         delete-branch: true  # NOTE: No immediate delete after merge, instead branches with no diff are deleted
+         title: Release version ${{ steps.release_version.outputs.version }}
+         body: |
+           This request was triggered by **${{ steps.release_version.outputs.AUTHOR }}**
+           
+           The initiating tag was **${{ github.ref_name }}**
+
+           Merging this Pull Request will create a release of the version **${{ steps.release_version.outputs.version }}**.
+         labels: |
+           version-release
+
+         base: main  # NOTE: this should match the branch on which the tag was made
+         draft: true  # NOTE: this is not allowed on free private repos
+
+  check_label_exist:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Assert labels ${{ env.CRAN_LABEL_CHECK }} is defined
+        run: |
+          gh label create ${{ env.CRAN_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+      - name: Assert labels ${{ env.MEMORY_LABEL_CHECK }} is defined
+        run: |
+          gh label create ${{ env.MEMORY_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+      - name: Assert labels ${{ env.LINT_LABEL_CHECK }} is defined
+        run: |
+          gh label create ${{ env.LINT_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+      - name: Assert labels ${{ env.URL_LABEL_CHECK }} is defined
+        run: |
+          gh label create ${{ env.URL_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+
+  get_token_to_set_labels:
+    needs:
+      - check_label_exist
+      - initiate_version_release
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PR_LABELING_APP_ID }}
+          private-key: ${{ secrets.PR_LABELING_APP_PRIVATE_KEY }}
+      - name: Flag the release PR for checks
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          gh pr edit ${{ needs.initiate_version_release.outputs.EVENT }} --add-label ${{ env.CRAN_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+          gh pr edit ${{ needs.initiate_version_release.outputs.EVENT }} --add-label ${{ env.MEMORY_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+          gh pr edit ${{ needs.initiate_version_release.outputs.EVENT }} --add-label ${{ env.LINT_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+          gh pr edit ${{ needs.initiate_version_release.outputs.EVENT }} --add-label ${{ env.URL_LABEL_CHECK }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        shell: bash
