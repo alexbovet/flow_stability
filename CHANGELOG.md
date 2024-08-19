@@ -6,14 +6,16 @@
 
 ### Bug Fixes
 
-* workflow formatting
-* workflow formatting
+- Compatibility issues with `numpy` 2.0 (#28)
 
-### Pull Requests
+### Meta Features
 
-* Merge pull request [#34](https://github.com/alexbovet/flow_stability/issues/34) from alexbovet/starting-semver-versioning
-* Merge pull request [#32](https://github.com/alexbovet/flow_stability/issues/32) from alexbovet/31-efficient-workflow-setup
-* Merge pull request [#3](https://github.com/alexbovet/flow_stability/issues/3) from alexbovet/2-building-a-documentation-with-sphinx
+- Started SemVer versioning (#26)
+- GitHow workflows for linting and testing (#13)
+- Lint codebase with ruff (automated round - #27)
+- Sphinx based documentation (#2)
+- Specification of python dependencies (#17, #22)
+- Updated licence(s) and CHANGELOG (#7, #26)
 
 <a name="1.0.0"></a>
 ## [1.0.0](https://github.com/alexbovet/flow_stability/releases/tag/v1.0)
