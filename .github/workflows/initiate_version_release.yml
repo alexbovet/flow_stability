@@ -1,0 +1,84 @@
+# Workflow triggered when we have a new release candidate
+# This action is adapted from https://github.com/t4d-gmbh/stubbed_versioning
+name: Initiate new version release process
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+-rc*"
+
+env:
+  CHGLOG_RELEASE: git-chglog_0.15.4_linux_amd64
+  CHGLOG_PATH: https://github.com/git-chglog/git-chglog/releases/download/v0.15.4
+
+permissions:
+  packages: read
+  contents: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  initiate_version_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    outputs:
+      EVENT:  ${{ steps.release_pr.outputs.pull-request-number }}
+    steps:
+     - uses: actions/checkout@v4
+       with:
+         fetch-depth: 0  # NOTE: This might be needed to assert that we get the full history
+                         #       for the changelog.
+                         #
+     - name: Register desired version
+       id: release_version
+       run: |
+         # get the previous clean (i.e. no -rc ) version
+         # first fetch all the tags
+         git fetch --filter=tree:0 origin +refs/tags/*:refs/tags/*
+         echo "VERSION=`echo $(echo '${{ github.ref_name }}'|grep -Eo '[0-9]+.[0-9]+.[0-9]+')`" >> $GITHUB_OUTPUT
+         echo "PREVIOUS_VERSION=`echo $(git tag --list --sort=version:refname | grep -E '^[0-9]+.[0-9]+.[0-9]+$' | tail -n1)`" >> $GITHUB_OUTPUT
+         echo "AUTHOR=`echo $(git log -1 --pretty=%an)`" >> $GITHUB_OUTPUT
+
+     - name: Get git-chglog and update CHANGELOG
+       run: |
+         wget ${{ env.CHGLOG_PATH }}/${{ env.CHGLOG_RELEASE}}.tar.gz  # get the binary for the chglog
+         tar --extract --file=${{ env.CHGLOG_RELEASE}}.tar.gz git-chglog
+         # update the changelog only for this tag
+         ./git-chglog --tag-filter-pattern="[0-9]+.[0-9]+.[0-9]+${{ '$' }}|${{ github.ref_name}}" -o _tmpCHLOG.md ${{ github.ref_name }}
+         cat _tmpCHLOG.md CHANGELOG.md > new_CHLOG.md && mv new_CHLOG.md CHANGELOG.md
+         # now we substitute the clean tag
+         sed -i -e "s/${{ github.ref_name }}/${{ steps.release_version.outputs.version}}/g" CHANGELOG.md
+         rm git-chglog
+
+     - name: Update status badges in the readme file
+       run: | 
+         # updated the branch parameter for all badges
+         sed -i -e "s/?branch=release-[0-9]\+.[0-9]\.[0-9]\+/?branch=release-${{ steps.release_version.outputs.version}}/g" README.md
+
+     - name: Create version release Pull Request
+       id: release_pr
+       # NOTE: We might want to perform this step with gh cli natively
+       uses: peter-evans/create-pull-request@v6
+       with:
+         branch: release-${{ steps.release_version.outputs.version }}
+         commit-message: "Version ${{ steps.release_version.outputs.version }}"
+         token: ${{ secrets.GITHUB_TOKEN }}
+         add-paths: |
+           README.md
+           CHANGELOG.md
+         delete-branch: false
+         title: Release version ${{ steps.release_version.outputs.version }}
+         body: |
+           This request was triggered by **${{ steps.release_version.outputs.AUTHOR }}**
+           
+           The initiating tag was **${{ github.ref_name }}**
+
+           Merging this Pull Request will create a release of the version **${{ steps.release_version.outputs.version }}**.
+         labels: |
+           version-release
+
+         base: main  # NOTE: this should match the branch on which the tag was made
+         draft: true  # NOTE: this is not allowed on free private repos
