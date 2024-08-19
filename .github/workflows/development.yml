@@ -97,7 +97,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Test with pytest
         run: |
-          venv/bin/python -m pytest
+          venv/bin/python -m pytest --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
 
   lint:
     runs-on: ubuntu-latest
