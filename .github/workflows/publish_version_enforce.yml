@@ -1,0 +1,90 @@
+# Workflow triggered when we have a new release candidate
+# This action is adapted from https://github.com/t4d-gmbh/stubbed_versioning
+name: Enforce release from release- branch
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      # The tag name needs to be of the form <nbr>.<nbr>.<nbr>
+
+env:
+  LABEL_PUBLISHED: 'release::published'
+
+jobs:
+  publishing_release:
+    # NOTE: Currently this workflow only runs if a release- branch has an open pull request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+      REPO: ${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # NOTE: This might be needed to assert that we get the full history
+                          #       for the changelog.
+      # get the related pull request
+      - name: Determine associated Pull request
+        id: get_pr
+        run: |
+          echo "PR=`echo $(gh pr list --repo ${{ env.OWNER }}/${{ env.REPO }} --json 'number,headRefName'|jq --arg NAME ${{ github.ref_name }} '.[] | select(.headRefName | contains($NAME)) | .number')`" >> $GITHUB_OUTPUT
+      - name: Attempt to create label ${{ env.LABEL_PUBLISHED }}
+        if: ${{ steps.get_pr.outputs.pr }}
+        run: |
+          gh label create ${{ env.LABEL_PUBLISHED }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+      - name: Check if the pull request is labeled with ${{ env.LABEL_PUBLISHED }}  # 2
+        if: ${{ steps.get_pr.outputs.pr }}
+        id: published
+        run: |
+          if $( gh pr view ${{ steps.get_pr.outputs.pr }} --repo ${{ env.OWNER }}/${{ env.REPO }} --json "labels" --jq ".[].[].name" | grep --quiet ${{ env.LABEL_PUBLISHED }}); then
+            echo "LABELED=true" >> $GITHUB_OUTPUT
+          else
+            echo "LABELED=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Get the version to release  # 2
+        if: ${{ (steps.published.outputs.labeled == 'false') && steps.get_pr.outputs.pr }}
+        id: release_version
+        run: |
+          git fetch --filter=tree:0 origin +refs/tags/*:refs/tags/*
+          echo "VERSION=$(echo ${{ github.ref_name }}|grep -Eo '[0-9]+.[0-9]+.[0-9]+')" >> $GITHUB_OUTPUT
+          echo "PREVIOUS_VERSION=`echo $(git tag --list --sort=version:refname | grep -E '^[0-9]+.[0-9]+.[0-9]+$' | tail -n1)`" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+      - name: Remove previous releases of the target tag, if existing  # 2
+        if: ${{ (steps.published.outputs.labeled == 'false') && steps.get_pr.outputs.pr }}
+        run: |
+          if script -q -e -c "gh release view ${{ steps.release_version.outputs.version }}"; then
+            # removing previous release along with associated tag
+            gh release delete ${{ steps.release_version.outputs.version }} \
+              --cleanup-tag -y \
+              --repo ${{ env.OWNER }}/${{ env.REPO }}
+          else
+            # non-exist
+            echo "No trace of a previous release."
+          fi
+      - name: Prepare Release note  # 2
+        if: ${{ (steps.published.outputs.labeled == 'false') && steps.get_pr.outputs.pr }}
+        # this gets the first the changes to the previous clean tag (including manual edits)
+        run: |
+          awk '/<a name="${{ steps.release_version.outputs.version }}".*/{a=1};a;/<a name="${{ steps.release_version.outputs.previous_version }}"*/{exit}' CHANGELOG.md | head -n -1 >> body.md
+          cat body.md
+      - name: Create tag and release  # 2
+        if: ${{ (steps.published.outputs.labeled == 'false') && steps.get_pr.outputs.pr }}
+        run: |
+          echo $GITHUB_SHA 
+          gh release create ${{ steps.release_version.outputs.version }} \
+            --target $GITHUB_SHA \
+            --latest \
+            --title "${{ steps.release_version.outputs.version }}" \
+            --notes-file body.md \
+            --repo ${{ env.OWNER }}/${{ env.REPO }} \
+      - name: Adding the label ${{ env.LABEL_PUBLISHED }}  # 2
+        if: ${{ (steps.published.outputs.labeled == 'false') && steps.get_pr.outputs.pr }}
+        run: |
+          gh pr edit ${{ steps.get_pr.outputs.pr }} --add-label ${{ env.LABEL_PUBLISHED }}
+        shell: bash
