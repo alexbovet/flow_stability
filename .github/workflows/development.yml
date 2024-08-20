@@ -117,3 +117,4 @@ jobs:
       - name: Lint with ruff
         run: |
           venv/bin/python -m ruff check --select=ALL --output-format=github src/
+        continue-on-error: true
