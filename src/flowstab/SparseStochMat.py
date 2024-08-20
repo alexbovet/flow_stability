@@ -131,14 +131,20 @@ class sparse_stoch_mat:
 
         if nz_rowcols is None:
             nz_rows, nz_cols = (Tcsr - diag_val * eye(Tcsr.shape[0], format="csr")).nonzero()
-            nz_rowcols = np.union1d(nz_rows,nz_cols)
+            nz_rowcols = np.union1d(nz_rows, nz_cols)
+
+        # Make sure we work with floats
+        Tcsr_data = Tcsr.data.astype(np.float64)
+
         if USE_CYTHON:
 
-            res = cython_sparse_stoch_from_full_csr(np.array(nz_rowcols, dtype=np.int32),
-                                              Tcsr.data,
-                                              Tcsr.indices,
-                                              Tcsr.indptr,
-                                              diag_val)
+            res = cython_sparse_stoch_from_full_csr(
+                np.array(nz_rowcols, dtype=np.int32),
+                Tcsr_data,
+                Tcsr.indices,
+                Tcsr.indptr,
+                diag_val
+            )
 
             return cls(*res)
 
@@ -158,7 +164,7 @@ class sparse_stoch_mat:
             for tsrow, tbrow in enumerate(nz_rowcols):
                 nzr = 0
                 for k in range(Tcsr.indptr[tbrow],Tcsr.indptr[tbrow+1]):
-                    T_s_data[its] = Tcsr.data[k]
+                    T_s_data[its] = Tcsr_data[k]
                     T_s_indices[its] = BtoS[Tcsr.indices[k]]
                     its += 1
                     nzr += 1
