@@ -6,20 +6,17 @@
 
 ### Bug Fixes
 
-* workflow formatting
-* workflow formatting
+* Fixed compatibility issue with numpy 2.0 [#28](https://github.com/alexbovet/flow_stability/issues/28)
 
-### Reverts
+### Meta Features
 
-* Version 1.0.1 ([#38](https://github.com/alexbovet/flow_stability/issues/38))
-* Merge pull request [#36](https://github.com/alexbovet/flow_stability/issues/36) from alexbovet/release-1.0.1
+* Started SemVer versioning [#26](https://github.com/alexbovet/flow_stability/issues/26)
+* GitHow workflows for linting and testing [#13](https://github.com/alexbovet/flow_stability/issues/13)
+* Lint codebase with ruff (automated round - [#27](https://github.com/alexbovet/flow_stability/issues/27))
+* Sphinx based documentation [#2](https://github.com/alexbovet/flow_stability/issues/2)
+* Specification of python dependencies [#17](https://github.com/alexbovet/flow_stability/issues/17), [#22](https://github.com/alexbovet/flow_stability/issues/22)
+* Updated licence(s) and CHANGELOG [#7](https://github.com/alexbovet/flow_stability/issues/7), [#26](https://github.com/alexbovet/flow_stability/issues/26)
 
-### Pull Requests
-
-* Merge pull request [#36](https://github.com/alexbovet/flow_stability/issues/36) from alexbovet/release-1.0.1
-* Merge pull request [#34](https://github.com/alexbovet/flow_stability/issues/34) from alexbovet/starting-semver-versioning
-* Merge pull request [#32](https://github.com/alexbovet/flow_stability/issues/32) from alexbovet/31-efficient-workflow-setup
-* Merge pull request [#3](https://github.com/alexbovet/flow_stability/issues/3) from alexbovet/2-building-a-documentation-with-sphinx
 
 <a name="1.0.0"></a>
 ## [1.0.0](https://github.com/alexbovet/flow_stability/releases/tag/v1.0)
