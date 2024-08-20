@@ -18,6 +18,8 @@
 
 
 """
+from __future__ import annotations
+
 import importlib.util
 import os
 import time
@@ -25,6 +27,7 @@ from copy import copy
 from functools import wraps
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.sparse import (
     coo_matrix,
     csr_matrix,
@@ -113,7 +116,8 @@ class sparse_stoch_mat:
 
 
     @classmethod
-    def from_small_csr_matrix(cls, size, T_small, nz_rowcols, diag_val=1.0):
+    def from_small_csr_matrix(cls, size:int, T_small:csr_matrix, nz_rowcols:NDArray,
+                              diag_val:float=1.0):
         """Initialize sparse_stoch_mat from a small csr_matrix"""
         if not isspmatrix_csr(T_small):
             raise TypeError("T_small must be in CSR format.")
@@ -122,7 +126,8 @@ class sparse_stoch_mat:
                    nz_rowcols, diag_val=diag_val)
 
     @classmethod
-    def from_full_csr_matrix(cls, Tcsr, nz_rowcols=None, diag_val=1.0):
+    def from_full_csr_matrix(cls, Tcsr:csr_matrix, nz_rowcols:NDArray|None=None,
+                             diag_val:float=1.0):
         """Initialize sparse_stoch_mat from a full size row stochastic
         csr_matrix 
         """
