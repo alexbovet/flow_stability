@@ -9,9 +9,8 @@ def test_SSM(get_csr_matrix):
     # ###
     # inti from scipy.sparse.csr_matrix
     A_csr = get_csr_matrix.copy()
-    # print(A_csr.toarray())
     ssm = SSM.from_full_csr_matrix(A_csr)
-    # print(ssm.toarray())
+    np.testing.assert_equal(A_csr.toarray(), ssm.toarray(), strict=False)
     
     
 
