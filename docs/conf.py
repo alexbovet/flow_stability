@@ -44,4 +44,5 @@ html_static_path = ['_static']
 autoapi_dirs = ["../src/", ]
 autoapi_file_patterns = ['*.py', ]
 autoapi_member_order = "groupwise"
+autoclass_content = "both"  # use docstring of both class and its __init__
 # autoapi_ignore = ["*conf.py", "*setup.py" , "*_cython*.pyx", ]
