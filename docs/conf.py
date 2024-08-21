@@ -5,10 +5,8 @@
 import pathlib
 import sys
 
-# -- Add the project root for autodiscovery with sphinx.ext.autodoc ----------
+# -- Add the project root for autodiscovery ----------
 sys.path.insert(0, pathlib.Path(__file__).parents[1].resolve().as_posix())
-autodoc_typehints = 'description'
-autodoc_class_signature = 'separated'
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -25,7 +23,6 @@ extensions = [
     "myst_parser",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinx.ext.autodoc",
     "autoapi.extension",
 ]
 
@@ -45,5 +42,5 @@ html_static_path = ['_static']
 autoapi_dirs = ["../src/", ]
 autoapi_file_patterns = ['*.py', ]
 autoapi_member_order = "groupwise"
-autoclass_content = "both"  # use docstring of both class and its __init__
+autoapi_python_class_content = "both"
 # autoapi_ignore = ["*conf.py", "*setup.py" , "*_cython*.pyx", ]
