@@ -25,6 +25,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "sphinx.ext.autodoc",
     "autoapi.extension",
 ]
 
