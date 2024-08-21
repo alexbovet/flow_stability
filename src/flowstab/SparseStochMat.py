@@ -112,7 +112,7 @@ class sparse_stoch_mat:
         row/column of a `scipy.sparce.csr_matrix`, called `T_small` will be
         used to fill the empty cells in the matrix.
         
-        ..Note::
+        .. note::
           A concise explanation of how sparse matrices are represented in
           `csr`-format can be found
           [on StackOverflow](https://stackoverflow.com/a/52299730/1622937).
