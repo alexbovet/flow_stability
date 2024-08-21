@@ -103,6 +103,47 @@ class sparse_stoch_mat:
 
     def __init__(self, size, data, indices, indptr, nz_rowcols,
                  diag_val=1.0):
+        """Initialize sparse_stoch_mat
+
+        The sparse_stoch_mat will be a square matrix of size `size` with
+        row/columns of a diagonal matrix for every row/column index not present
+        in `nz_rowcols`.
+        For the row/column indices present in `nz_rowcols` the matching
+        row/column of a `scipy.sparce.csr_matrix`, called `T_small` will be
+        used to fill the empty cells in the matrix.
+        
+        ..Note::
+          A concise explanation of how sparse matrices are represented in
+          `csr`-format can be found
+          [on StackOverflow](https://stackoverflow.com/a/52299730/1622937).
+
+
+        Parameters
+        ----------
+        size:
+          Determines the number of rows/columns in of the matrix
+        data:
+          See `scipy.sparse.csr_matrix` for details
+        indices:
+          See `scipy.sparse.csr_matrix` for details
+        indptr:
+          See `scipy.sparse.csr_matrix` for details
+        nz_rowcols:
+          A collection of column (or row) indexes into which the columns
+          (or rows) of `T_small` map.
+
+          For all index values < `size`, the corresponding rows and columns
+          will be filled with the row/column from a diagnoal matrix if the
+          index is not present in `nz_rowcols` and 
+
+          ..Note::
+            The number of elements in `nz_rowcols` must match the size
+            of `T_small`.
+        diag_val:
+          The value to use on the diagnoal in diagonal row/colums.
+        
+
+        """
 
         self.size = size
         self.nz_rowcols = np.unique(np.array(nz_rowcols, dtype=np.int32)) #sorted unique
@@ -118,7 +159,38 @@ class sparse_stoch_mat:
     @classmethod
     def from_small_csr_matrix(cls, size:int, T_small:csr_matrix, nz_rowcols:NDArray,
                               diag_val:float=1.0):
-        """Initialize sparse_stoch_mat from a small csr_matrix"""
+        """Initialize sparse_stoch_mat from a small csr_matrix
+
+        The sparse_stoch_mat will be a square matrix of size `size` with
+        row/columns of a diagonal matrix for every row/column index not present
+        in `nz_rowcols`. For the row/column indices present in `nz_rowcols`
+        the matching row/column of `T_small` will be used to fill the empty
+        cells in the matrix.
+
+
+        Parameters
+        ----------
+        size:
+          Determines the number of rows/columns in of the matrix
+        T_small:
+          A scipy.sparse.csr_matrix that does not contain any rows/columns
+          of a diagonal matrix.
+        nz_rowcols:
+          A collection of column (or row) indexes into which the columns
+          (or rows) of `T_small` map.
+
+          For all index values < `size`, the corresponding rows and columns
+          will be filled with the row/column from a diagnoal matrix if the
+          index is not present in `nz_rowcols` and 
+
+          ..Note::
+            The number of elements in `nz_rowcols` must match the size
+            of `T_small`.
+        diag_val:
+          The value to use on the diagnoal in diagonal row/colums.
+        
+
+        """
         if not isspmatrix_csr(T_small):
             raise TypeError("T_small must be in CSR format.")
 
