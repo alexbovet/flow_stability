@@ -23,6 +23,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import time
+from collections.abc import Callable
 from copy import copy
 from functools import wraps
 
@@ -75,7 +76,9 @@ else:
     print("Could not load sparse_dot_mkl. Will use scipy.sparse for matrix products.")
 
 # timing decorator
-def timing(f):
+def timing(f:Callable)->Callable:
+    """
+    """
     @wraps(f)
     def wrapper(*args, **kwargs):
         start = time.time()
@@ -101,8 +104,8 @@ class sparse_stoch_mat:
         
     """
 
-    def __init__(self, size, data, indices, indptr, nz_rowcols,
-                 diag_val=1.0):
+    def __init__(self, size:int, data:NDArray, indices:NDArray, indptr:NDArray,
+                 nz_rowcols:NDArray, diag_val:float=1.0):
         """Initialize sparse_stoch_mat
 
         The sparse_stoch_mat will be a square matrix of size `size` with
@@ -158,7 +161,7 @@ class sparse_stoch_mat:
 
     @classmethod
     def from_small_csr_matrix(cls, size:int, T_small:csr_matrix, nz_rowcols:NDArray,
-                              diag_val:float=1.0):
+                              diag_val:float=1.0)->sparse_stoch_mat:
         """Initialize sparse_stoch_mat from a small csr_matrix
 
         The sparse_stoch_mat will be a square matrix of size `size` with
@@ -199,7 +202,7 @@ class sparse_stoch_mat:
 
     @classmethod
     def from_full_csr_matrix(cls, Tcsr:csr_matrix, nz_rowcols:NDArray|None=None,
-                             diag_val:float=1.0):
+                             diag_val:float=1.0)->sparse_stoch_mat:
         """Initialize sparse_stoch_mat from a full size row stochastic
         csr_matrix 
         """
@@ -251,7 +254,7 @@ class sparse_stoch_mat:
                        nz_rowcols, diag_val=diag_val)
 
     @classmethod
-    def create_diag(cls, size, diag_val=1.0):
+    def create_diag(cls, size:int, diag_val:float=1.0)->sparse_stoch_mat:
         """Returns a diagonal matrix with an empty T_small.
 
         Parameters
@@ -266,7 +269,7 @@ class sparse_stoch_mat:
 
         return cls.from_small_csr_matrix(size, T_small, [], diag_val=diag_val)
 
-    def inplace_row_normalize(self, row_sum=1.0):
+    def inplace_row_normalize(self, row_sum:float=1.0):
 
         if USE_CYTHON:
             self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
@@ -283,7 +286,7 @@ class sparse_stoch_mat:
 
         self.diag_val = row_sum
 
-    def set_to_zeroes(self, tol=1e-8, relative=True, use_absolute_value=False):
+    def set_to_zeroes(self, tol:float=1e-8, relative:bool=True, use_absolute_value:bool=False):
         """In place replaces zeroes in the T_small sparse matrix that are,
         within the tolerence, close to zero with actual zeroes
         """
@@ -299,7 +302,7 @@ class sparse_stoch_mat:
             self.T_small.eliminate_zeros()
 
 
-    def to_full_mat(self):
+    def to_full_mat(self)->csr_matrix:
         """Returns a full size sparse matrix"""
         return rebuild_nnz_rowcol(self.T_small,
                                   self.nz_rowcols,
@@ -1133,7 +1136,8 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
     else:
         raise TypeError("X must be in ndarray, CSR or sparse_stoch_mat format.")
 
-def rebuild_nnz_rowcol(T_small, nonzero_indices, size, diag_val=1.0):
+def rebuild_nnz_rowcol(T_small:csr_matrix, nonzero_indices:NDArray,
+                       size:int, diag_val:float=1.0)->csr_matrix:
     """Returns a CSR matrix built from the CSR matrix T_small with
     T_small values at row-colums corresponding to nonzero_indices 
     and 1 on the diagonal elsewhere.
