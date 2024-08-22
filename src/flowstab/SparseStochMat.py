@@ -42,6 +42,7 @@ from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
     import _cython_sparse_stoch as _css
+
     from _cython_sparse_stoch import (
         cython_aggregate_csr_mat,
         cython_aggregate_csr_mat_2,
@@ -54,19 +55,17 @@ if importlib.util.find_spec("cython") is not None:
         cython_csr_csrT_matmul,
         cython_csr_matmul,
         cython_get_submat_sum,
-        cython_inplace_csr_row_normalize,
+        inplace_csr_row_normalize as cython_inplace_csr_row_normalize,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
         sparse_stoch_from_full_csr as cython_sparse_stoch_from_full_csr,
         cython_stoch_mat_add,
         cython_stoch_mat_sub,
     )
-
 else:
     print("Could not load cython functions. Some functionality might be broken.")
     from . import _cython_sparse_stoch_subst as _css
     USE_CYTHON = False
-
 
 USE_SPARSE_DOT_MKL = True
 if importlib.util.find_spec("sparse_dot_mkl") is not None:
@@ -205,8 +204,7 @@ class sparse_stoch_mat:
     @classmethod
     def from_full_csr_matrix(cls, Tcsr:csr_matrix, nz_rowcols:NDArray|None=None,
                              diag_val:float=1.0)->sparse_stoch_mat:
-        """Initialize sparse_stoch_mat from a full size row stochastic
-        csr_matrix 
+        """Init sparse_stoch_mat from a full size row stochastic csr_matrix
         """
         if not isspmatrix_csr(Tcsr):
             raise TypeError("T_small must be in CSR format.")
@@ -240,24 +238,20 @@ class sparse_stoch_mat:
         """
         T_small = csr_matrix((0,0))
 
-        return cls.from_small_csr_matrix(size, T_small, [], diag_val=diag_val)
+        return cls.from_small_csr_matrix(size, T_small, np.array([]), diag_val=diag_val)
 
     def inplace_row_normalize(self, row_sum:float=1.0):
+        """Normalize the rows in place
+        """
 
-        if USE_CYTHON:
-            self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
-            self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
+        self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
+        self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
 
-            cython_inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
-                                             self.T_small.shape[0], row_sum)
-        else:
-
-            for i in range(self.T_small.shape[0]):
-                row_sum_tmp = self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]].sum()
-                if row_sum_tmp != 0:
-                    self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]] /= (row_sum_tmp/row_sum)
+        _css.inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
+                                       self.T_small.shape[0], row_sum)
 
         self.diag_val = row_sum
+
 
     def set_to_zeroes(self, tol:float=1e-8, relative:bool=True, use_absolute_value:bool=False):
         """In place replaces zeroes in the T_small sparse matrix that are,

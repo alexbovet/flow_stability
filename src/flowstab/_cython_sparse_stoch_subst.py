@@ -28,3 +28,13 @@ def sparse_stoch_from_full_csr(nz_rowcols, Tf_data, Tf_indices, Tf_indptr, diag_
             T_s_indptr,
             nz_rowcols,
             diag_val)
+
+
+def inplace_csr_row_normalize(X_data,
+                              X_indptr,
+                              n_row,  # T_small.shape[0],
+                              row_sum):
+    for i in range(n_row):
+        row_sum_tmp = X_data[X_indptr[i]:X_indptr[i+1]].sum()
+        if row_sum_tmp != 0:
+            X_data[X_indptr[i]:X_indptr[i+1]] = (row_sum_tmp/row_sum)

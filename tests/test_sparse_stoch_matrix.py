@@ -1,6 +1,8 @@
 import numpy as np
 import tracemalloc
 
+from copy import copy
+
 from scipy.sparse import (
     eye,
 )
@@ -83,6 +85,72 @@ def test_SSM_from_full_csr_nocython_memory(get_csr_matrix_large):
             A_csr.indptr,
             diag_val
         )
+
+def test_SSM_from_full_csr_equivalence(get_csr_matrix_large):
+    """Check if both cython and native python implementations match
+    """
+    from flowstab.SparseStochMat import (
+        _css
+    )
+    from flowstab._cython_sparse_stoch_subst import (
+        sparse_stoch_from_full_csr as sparse_stoch_from_full_csr
+    )
+    A_csr, _ = get_csr_matrix_large
+    A_csr_data = A_csr.data.astype(np.float64)
+    diag_val = 1.0
+    nz_rows, nz_cols = (
+        A_csr - diag_val * eye(A_csr.shape[0], format="csr")
+    ).nonzero()
+    nz_rowcols = np.union1d(nz_rows, nz_cols)
+    (
+        c_size, c_data, c_indices,
+        c_indptr, c_nz_rowcols, c_diag_val
+    ) = _css.sparse_stoch_from_full_csr(
+            np.array(nz_rowcols, dtype=np.int32),
+            A_csr_data,
+            A_csr.indices,
+            A_csr.indptr,
+            diag_val
+        )
+    (
+        nc_size, nc_data, nc_indices,
+        nc_indptr, nc_nz_rowcols, nc_diag_val
+    ) = sparse_stoch_from_full_csr(
+            np.array(nz_rowcols, dtype=np.int32),
+            A_csr_data,
+            A_csr.indices,
+            A_csr.indptr,
+            diag_val
+        )
+    assert nc_size == c_size
+    assert nc_diag_val == c_diag_val
+    np.testing.assert_array_equal(nc_data, c_data)
+    np.testing.assert_array_equal(nc_indices, c_indices)
+    np.testing.assert_array_equal(nc_indptr, c_indptr)
+    np.testing.assert_array_equal(nc_nz_rowcols, c_nz_rowcols)
+
+def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
+    """Make sure the cython and pure python implementations are equivalent
+    """
+    from flowstab.SparseStochMat import (
+        _css
+    )
+    from flowstab._cython_sparse_stoch_subst import (
+        inplace_csr_row_normalize
+    )
+    A_ssm1 = get_SSM_matrix_large
+    A_ssm1_data = copy(A_ssm1.T_small.data)
+    A_ssm2 = copy(A_ssm1)
+    A_ssm2_data = copy(A_ssm2.T_small.data)
+    # the cython implementation
+    _css.inplace_csr_row_normalize(A_ssm1.T_small.data, A_ssm1.T_small.indptr, A_ssm1.T_small.shape[0])
+    # pure python
+    inplace_csr_row_normalize(A_ssm2.T_small.data, A_ssm2.T_small.indptr, A_ssm2.T_small.shape[0])
+    # test change
+    np.testing.assert_array_equal(A_ssm1_data, A_ssm1.T_small.data)
+    # test equivalence
+    np.testing.assert_array_equal(A_ssm1.data, A_ssm2.T_small.data)
+
 
 
 def test_SPA():

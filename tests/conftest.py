@@ -23,3 +23,18 @@ def get_csr_matrix_large():
     data = np.random.randint(0,100, size=nbr_non_zeros)
     density = nbr_non_zeros / size
     return csr_matrix((data, (row, col)), shape=(size, size)), density
+
+@pytest.fixture(scope='function')
+def get_SSM_matrix_large():
+    """Creat an exemplary csr matrix that can be used for testing
+    """
+    from flowstab.SparseStochMat import sparse_stoch_mat
+    size = 1000000
+    nbr_non_zeros = 1000
+    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    data = np.random.randint(0,1, size=nbr_non_zeros)
+    _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
+    _a_csr.indptr = _a_csr.indptr.astype(np.int64, copy=False)
+    _a_csr.indices = _a_csr.indices.astype(np.int64, copy=False)
+    return sparse_stoch_mat.from_full_csr_matrix(_a_csr)
