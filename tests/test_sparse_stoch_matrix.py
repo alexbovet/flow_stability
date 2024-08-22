@@ -108,7 +108,7 @@ def test_SSM_from_full_csr_equivalence(get_csr_matrix_large):
     ) = _css.sparse_stoch_from_full_csr(
             np.array(nz_rowcols, dtype=np.int32),
             A_csr_data,
-            A_csr.indices,
+            A_csr.indices.astype(np.int64),
             A_csr.indptr,
             diag_val
         )
