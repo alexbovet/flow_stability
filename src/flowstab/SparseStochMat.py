@@ -41,6 +41,7 @@ from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
+    import _cython_sparse_stoch as _css
     from _cython_sparse_stoch import (
         cython_aggregate_csr_mat,
         cython_aggregate_csr_mat_2,
@@ -56,13 +57,14 @@ if importlib.util.find_spec("cython") is not None:
         cython_inplace_csr_row_normalize,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
-        cython_sparse_stoch_from_full_csr,
+        sparse_stoch_from_full_csr as cython_sparse_stoch_from_full_csr,
         cython_stoch_mat_add,
         cython_stoch_mat_sub,
     )
 
 else:
     print("Could not load cython functions. Some functionality might be broken.")
+    from . import _cython_sparse_stoch_subst as _css
     USE_CYTHON = False
 
 
@@ -216,42 +218,13 @@ class sparse_stoch_mat:
         # Make sure we work with floats
         Tcsr_data = Tcsr.data.astype(np.float64)
 
-        if USE_CYTHON:
-
-            res = cython_sparse_stoch_from_full_csr(
-                np.array(nz_rowcols, dtype=np.int32),
-                Tcsr_data,
-                Tcsr.indices,
-                Tcsr.indptr,
-                diag_val
-            )
-
-            return cls(*res)
-
-        else:
-
-            T_s_nnz = Tcsr.nnz - Tcsr.shape[0] + nz_rowcols.size
-
-            T_s_data = np.zeros(T_s_nnz, dtype=np.float64)
-            T_s_indices = -1*np.ones(T_s_nnz, dtype=np.int32)
-            T_s_indptr = -1*np.ones(nz_rowcols.size+1, dtype=np.int32)
-
-            #map indices from big to small T
-            BtoS = {v:k for k,v in enumerate(nz_rowcols)}
-
-            its = 0
-            T_s_indptr[0] = 0
-            for tsrow, tbrow in enumerate(nz_rowcols):
-                nzr = 0
-                for k in range(Tcsr.indptr[tbrow],Tcsr.indptr[tbrow+1]):
-                    T_s_data[its] = Tcsr_data[k]
-                    T_s_indices[its] = BtoS[Tcsr.indices[k]]
-                    its += 1
-                    nzr += 1
-                T_s_indptr[tsrow+1] = T_s_indptr[tsrow] + nzr
-
-            return cls(Tcsr.shape[0], T_s_data, T_s_indices, T_s_indptr,
-                       nz_rowcols, diag_val=diag_val)
+        return cls(*_css.sparse_stoch_from_full_csr(
+            np.array(nz_rowcols, dtype=np.int32),
+            Tcsr_data,
+            Tcsr.indices,
+            Tcsr.indptr,
+            diag_val
+        ))
 
     @classmethod
     def create_diag(cls, size:int, diag_val:float=1.0)->sparse_stoch_mat:
