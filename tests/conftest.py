@@ -32,11 +32,11 @@ def get_csr_matrix_pair():
     nbr_non_zeros = 1000
     row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
     col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    data = np.random.randint(0,100, size=nbr_non_zeros)
+    data = np.random.random(size=nbr_non_zeros)
     A = csr_matrix((data, (row, col)), shape=(size, size))
     row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
     col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    data = np.random.randint(0,100, size=nbr_non_zeros)
+    data = np.random.random(size=nbr_non_zeros)
     B = csr_matrix((data, (row, col)), shape=(size, size))
     return A, B
 
