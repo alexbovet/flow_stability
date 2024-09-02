@@ -10,6 +10,9 @@ jobs:
   build-venv:
     runs-on: ubuntu-22.04
     steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -84,6 +87,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -112,6 +118,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5

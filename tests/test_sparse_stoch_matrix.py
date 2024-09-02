@@ -200,3 +200,18 @@ def test_SparseAutocovMatrix():
     """Check basic operations on sparse_autocov_mat"""
     from flowstab.SparseStochMat import sparse_autocov_mat as SAM
     pass
+
+
+def test_sparse_matmul_mkl_memory(get_csr_matrix_pair):
+    """
+    """
+    from sparse_dot_mkl import dot_product_mkl as mkl_matmul
+    A, B = get_csr_matrix_pair
+    mkl_matmul(A, B)
+
+def test_sparse_matmul_memory():
+    """
+    """
+    from sparse_dot_mkl import dot_product_mkl as mkl_matmul
+    A, B = get_csr_matrix_pair
+    mkl_matmul(A, B)

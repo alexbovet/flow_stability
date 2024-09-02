@@ -24,6 +24,22 @@ def get_csr_matrix_large():
     density = nbr_non_zeros / size
     return csr_matrix((data, (row, col)), shape=(size, size)), density
 
+@pytest.fixture(scope='session')
+def get_csr_matrix_pair():
+    """Creat an exemplary csr matrix that can be used for testing
+    """
+    size = 10000
+    nbr_non_zeros = 1000
+    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    data = np.random.randint(0,100, size=nbr_non_zeros)
+    A = csr_matrix((data, (row, col)), shape=(size, size))
+    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+    data = np.random.randint(0,100, size=nbr_non_zeros)
+    B = csr_matrix((data, (row, col)), shape=(size, size))
+    return A, B
+
 @pytest.fixture(scope='function')
 def get_SSM_matrix_large():
     """Creat an exemplary csr matrix that can be used for testing
