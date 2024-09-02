@@ -143,17 +143,11 @@ def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
     A_ssm2 = copy(A_ssm1)
     A_ssm2_data = copy(A_ssm2.T_small.data)
     # the cython implementation
-    _css.inplace_csr_row_normalize(A_ssm1.T_small.data, A_ssm1.T_small.indptr, A_ssm1.T_small.shape[0])
+    _css.inplace_csr_row_normalize(A_ssm1.T_small.data, A_ssm1.T_small.indptr, A_ssm1.T_small.shape[0], 1.0)
     # pure python
-    inplace_csr_row_normalize(A_ssm2.T_small.data, A_ssm2.T_small.indptr, A_ssm2.T_small.shape[0])
+    inplace_csr_row_normalize(A_ssm2.T_small.data, A_ssm2.T_small.indptr, A_ssm2.T_small.shape[0], 1.0)
     # test change
     np.testing.assert_array_equal(A_ssm1_data, A_ssm1.T_small.data)
+    np.testing.assert_array_equal(A_ssm2_data, A_ssm2.T_small.data)
     # test equivalence
     np.testing.assert_array_equal(A_ssm1.data, A_ssm2.T_small.data)
-
-
-
-def test_SPA():
-    """Basic operations with the `SpasreStochMat.SPA` class"""
-    from flowstab.SparseStochMat import SPA
-    # TODO
