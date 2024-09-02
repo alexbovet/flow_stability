@@ -97,29 +97,48 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests without memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --cov-report=xml --durations=0 -k 'not _memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --durations=0 -k 'not _memory'
         env:
-          COVERAGE_FILE: ".coverage.no_memory"
+          COVERAGE_FILE: "_coverage.no_memory"
+
       - name: Store coverage file
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-no_memory
-          path: .coverage.no_memory
+          path: _coverage.no_memory
+
+  test-memory:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      # Note: we use cache here since artifacts do not keep permissions
+      - name: Getting the venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests with memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./ --cov-report=xml --durations=0 --memray -k '_memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --durations=0 --memray -k '_memory'
         env:
-          COVERAGE_FILE: ".coverage.memory"
+          COVERAGE_FILE: "_coverage.memory"
       - name: Store coverage file
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-memory
-          path: .coverage.memory
+          path: _coverage.memory
 
   coverage:
     name: combine-coverage
     runs-on: ubuntu-22.04
-    needs: test
+    needs: [test, test-memory]
     if: |
       always()
     permissions:
