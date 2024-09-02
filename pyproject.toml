@@ -51,7 +51,7 @@ build-backend = "setuptools.build_meta"
 [tool.coverage.run]
 relative_files = true
 # plugins = ["Cython.Coverage", ]
-source = ["src/flowstab/", ]
+source = ["flowstab", ]
 omit = [
   "tests",
   "*__init__.py",
