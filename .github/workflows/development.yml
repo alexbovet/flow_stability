@@ -102,13 +102,14 @@ jobs:
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src --durations=0 -k 'not _memory'
         env:
-          COVERAGE_FILE: "_coverage.no_memory"
+          COVERAGE_FILE: ".coverage.no_memory"
       - name: Store coverage file
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-no_memory
-          path: _coverage.no_memory
+          path: .coverage.no_memory
+          include_hidden_files: true
 
   test-memory:
     runs-on: ubuntu-latest
@@ -129,13 +130,14 @@ jobs:
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src --durations=0 --memray -k '_memory'
         env:
-          COVERAGE_FILE: "_coverage.memory"
+          COVERAGE_FILE: ".coverage.memory"
       - name: Store coverage file
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-memory
-          path: _coverage.memory
+          path: .coverage.memory
+          include_hidden_files: true
 
   coverage:
     name: combine-coverage
