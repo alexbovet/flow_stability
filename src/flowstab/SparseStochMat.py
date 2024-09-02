@@ -788,7 +788,7 @@ class SPA:
         self.current_row = current_row
         self.LS = []
 
-def csr_add(A,B, use_cython=USE_CYTHON):
+def csr_add(A, B, use_cython=USE_CYTHON):
     """Addition of square csr matrix"""
     size = A.shape[0]
 
