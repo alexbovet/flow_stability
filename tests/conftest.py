@@ -28,8 +28,8 @@ def get_csr_matrix_large():
 def get_csr_matrix_pair():
     """Creat an exemplary csr matrix that can be used for testing
     """
-    size = 100000
-    nbr_non_zeros = 5000
+    size = 10000000
+    nbr_non_zeros = 100000
     row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
     col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
     data = np.random.random(size=nbr_non_zeros)
