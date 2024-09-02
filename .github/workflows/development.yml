@@ -120,6 +120,8 @@ jobs:
     name: combine-coverage
     runs-on: ubuntu-22.04
     needs: test
+    if: |
+      always()
     permissions:
       pull-requests: write
       contents: write
