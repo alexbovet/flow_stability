@@ -98,9 +98,54 @@ jobs:
       - name: Tests without memory tracking
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --cov-report=xml --durations=0 -k 'not _memory'
+        env:
+          COVERAGE_FILE: ".coverage.no_memory"
+      - name: Store coverage file
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-no_memory
+          path: .coverage.no_memory
       - name: Tests with memory tracking
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./ --cov-report=xml --durations=0 --memray -k '_memory'
+        env:
+          COVERAGE_FILE: ".coverage.memory"
+      - name: Store coverage file
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-memory
+          path: .coverage.memory
+
+  coverage:
+    name: Combine coverage
+    runs-on: ubuntu-22.04
+    needs: build
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        id: download
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: Coverage comment
+        id: coverage_comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_COVERAGE_FILES: true
+
+      - name: Store Pull Request comment to be posted
+        uses: actions/upload-artifact@v4
+        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
 
   lint:
     runs-on: ubuntu-latest
