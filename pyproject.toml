@@ -51,10 +51,15 @@ build-backend = "setuptools.build_meta"
 [tool.coverage.run]
 relative_files = true
 # plugins = ["Cython.Coverage", ]
-source = ["flowstab", ]
+source = ["src/flowstab", ]
 omit = [
   "tests",
   "*__init__.py",
+  ]
+[tool.coverage.paths]
+source = [
+  "src/flowstab/", 
+  "venv/lib/python*/site-packages/flowstab/"
   ]
 
 # This is for the linting with ruff
