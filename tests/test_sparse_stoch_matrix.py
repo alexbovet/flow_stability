@@ -7,6 +7,21 @@ from scipy.sparse import (
     eye,
 )
 
+def test_timing(capfd):
+    """Bacic operations with the 'spares_stoch_mat' class
+    """
+    from time import sleep
+    from flowstab.SparseStochMat import timing
+    
+    @timing
+    def sleep_some(some=0.3):
+        return sleep(some)
+    sleep_some()
+    out, err = capfd.readouterr()
+    print(out)
+    print(err)
+
+
 def test_SSM_small(get_csr_matrix_small):
     """Bacic operations with the 'spares_stoch_mat' class
     """
