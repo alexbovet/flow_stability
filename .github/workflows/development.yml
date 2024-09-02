@@ -117,9 +117,9 @@ jobs:
           path: .coverage.memory
 
   coverage:
-    name: Combine coverage
+    name: combine-coverage
     runs-on: ubuntu-22.04
-    needs: build
+    needs: test
     permissions:
       pull-requests: write
       contents: write
@@ -136,8 +136,7 @@ jobs:
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
-          GITHUB_TOKEN: ${{ github.token }}
-          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_COVERAGE_FILES: true
 
       - name: Store Pull Request comment to be posted
