@@ -15,7 +15,7 @@ def test_SSM_small(get_csr_matrix_small):
     # ###
     # inti from scipy.sparse.csr_matrix
     A_csr = get_csr_matrix_small
-    for i in range(10000):
+    for _ in range(10000):
         ssm = SSM.from_full_csr_matrix(A_csr)
         np.testing.assert_equal(A_csr.toarray(), ssm.toarray(), strict=False)
     
@@ -47,7 +47,7 @@ def test_SSM_from_full_csr_cython_memory(get_csr_matrix_large):
     from flowstab.SparseStochMat import (
         _css
     )
-    A_csr, density = get_csr_matrix_large
+    A_csr, _ = get_csr_matrix_large
     A_csr_data = A_csr.data.astype(np.float64)
     diag_val = 1.0
     nz_rows, nz_cols = (
