@@ -97,10 +97,9 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests without memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --durations=0 -k 'not _memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src --durations=0 -k 'not _memory'
         env:
           COVERAGE_FILE: "_coverage.no_memory"
-
       - name: Store coverage file
         if: always()
         uses: actions/upload-artifact@v4
@@ -125,7 +124,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests with memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --durations=0 --memray -k '_memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src --durations=0 --memray -k '_memory'
         env:
           COVERAGE_FILE: "_coverage.memory"
       - name: Store coverage file
