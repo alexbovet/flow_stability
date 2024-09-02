@@ -72,7 +72,10 @@ jobs:
           path: dist
       - name: Install package
         run: |
-          venv/bin/python -m pip install dist/*.whl
+          # venv/bin/python -m pip install dist/*.whl
+          # NOTE: above code installs the built wheel into the site-packages folder.
+          #       For code coverage, however, we want to use a local install
+          venv/bin/python -m pip install -e .
       - name: Cache venv
         uses: actions/cache/save@v4
         with:
