@@ -97,7 +97,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests without memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./ --cov-report=xml --durations=0 -k 'not _memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./src/flowstab/ --cov-report=xml --durations=0 -k 'not _memory'
       - name: Tests with memory tracking
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=./ --cov-report=xml --durations=0 --memray -k '_memory'
