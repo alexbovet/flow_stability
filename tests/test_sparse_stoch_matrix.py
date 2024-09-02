@@ -14,12 +14,13 @@ def test_timing(capfd):
     from flowstab.SparseStochMat import timing
     
     @timing
-    def sleep_some(some=0.3):
+    def sleep_some(some=0.3, **params):
         return sleep(some)
-    sleep_some()
+    log_message = "END"
+    sleep_some(verbose=True, log_message=log_message)
     out, err = capfd.readouterr()
-    print(out)
-    print(err)
+    assert ~log_message.startswith("END")
+    assert log_message in out
 
 
 def test_SSM_small(get_csr_matrix_small):
