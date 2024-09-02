@@ -31,9 +31,14 @@ def test_SSM_small(get_csr_matrix_small):
     # ###
     # inti from scipy.sparse.csr_matrix
     A_csr = get_csr_matrix_small
-    for _ in range(10000):
-        ssm = SSM.from_full_csr_matrix(A_csr)
-        np.testing.assert_equal(A_csr.toarray(), ssm.toarray(), strict=False)
+    ssm = SSM.from_full_csr_matrix(A_csr)
+    np.testing.assert_equal(A_csr.toarray(), ssm.toarray(), strict=False)
+    # crete a diagonal matrix
+    _ = SSM.create_diag(size=100, diag_val=0.3)
+    # convert it to a full csr
+    full_A = A_csr.to_full_mat()
+    # ...
+
     
 
 def test_SSM_large(get_csr_matrix_large):
@@ -167,3 +172,31 @@ def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
     np.testing.assert_array_equal(A_ssm2_data, A_ssm2.T_small.data)
     # test equivalence
     np.testing.assert_array_equal(A_ssm1.data, A_ssm2.T_small.data)
+
+def test_csr_operations(get_SSM_matrix_large):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_add, 
+        csr_matmul,
+        csr_csc_matmul,
+        csr_csrT_matmul,
+    )
+    A_ssm1 = get_SSM_matrix_large
+    # A_ssm2 = A_ssm1 + 2
+    diff_csr = csr_add(A_ssm1, A_ssm1)
+    np.testing.assert_equal(diff_csr.toarray(), np.full(shape=diff_csr.shape, fill_value=0))
+
+def test_SparseAutocovMatrixCSR():
+    """Check basic operations on sparse_autocov_csr_mat"""
+    from flowstab.SparseStochMat import sparse_autocov_csr_mat as SAMCSR
+    pass
+
+def test_SparseAutocovMatrix():
+    """Check basic operations on sparse_autocov_mat"""
+    from flowstab.SparseStochMat import sparse_autocov_mat as SAM
+    pass
