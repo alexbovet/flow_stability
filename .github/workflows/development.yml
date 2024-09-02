@@ -106,7 +106,7 @@ jobs:
         with:
           name: coverage-no_memory
           path: .coverage.no_memory
-          include_hidden_files: true
+          include-hidden-files: true
 
   test-memory:
     runs-on: ubuntu-latest
@@ -134,7 +134,7 @@ jobs:
         with:
           name: coverage-memory
           path: .coverage.memory
-          include_hidden_files: true
+          include-hidden-files: true
 
   coverage:
     name: combine-coverage
