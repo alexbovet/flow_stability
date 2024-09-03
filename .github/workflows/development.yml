@@ -23,11 +23,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Build venv
         run: |
           python -m pip install --upgrade pip
           python -m venv ./venv
+          # with mkl support
+          ./venv/bin/python -m pip install -r requirements/mkl.txt
           ./venv/bin/python -m pip install .[testing]
         if: steps.cached-venv.outputs.cache-hit != 'true'
       - name: Cache venv
@@ -47,7 +49,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Build wheel
         run: |
           venv/bin/python -m pip install build
@@ -67,7 +69,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Getting build wheel
         uses: actions/download-artifact@v4
         with:
@@ -126,12 +128,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
-      # Note: we use cache here since artifacts do not keep permissions
-      - name: Getting the venv
-        uses: actions/cache/restore@v4
-        with:
-          path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+      - name: Build venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv ./venv
+          # with mkl support
+          ./venv/bin/python -m pip install .[testing,mkl]
+      # # Note: we use cache here since artifacts do not keep permissions
+      # - name: Getting the venv
+      #   uses: actions/cache/restore@v4
+      #   with:
+      #     path: ./venv
+      #     key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests with memory tracking
         run: |
           venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=flowstab --durations=0 --memray -k '_memory'

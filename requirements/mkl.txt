@@ -1,0 +1,3 @@
+intel-scipy
+# -i https://pypi.anaconda.org/intel/simple
+# scipy>=1.10

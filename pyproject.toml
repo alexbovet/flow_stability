@@ -24,9 +24,14 @@ Repository = "https://github.com/alexbovet/flow_stability.git"
 Documentation = "https://flow-stability.readthedocs.io/"
 Issues = "https://github.com/alexbovet/flow_stability/issues"
 
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
-readme = {file = ["README.md"]}
+[tool.setuptools.dynamic.readme]
+file = ["README.md"]
+
+[tool.setuptools.dynamic.dependencies]
+file = ["requirements/base.txt"]
+
+[tool.setuptools.dynamic.optional-dependencies.mkl]
+file = ["requirements/mkl.txt"]
 
 [tool.setuptools.dynamic.optional-dependencies.testing]
 file = ["tests/requirements.txt"]
