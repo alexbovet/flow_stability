@@ -150,7 +150,7 @@ def test_SSM_from_full_csr_equivalence(get_csr_matrix_large):
     np.testing.assert_array_equal(nc_indptr, c_indptr)
     np.testing.assert_array_equal(nc_nz_rowcols, c_nz_rowcols)
 
-def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
+def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
     """Make sure the cython and pure python implementations are equivalent
     """
     from flowstab.SparseStochMat import (
@@ -159,7 +159,7 @@ def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
     from flowstab._cython_sparse_stoch_subst import (
         inplace_csr_row_normalize
     )
-    A_ssm1 = get_SSM_matrix_large
+    A_ssm1 = SSM_matrix_creator(nbr=1)[0]
     A_ssm1_data = copy(A_ssm1.T_small.data)
     A_ssm2 = copy(A_ssm1)
     A_ssm2_data = copy(A_ssm2.T_small.data)
@@ -173,7 +173,11 @@ def test_SSM_inplace_row_normalize_equivalence(get_SSM_matrix_large):
     # test equivalence
     np.testing.assert_array_equal(A_ssm1.data, A_ssm2.T_small.data)
 
-def test_csr_operations(get_SSM_matrix_large):
+# ###
+# Testing the csr operations
+# ###
+
+def test_csr_add_compare(csr_matrix_creator):
     """Check the csr_* funcions
 
     .. note::
@@ -186,10 +190,87 @@ def test_csr_operations(get_SSM_matrix_large):
         csr_csc_matmul,
         csr_csrT_matmul,
     )
-    A_ssm1 = get_SSM_matrix_large
-    # A_ssm2 = A_ssm1 + 2
-    diff_csr = csr_add(A_ssm1, A_ssm1)
-    np.testing.assert_equal(diff_csr.toarray(), np.full(shape=diff_csr.shape, fill_value=0))
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=100000, nbr_non_zeros=2000)
+    sum_csr_native = A_ssm1 + A_ssm2
+    sum_csr = csr_add(A_ssm1, A_ssm2)
+    np.testing.assert_equal(sum_csr_native.indices, sum_csr.indices)
+    np.testing.assert_equal(sum_csr_native.indptr, sum_csr.indptr)
+    np.testing.assert_allclose(sum_csr_native.data, sum_csr.data)
+
+def test_csr_add_memory(csr_matrix_creator):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_add, 
+        csr_matmul,
+        csr_csc_matmul,
+        csr_csrT_matmul,
+    )
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=100000, nbr_non_zeros=2000)
+    _ = csr_add(A_ssm1, A_ssm2)
+
+def test_csr_add_native_memory(csr_matrix_creator):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_add, 
+        csr_matmul,
+        csr_csc_matmul,
+        csr_csrT_matmul,
+    )
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=100000, nbr_non_zeros=2000)
+    _ = A_ssm1 + A_ssm2
+
+def test_csr_matmul_compare(csr_matrix_creator):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_matmul,
+    )
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=10000000, nbr_non_zeros=200000)
+    mmul_csr_native = A_ssm1 @ A_ssm2
+    mmul_csr = csr_matmul(A_ssm1, A_ssm2)
+    np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
+    np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
+
+def test_csr_matmul_native_memory(csr_matrix_creator):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_matmul,
+    )
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=10000000, nbr_non_zeros=200000)
+    _ = A_ssm1 @ A_ssm2
+
+def test_csr_matmul_memory(csr_matrix_creator):
+    """Check the csr_* funcions
+
+    .. note::
+      This function adds csr_matrix objects, so it should be compared to the built in addition
+
+    """
+    from flowstab.SparseStochMat import (
+        csr_matmul,
+    )
+    A_ssm1, A_ssm2 = csr_matrix_creator(nbr=2, size=10000000, nbr_non_zeros=200000)
+    _ = csr_matmul(A_ssm1, A_ssm2)
 
 def test_SparseAutocovMatrixCSR():
     """Check basic operations on sparse_autocov_csr_mat"""
@@ -201,17 +282,17 @@ def test_SparseAutocovMatrix():
     from flowstab.SparseStochMat import sparse_autocov_mat as SAM
     pass
 
-def test_sparse_matmul_mkl_memory(get_csr_matrix_pair):
+def test_sparse_matmul_mkl_memory(csr_matrix_creator):
     """
     """
     from sparse_dot_mkl import dot_product_mkl as mkl_matmul
-    A, B = get_csr_matrix_pair
+    A, B = csr_matrix_creator(nbr=2)
     for _ in range(1000):
         _ = mkl_matmul(A, B)
 
-def test_sparse_matmul_memory(get_csr_matrix_pair):
+def test_sparse_matmul_memory(csr_matrix_creator):
     """
     """
-    A, B = get_csr_matrix_pair
+    A, B = csr_matrix_creator(nbr=2)
     for _ in range(1000):
         _ = A @ B

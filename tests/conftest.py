@@ -25,32 +25,41 @@ def get_csr_matrix_large():
     return csr_matrix((data, (row, col)), shape=(size, size)), density
 
 @pytest.fixture(scope='session')
-def get_csr_matrix_pair():
+def csr_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
     size = 10000000
     nbr_non_zeros = 100000
-    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    data = np.random.random(size=nbr_non_zeros)
-    A = csr_matrix((data, (row, col)), shape=(size, size))
-    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    data = np.random.random(size=nbr_non_zeros)
-    B = csr_matrix((data, (row, col)), shape=(size, size))
-    return A, B
 
-@pytest.fixture(scope='function')
-def get_SSM_matrix_large():
+    def _get_matrix(nbr:int=1,size:int=size, nbr_non_zeros:int=nbr_non_zeros):
+        matrices = []
+        for _ in range(nbr):
+            row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+            col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+            data = np.random.random(size=nbr_non_zeros)
+            a_csr = csr_matrix((data, (row, col)), shape=(size, size))
+            a_csr.indptr = a_csr.indptr.astype(np.int32, copy=False)
+            a_csr.indices = a_csr.indices.astype(np.int32, copy=False)
+            matrices.append(a_csr)
+        return tuple(matrices)
+    return _get_matrix
+
+@pytest.fixture(scope='session')
+def SSM_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
     from flowstab.SparseStochMat import sparse_stoch_mat
     size = 1000000
     nbr_non_zeros = 1000
-    row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
-    data = np.random.randint(0,1, size=nbr_non_zeros)
-    _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
-    _a_csr.indptr = _a_csr.indptr.astype(np.int64, copy=False)
-    _a_csr.indices = _a_csr.indices.astype(np.int64, copy=False)
-    return sparse_stoch_mat.from_full_csr_matrix(_a_csr)
+    def _get_matrix(nbr:int=1,size:int=size, nbr_non_zeros:int=nbr_non_zeros):
+        matrices = []
+        for _ in range(nbr):
+            row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+            col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
+            data = np.random.randint(0,1, size=nbr_non_zeros)
+            _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
+            _a_csr.indptr = _a_csr.indptr.astype(np.int32, copy=False)
+            _a_csr.indices = _a_csr.indices.astype(np.int64, copy=False)
+            matrices.append(sparse_stoch_mat.from_full_csr_matrix(_a_csr))
+        return tuple(matrices)
+    return _get_matrix
