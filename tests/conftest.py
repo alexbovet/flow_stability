@@ -1,7 +1,7 @@
 import pytest
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 
 @pytest.fixture(scope='function')
 def get_csr_matrix_small():
@@ -25,19 +25,25 @@ def get_csr_matrix_large():
     return csr_matrix((data, (row, col)), shape=(size, size)), density
 
 @pytest.fixture(scope='session')
-def csr_matrix_creator():
+def cs_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
-    size = 10000000
-    nbr_non_zeros = 100000
+    size = 1000000
+    nbr_non_zeros = 10000
 
-    def _get_matrix(nbr:int=1,size:int=size, nbr_non_zeros:int=nbr_non_zeros):
+    def _get_matrix(nbr:int=1,size:int=size, nbr_non_zeros:int=nbr_non_zeros, mode='r'):
         matrices = []
+        assert mode in ['r', 'c']
+        if mode == 'r':
+            matrix_gen = csr_matrix
+        else:
+            matrix_gen = csc_matrix
+
         for _ in range(nbr):
             row = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
             col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
             data = np.random.random(size=nbr_non_zeros)
-            a_csr = csr_matrix((data, (row, col)), shape=(size, size))
+            a_csr = matrix_gen((data, (row, col)), shape=(size, size))
             a_csr.indptr = a_csr.indptr.astype(np.int32, copy=False)
             a_csr.indices = a_csr.indices.astype(np.int32, copy=False)
             matrices.append(a_csr)
