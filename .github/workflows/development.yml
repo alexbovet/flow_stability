@@ -142,7 +142,7 @@ jobs:
       #     key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
       - name: Tests with memory tracking
         run: |
-          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=flowstab --durations=0 --memray -k '_memory'
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=flowstab --durations=0 --memray --most-allocations=0 -k '_memory'
         env:
           COVERAGE_FILE: ".coverage.memory"
       - name: Store coverage file
