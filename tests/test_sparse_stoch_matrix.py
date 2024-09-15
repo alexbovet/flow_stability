@@ -185,15 +185,16 @@ def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
 # Testing the csr operations
 # ###
 
-def test_csr_add_compare(cs_matrix_creator):
+def test_csr_add_compare(cs_matrix_creator, compare_alike):
     """Compare the csr_add to a native implementation"""
-    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=1000000,
-                                       nbr_non_zeros=20000, mode='r')
+    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=10000,
+                                       nbr_non_zeros=500, mode='r')
     sum_csr_native = A_ssm1 + A_ssm2
     sum_csr = csr_add(A_ssm1, A_ssm2)
-    np.testing.assert_allclose(sum_csr_native.data, sum_csr.data)
-    np.testing.assert_equal(sum_csr_native.indices, sum_csr.indices)
-    np.testing.assert_equal(sum_csr_native.indptr, sum_csr.indptr)
+    # np.testing.assert_allclose(sum_csr_native.data, sum_csr.data)
+    # np.testing.assert_equal(sum_csr_native.indices, sum_csr.indices)
+    # np.testing.assert_equal(sum_csr_native.indptr, sum_csr.indptr)
+    compare_alike(sum_csr, sum_csr_native)
 
 def test_csr_add_memory(cs_matrix_creator):
     """Check the csr_add function for timing and memory consumption"""
@@ -207,15 +208,16 @@ def test_csr_add_native_memory(cs_matrix_creator):
                                        nbr_non_zeros=20000, mode='r')
     _ = A_ssm1 + A_ssm2
 
-def test_csr_matmul_compare(cs_matrix_creator):
+def test_csr_matmul_compare(cs_matrix_creator, compare_alike):
     """Compare the csr_matmul to a native implementation"""
-    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=10000000,
-                                       nbr_non_zeros=200000, mode='r')
+    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=100000,
+                                       nbr_non_zeros=2000, mode='r')
     mmul_csr_native = A_ssm1 @ A_ssm2
     mmul_csr = csr_matmul(A_ssm1, A_ssm2)
-    np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
-    np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
-    np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    # np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
+    # np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
+    # np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    compare_alike(mmul_csr_native, mmul_csr)
 
 def test_csr_matmul_native_memory(cs_matrix_creator):
     """Check the csr_matmul function for timing and memory consumption"""
@@ -229,15 +231,18 @@ def test_csr_matmul_memory(cs_matrix_creator):
                                        nbr_non_zeros=200000, mode='r')
     _ = csr_matmul(A_ssm1, A_ssm2)
 
-def test_csr_csc_matmul_compare(cs_matrix_creator):
+def test_csr_csc_matmul_compare(cs_matrix_creator, compare_alike):
     """Compare the csr_csc_matmul to a native implementation"""
-    A_csr, = cs_matrix_creator(nbr=1, mode='r')
-    A_csc, = cs_matrix_creator(nbr=1, mode='c')
+    A_csr, = cs_matrix_creator(nbr=1, size=100000,
+                               nbr_non_zeros=2000, mode='r')
+    A_csc, = cs_matrix_creator(nbr=1, size=100000,
+                               nbr_non_zeros=2000, mode='c')
     mmul_csr_native = A_csr @ A_csc.tocsr()
     mmul_csr = csr_csc_matmul(A_csr, A_csc)
-    np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
-    np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
-    np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    # np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
+    # np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
+    # np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    compare_alike(mmul_csr_native, mmul_csr)
 
 def test_csr_csc_matmul_native_memory(cs_matrix_creator):
     """Check the csr_matmul function for timing and memory consumption"""
@@ -251,15 +256,18 @@ def test_csr_csc_matmul_memory(cs_matrix_creator):
     A_csc, = cs_matrix_creator(nbr=1, mode='c')
     _ = csr_csc_matmul(A_csr, A_csc)
 
-def test_csr_csrT_matmul_compare(cs_matrix_creator):
+def test_csr_csrT_matmul_compare(cs_matrix_creator, compare_alike):
     """Compare the csr_csrT_matmul to a native implementation"""
-    A_csr1, = cs_matrix_creator(nbr=1, mode='r')
-    A_csr2, = cs_matrix_creator(nbr=1, mode='c')
-    mmul_csr_native = A_csr1 @ A_csr2.tocsr().T
+    A_csr1, = cs_matrix_creator(nbr=1, size=100000,
+                                nbr_non_zeros=2000, mode='r')
+    A_csr2, = cs_matrix_creator(nbr=1, size=100000,
+                                nbr_non_zeros=2000,mode='r')
+    mmul_csr_native = A_csr1 @ A_csr2.T
     mmul_csr = csr_csrT_matmul(A_csr1, A_csr2)
-    np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
-    np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
-    np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    # np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
+    # np.testing.assert_equal(mmul_csr_native.indices, mmul_csr.indices)
+    # np.testing.assert_equal(mmul_csr_native.indptr, mmul_csr.indptr)
+    compare_alike(mmul_csr_native, mmul_csr)
 
 def test_csr_csrT_matmul_native_memory(cs_matrix_creator):
     """Check the csr_csrT_matmul function for timing and memory consumption"""

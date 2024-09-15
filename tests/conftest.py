@@ -69,3 +69,21 @@ def SSM_matrix_creator():
             matrices.append(sparse_stoch_mat.from_full_csr_matrix(_a_csr))
         return tuple(matrices)
     return _get_matrix
+
+@pytest.fixture(scope='session')
+def compare_alike():
+    def compare_sparse_matrice(A, B):
+        """Checks if two csr matrices describe the same matrix
+
+        csr notation can deviate in that data and indices can be re-arranged
+        within a indptr slice.
+        """
+        assert len(A.indptr) == len(B.indptr)
+        for i in range(len(A.indptr) - 1):
+            A_s, A_e = A.indptr[i:i+2]
+            B_s, B_e = B.indptr[i:i+2]
+            B_sorted = B.indices[B_s: B_e].argsort()
+            A_sorted = A.indices[A_s: A_e].argsort()
+            np.testing.assert_equal(A.indices[A_s:A_e][A_sorted], B.indices[B_s:B_e][B_sorted])
+            np.testing.assert_equal(B.data[B_s:B_e][B_sorted], A.data[A_s:A_e][A_sorted])
+    return compare_sparse_matrice
