@@ -181,8 +181,16 @@ def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
     # test equivalence
     np.testing.assert_array_equal(A_ssm1.data, A_ssm2.T_small.data)
 
-# ###
-# Testing the csr operations
+def test_rebuild_nnz_rowcol(cs_matrix_creator, compare_alike):
+    """Test conversions from ssm to csr and back
+    """
+    from flowstab.SparseStochMat import sparse_stoch_mat as SSM
+    A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
+    A_ssm = SSM.from_full_csr_matrix(Tcsr=A_csr)
+    A_rebuild = A_ssm.to_full_mat()
+    compare_alike(A_csr, A_rebuild)
+
+# ### Testing the csr operations
 # ###
 
 def test_csr_add_compare(cs_matrix_creator, compare_alike):
@@ -261,7 +269,7 @@ def test_csr_csrT_matmul_compare(cs_matrix_creator, compare_alike):
     A_csr1, = cs_matrix_creator(nbr=1, size=100000,
                                 nbr_non_zeros=2000, mode='r')
     A_csr2, = cs_matrix_creator(nbr=1, size=100000,
-                                nbr_non_zeros=2000,mode='r')
+                                nbr_non_zeros=2000, mode='r')
     mmul_csr_native = A_csr1 @ A_csr2.T
     mmul_csr = csr_csrT_matmul(A_csr1, A_csr2)
     # np.testing.assert_allclose(mmul_csr_native.data, mmul_csr.data)
