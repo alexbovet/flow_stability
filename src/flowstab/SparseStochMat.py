@@ -27,6 +27,7 @@ from collections.abc import Callable
 from copy import copy
 from functools import wraps
 
+from typing import Union
 import numpy as np
 from numpy.typing import NDArray
 from scipy.sparse import (
@@ -1233,7 +1234,8 @@ class sparse_autocov_csr_mat:
             
     """
 
-    def __init__(self, PT, S, symmetric=False):
+    def __init__(self, PT:csr_matrix, S:csr_matrix,
+                 symmetric:bool=False):
 
         assert isspmatrix_csr(S)
         assert isspmatrix_csr(PT)
@@ -1516,7 +1518,10 @@ class sparse_autocov_mat:
             
     """
 
-    def __init__(self, PT, p1, p2, PT_symmetric=False):
+    def __init__(self, PT:csr_matrix,
+                 p1: Union[float, int, np.number, NDArray],
+                 p2: Union[float, int, np.number, NDArray],
+                 PT_symmetric:bool=False):
 
         assert isspmatrix_csr(PT)
         if isinstance(p1, np.ndarray) and isinstance(p2, np.ndarray):
