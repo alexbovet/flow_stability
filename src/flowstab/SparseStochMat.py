@@ -220,7 +220,7 @@ class sparse_stoch_mat:
         return cls(*_css.sparse_stoch_from_full_csr(
             np.array(nz_rowcols, dtype=np.int32),
             Tcsr_data,
-            Tcsr.indices,
+            Tcsr.indices.astype(np.int64),
             Tcsr.indptr,
             diag_val
         ))
