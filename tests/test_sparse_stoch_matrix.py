@@ -291,6 +291,38 @@ def test_csr_csrT_matmul_memory(cs_matrix_creator):
 
 # ###
 
+def test_inplace_diag_matmul_csr(cs_matrix_creator):
+    """Check the inplace diagonal multiplication for csr and csc"""
+    from flowstab.SparseStochMat import (
+        inplace_csr_matmul_diag,
+        inplace_diag_matmul_csr
+    )
+    size = 1000
+    nnz = 100
+    A_csr, = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=nnz, mode='r')
+    A_csc, = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=nnz, mode='c')
+    Acsr_array = A_csr.toarray()
+    Acsc_array = A_csc.toarray()
+    diag_array = np.random.randint(0, 10, size=size)
+    # test the csr sparse matrix column resacling
+    inplace_csr_matmul_diag(A_csr, diag_array)
+    Diag = np.diagflat(diag_array)
+    Acsr_rescaled = Acsr_array @ Diag
+    np.testing.assert_equal(A_csr.toarray(), Acsr_rescaled)
+    # now rescale the rows
+    inplace_diag_matmul_csr(A_csr, diag_array)
+    Acsr_rescaled_row =  Diag @ Acsr_rescaled
+    np.testing.assert_equal(A_csr.toarray(), Acsr_rescaled_row)
+    # test the csc sparse matrix column rescaling
+    inplace_csr_matmul_diag(A_csc, diag_array)
+    Acsc_rescaled = Acsc_array @ Diag
+    np.testing.assert_equal(A_csc.toarray(), Acsc_rescaled)
+    # now rescale the rows
+    inplace_diag_matmul_csr(A_csc, diag_array)
+    Acsc_rescaled_row =  Diag @ Acsc_rescaled
+    np.testing.assert_equal(A_csc.toarray(), Acsc_rescaled_row)
+
+
 def test_SparseAutocovMatrixCSR():
     """Check basic operations on sparse_autocov_csr_mat"""
     from flowstab.SparseStochMat import sparse_autocov_csr_mat as SAMCSR
