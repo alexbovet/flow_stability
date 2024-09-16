@@ -749,11 +749,6 @@ class sparse_stoch_mat:
         return self.__mul__(o)
 
 
-
-
-
-
-
 class SPA:
     """sparse accumulator
     with multiple switch technique
@@ -788,6 +783,7 @@ class SPA:
 
         self.current_row = current_row
         self.LS = []
+
 
 def csr_add(A, B, use_cython=USE_CYTHON):
     """Addition of square csr matrix"""
@@ -2011,7 +2007,7 @@ def sparse_outer(p, use_mkl=True, triu=True, verbose=False, log_message=""):
 
 
 @timing
-def sparse_matmul(A,B, verbose=False, log_message=""):
+def sparse_matmul(A, B, verbose=False, log_message=""):
     """Sparse matrix multiplication.
     Uses sparse_dot_mkl if available, otherwise scipy sparse
     """
