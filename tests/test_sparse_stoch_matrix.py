@@ -44,7 +44,7 @@ def test_SSM_small(get_csr_matrix_small):
     # crete a diagonal matrix
     _ = SSM.create_diag(size=100, diag_val=0.3)
     # convert it to a full csr
-    full_A = A_csr.to_full_mat()
+    full_A = ssm.to_full_mat()
     # ...
 
     
