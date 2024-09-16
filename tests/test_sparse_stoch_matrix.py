@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 import tracemalloc
 
@@ -39,6 +40,7 @@ def test_SSM_small(get_csr_matrix_small):
     # ###
     # inti from scipy.sparse.csr_matrix
     A_csr = get_csr_matrix_small
+    print(f"{A_csr[1,2]=}")
     ssm = SSM.from_full_csr_matrix(A_csr)
     np.testing.assert_equal(A_csr.toarray(), ssm.toarray(), strict=False)
     # crete a diagonal matrix
@@ -323,15 +325,41 @@ def test_inplace_diag_matmul_csr(cs_matrix_creator):
     np.testing.assert_equal(A_csc.toarray(), Acsc_rescaled_row)
 
 
+# ###
+# Testing the autocovaraince matrix class
+# ###
 def test_SparseAutocovMatrixCSR():
     """Check basic operations on sparse_autocov_csr_mat"""
     from flowstab.SparseStochMat import sparse_autocov_csr_mat as SAMCSR
+    # ignoring this for now
     pass
 
-def test_SparseAutocovMatrix():
+@pytest.mark.parametrize("p1, p2, size",
+                         [(np.random.random(size=100000),
+                           np.random.random(size=100000), 100000),
+                          (0.2, 0.3, 100000),
+                          (0.4, None, 100000),
+                          (None, 0.1, 100000),
+                          (None, None, 100000)])
+def test_SparseAutocovMatrix(p1, p2, size, cs_matrix_creator):
     """Check basic operations on sparse_autocov_mat"""
     from flowstab.SparseStochMat import sparse_autocov_mat as SAM
-    pass
+    from flowstab.SparseStochMat import (
+        inplace_diag_matmul_csr
+    )
+    T = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=1000)[0]
+    PT = T.copy()
+    if p1 is not None:
+        if not isinstance(p1, np.ndarray):
+            _p1 = np.full(shape=size, fill_value=p1)
+        else:
+            _p1 = p1
+        inplace_diag_matmul_csr(PT, _p1)
+    # testing various init methods
+    np.testing.assert_equal(
+        SAM(PT=PT, p1=p1, p2=p2).PT.data, 
+        SAM.from_T(T=T, p1=p1, p2=p2).PT.data
+    )
 
 def test_sparse_matmul_mkl_memory(csr_matrix_creator):
     """
