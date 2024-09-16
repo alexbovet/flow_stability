@@ -32,6 +32,7 @@ from numpy.typing import NDArray
 from scipy.sparse import (
     coo_matrix,
     csr_matrix,
+    csc_matrix,
     eye,
     isspmatrix_csc,
     isspmatrix_csr,
@@ -1166,10 +1167,11 @@ def rebuild_nnz_rowcol(T_small:csr_matrix, nonzero_indices:NDArray,
 
 
 def inplace_csr_matmul_diag(A, diag_vec):
-    """Inplace multiply a csr matrix A with a diag matrix D = diag(diag_vec):
+    """Inplace multiply a csr matrix A with a diag matrix D
     
     A = A @ D
-        
+
+    With D = np.diagflat(diag_vec) and A a scipy.sparse.cs[rc]_matrix,
     i.e. column i of A is scaled by diag_vec[i]
         
     """
@@ -1196,11 +1198,12 @@ def inplace_csr_matmul_diag(A, diag_vec):
 
 
 
-def inplace_diag_matmul_csr(A, diag_vec):
-    """Inplace multiply a diag matrix D = diag(diag_vec) with a csr matrix A:
+def inplace_diag_matmul_csr(A:csr_matrix | csc_matrix, diag_vec: NDArray)->None:
+    """Inplace multiply a diag matrix D with a csr matrix A:
     
     A = D @ A
         
+    With D = np.diagflat(diag_vec) and A a scipy.sparse.cs[rc]_matrix,
     i.e. row i of A is scaled by diag_vec[i]
         
     """
