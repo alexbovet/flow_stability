@@ -1567,7 +1567,11 @@ class sparse_autocov_mat:
     @classmethod
     def from_T(cls, T, p1=None, p2=None):
         """Generate autocovariance matrix from transition matrix T as
-        S = diag(p1) @ T - p1^T @ p2.
+
+        .. math::
+            :label: autocov-matrix
+
+            S = diag(p1) @ T - p1^T @ p2.
         
         Parameters
         ----------
@@ -1608,9 +1612,16 @@ class sparse_autocov_mat:
         return cls(PT=PT, p1=p1, p2=p2)
 
     @classmethod
-    def from_T_forward(cls, T, p1=None, p2=None):
+    def from_T_forward(cls, T:csr_matrix,
+                       p1:Union[None, NDArray]=None,
+                       p2:Union[None, NDArray]=None):
         """Generate the forward autocovariance matrix from transition matrix T as
-        S = diag(p1) @ T @ diag(1/p2) @ T.T @ diag(p1) - p1.T @ p1.
+
+        .. math::
+            :label: forward-autocov-matrix
+
+            S = diag(p1) @ T @ diag(1/p2) @ T.T @ diag(p1) - p1.T @ p1.
+
         
         Parameters
         ----------
