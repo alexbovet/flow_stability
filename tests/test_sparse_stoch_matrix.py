@@ -335,12 +335,12 @@ def test_SparseAutocovMatrixCSR():
     pass
 
 @pytest.mark.parametrize("p1, p2, size",
-                         [(np.random.random(size=100000),
-                           np.random.random(size=100000), 100000),
-                          (0.2, 0.3, 100000),
-                          (0.4, None, 100000),
-                          (None, 0.1, 100000),
-                          (None, None, 100000)])
+                         [(np.random.random(size=1000),
+                           np.random.random(size=1000), 1000),
+                          (0.2, 0.3, 1000),
+                          (0.4, None, 1000),
+                          (None, 0.1, 1000),
+                          (None, None, 1000)])
 def test_SAM_init(p1, p2, size, cs_matrix_creator):
     """Check basic operations on sparse_autocov_mat"""
     from flowstab.SparseStochMat import sparse_autocov_mat as SAM
@@ -357,6 +357,8 @@ def test_SAM_init(p1, p2, size, cs_matrix_creator):
         inplace_diag_matmul_csr(PT, _p1)
     # testing various init methods with from_T
     sam = SAM(PT=PT, p1=p1, p2=p2)
+    sam_copy = sam.copy()
+    sam_array = sam.toarray()
 
 @pytest.mark.parametrize("p1, p2, size",
                          [(np.random.random(size=100000),
