@@ -1272,9 +1272,9 @@ class sparse_autocov_csr_mat:
 
     def copy(self):
 
-        return self.__class__(self.PT.copy(),
-                              self.S.copy(),
-                              copy(self.PT_symmetric))
+        return self.__class__(PT=self.PT.copy(),
+                              S=self.S.copy(),
+                              symmetric=self.PT_symmetric)
 
     def toarray(self):
 
@@ -1438,9 +1438,9 @@ class sparse_autocov_csr_mat:
 
 
 
-        return self.__class__(newPT.tocsr(),
-                              newS.tocsr(),
-                              self.PT_symmetric)
+        return self.__class__(PT=newPT.tocsr(),
+                              S=newS.tocsr(),
+                              symmetric=self.PT_symmetric)
 
 
     def is_all_zeros(self):
@@ -1671,10 +1671,10 @@ class sparse_autocov_mat:
 
     def copy(self):
 
-        return self.__class__(self.PT.copy(),
-                              copy(self.p1),
-                              copy(self.p2),
-                              copy(self.PT_symmetric))
+        return self.__class__(PT=self.PT.copy(),
+                              p1=copy(self.p1),
+                              p2=copy(self.p2),
+                              PT_symmetric=self.PT_symmetric)
 
     def toarray(self):
 
@@ -1682,7 +1682,7 @@ class sparse_autocov_mat:
             return self.PT.toarray() - np.ones(self.shape)*self.p1p2
 
         else:
-            return self.PT.toarray() - np.outer(self.p1,self.p2)
+            return self.PT.toarray() - np.outer(self.p1, self.p2)
 
 
     def get_submat_sum(self, row_idx, col_idx):
@@ -1868,7 +1868,9 @@ class sparse_autocov_mat:
         newp1 = newp1/newp1.sum()
         newp2 = newp2/newp2.sum()
 
-        return self.__class__(newPT.tocsr(), newp1, newp2, self.PT_symmetric)
+        return self.__class__(PT=newPT.tocsr(),
+                              p1=newp1, p2=newp2,
+                              PT_symmetric=self.PT_symmetric)
 
 
     def is_all_zeros(self):
