@@ -18,6 +18,9 @@
 
 
 """
+from __future__ import annotations
+from typing import Collection
+
 import importlib.util
 import os
 import time
@@ -56,10 +59,22 @@ class Partition:
     and a node to cluster dict.
     """
 
-    def __init__(self, num_nodes,
-                 cluster_list=None,
-                 node_to_cluster_dict=None,
-                 check_integrity=False):
+    def __init__(self,
+                 num_nodes:int,
+                 cluster_list:Collection|None=None,
+                 node_to_cluster_dict:dict|None=None,
+                 check_integrity:bool=False):
+        """
+        Parameters
+        ----------
+        num_nodes:
+          The number of nodes in the partition
+        cluster_list:
+          A list of clusters with each cluster being a set of nodes
+        node_to_custer_dict:
+          A mapping that maps each node to the index of the corresponding
+          cluster in `cluster_list`
+        """
 
         self.num_nodes = num_nodes
 
