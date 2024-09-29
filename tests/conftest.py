@@ -87,3 +87,20 @@ def compare_alike():
             np.testing.assert_equal(A.indices[A_s:A_e][A_sorted], B.indices[B_s:B_e][B_sorted])
             np.testing.assert_equal(B.data[B_s:B_e][B_sorted], A.data[A_s:A_e][A_sorted])
     return compare_sparse_matrice
+
+@pytest.fixture(scope='session')
+def probabilities_transition():
+    """Create exemplary densities and transition probabilities
+    """
+    nbr_non_zeros = 1000
+    p1 = np.ones(shape=(nbr_non_zeros), dtype=np.float64) / nbr_non_zeros
+    T = np.zeros(shape=(nbr_non_zeros, nbr_non_zeros), dtype=np.float64)
+    for i in range(nbr_non_zeros):
+        if np.random.rand() >= 0.5:
+            _t = np.random.dirichlet(np.ones(nbr_non_zeros),size=1)
+        else:
+            _t = np.zeros(shape=(nbr_non_zeros,), dtype=np.float64)
+        T[:,i] = _t
+
+    p2 = p1 @ T
+    return p1, p2, T
