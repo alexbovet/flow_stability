@@ -43,11 +43,21 @@ from .SparseStochMat import (
     sparse_matmul,
     sparse_stoch_mat,
 )
-from .TemporalNetwork import inplace_csr_row_normalize, set_to_zeroes, sparse_lapl_expm
+from .TemporalNetwork import (
+    inplace_csr_row_normalize,
+    set_to_zeroes,
+    sparse_lapl_expm
+)
 
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
-    from _cython_fast_funcs import compute_S, cython_nmi, cython_nvi, sum_Sout, sum_Sto
+    from _cython_fast_funcs import (
+        compute_S,
+        cython_nmi,
+        cython_nvi,
+        sum_Sout,
+        sum_Sto
+    )
 else:
     print("Could not load cython functions")
     USE_CYTHON = False
@@ -2378,6 +2388,7 @@ def static_clustering(A, t=1, rnd_seed=None, discrete_time_rw=False,
         return Clustering(p1=pi,p2=pi,T=T, rnd_seed=rnd_seed)
 
 
+# TODO: move to helper scripts
 def n_random_seeds(n):
     # generate n random seeds
 
