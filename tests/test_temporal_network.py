@@ -7,6 +7,8 @@ import tempfile
 import numpy as np
 import pandas as pd
 
+from scipy.sparse import csr_matrix
+
 
 from flowstab.TemporalNetwork import ContTempNetwork
 
@@ -28,6 +30,12 @@ class TestContTempNetwork:
         self.tmp_pkl = tempfile.NamedTemporaryFile(suffix='.pkl', delete=False)
         self.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
+
+    def teardown_method(self):
+        temp_dir = tempfile.gettempdir()
+        for file in os.listdir(temp_dir):
+            if 'temp.pkl' in file or 'temp.json' in file:
+                os.remove(os.path.join(temp_dir, file))
 
     def test_init_with_events_table(self):
         network = ContTempNetwork(events_table=self.events_table)
@@ -132,12 +140,6 @@ class TestContTempNetwork:
         # create a network and check that the compute times dictionary is empty
         network = ContTempNetwork()
         assert not network._compute_times
-
-    def teardown_method(self):
-        temp_dir = tempfile.gettempdir()
-        for file in os.listdir(temp_dir):
-            if 'temp.pkl' in file or 'temp.json' in file:
-                os.remove(os.path.join(temp_dir, file))
 
 def test_ContTempNetworkErrors():
     with pytest.raises(AssertionError):
