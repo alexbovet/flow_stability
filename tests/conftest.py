@@ -104,3 +104,28 @@ def probabilities_transition():
 
     p2 = p1 @ T
     return p1, p2, T
+
+@pytest.fixture(scope='session')
+def propa_transproba_creator():
+    """Creat an exemplary csr matrix that can be used for testing
+    """
+    size = 1000
+    zero_col_density = 0.05
+    def _get_p_tp(nbr:int=1, size:int=size,
+                  zero_col_density:float=zero_col_density):
+        """Generates a tuple of p1,p2,T triplets for a network of `size` nodes
+        """
+        ptps = []
+        for _ in range(nbr):
+            p1 = np.ones(shape=(size), dtype=np.float64) / size 
+            T = np.zeros(shape=(size, size), dtype=np.float64)
+            for i in range(size):
+                if np.random.rand() < 1 - zero_col_density:
+                    _t = np.random.dirichlet(np.ones(size),size=1)
+                else:
+                    _t = np.zeros(shape=(size,), dtype=np.float64)
+                T[:,i] = _t
+            p2 = p1 @ T
+            ptps.append((p1,p2,T))
+        return tuple(ptps)
+    return _get_p_tp
