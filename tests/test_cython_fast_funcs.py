@@ -16,7 +16,7 @@ def test_sum_Sto():
     expected_result = S[k, ix_cf[0]] + S[ix_cf[0], k] + S[k, ix_cf[1]] + \
             S[ix_cf[1], k] + S[k,k]
     # Compare the expected result to the actual output from sum_Sto.
-    assert np.testing.allclose(expected_result,sum_Sto(S, k, ix_cf))
+    assert np.testing.assert_allclose(expected_result,sum_Sto(S, k, ix_cf))
 
 def test_sum_Sout():
     """
@@ -32,7 +32,7 @@ def test_sum_Sout():
     expected_result = -S[k, ix_ci[0]] - S[ix_ci[0], k] - S[k, ix_ci[1]] - \
             S[ix_ci[1], k] + S[k,k]
     # Compare the expected result to the actual output from sum_Sout.
-    assert np.testing.allclose(expected_result,sum_Sout(S, k, ix_ci))
+    assert np.testing.assert_allclose(expected_result,sum_Sout(S, k, ix_ci))
 
 def test_compute_S(propa_transproba_creator):
     """
