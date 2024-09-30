@@ -1,3 +1,1 @@
-intel-scipy
-# -i https://pypi.anaconda.org/intel/simple
-# scipy>=1.10
+sparse_dot_mkl>=0.9.4
