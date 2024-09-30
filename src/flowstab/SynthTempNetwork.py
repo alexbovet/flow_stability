@@ -18,6 +18,7 @@
 
 
 """
+from typing import Union
 
 from queue import Empty, PriorityQueue
 
@@ -35,7 +36,23 @@ class Distro:
     they can also be changed when calling `Distro.draw_val(loc,scale)`
     """
 
-    def __init__(self, loc=0, scale=1, dist_type="exponential"):
+    def __init__(self,
+                 loc:Union[float, int]=0.0,
+                 scale:Union[float, int]=1,
+                 dist_type:str="exponential"):
+        """
+
+        Parameters
+        ----------
+        loc:
+          Location parameter value of a SciPy distribution object
+        scale:
+          Scale parameter value of a SciPy distribution object
+        dist_type:
+          The type of distribution that will be drawn from
+
+          Currently, only `"exponential"` (the default) is supported
+        """
         self.loc=loc
         self.scale=scale
         self.dist_type=dist_type

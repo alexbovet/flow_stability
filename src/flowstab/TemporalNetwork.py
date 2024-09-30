@@ -1871,9 +1871,6 @@ class ContTempNetwork:
             print("PID ", os.getpid(), " : ", "delta_inter_T_lin has not been computed")
 
 
-
-
-
 class ContTempInstNetwork(ContTempNetwork):
     """Continuous time temporal network with instantaneous events
     

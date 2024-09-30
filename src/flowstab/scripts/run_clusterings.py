@@ -619,6 +619,7 @@ def compute_static_clustering_fct(params):
 
     return (stat_clustering.partition.cluster_list, stat_clustering.compute_stability(), seed)
 
+# TODO: move to helper scripts
 def n_random_seeds(n):
 
     return [int.from_bytes(os.urandom(4), byteorder="big") for \
