@@ -387,3 +387,155 @@ def aggregate_csr_mat_2(
     """
     raise NotImplementedError
 
+def compute_delta_PT_moveto(
+    PTdata,
+    PTindices,
+    PTindptr,
+    PTcscdata,
+    PTcscindices,
+    PTcscindptr,
+    k:int,
+    idx)->float:
+    """ return the gain in stability obtained by moving node
+        k into community defined by index list in idx. 
+        
+        PT is the PT matrix (in csr) and PTcsc is the same matrix
+        in csc format
+    """
+    s = 0.0
+    num_idx = idx.shape[0]
+    idx_set = list()
+    
+    for i in range(num_idx):
+        idx_set.append(idx[i])
+    
+
+    for j in range(PTindptr[k],PTindptr[k+1]):
+        if idx_set.count(PTindices[j]):
+            s += PTdata[j]
+    for j in range(PTcscindptr[k],PTcscindptr[k+1]):
+        if idx_set.count(PTcscindices[j]):
+            s += PTcscdata[j]
+                    
+    # add PT_kk
+    j = PTindptr[k]
+    l = PTindices[j]
+    # check if PT[k,k] is nonzero
+    while l < k and j + 1 < PTindptr[k+1]:
+        j += 1
+        l = PTindices[j]
+    if l == k:
+        s += PTdata[j]
+        
+    return s
+
+def compute_delta_S_moveto(
+    PTdata,
+    PTindices,
+    PTindptr,
+    PTcscdata,
+    PTcscindices,
+    PTcscindptr,
+    k:int,
+    idx,
+    p1,
+    p2)->float:
+    """ return the gain in stability obtained by moving node
+        k into community defined by index list in idx. 
+        
+        PT is the stability matrix (in csr) and PTcsc is the same matrix
+        in csc format
+    """
+    s = 0.0
+    num_idx = idx.shape[0]
+    
+    s = compute_delta_PT_moveto(PTdata,
+                                PTindices,
+                                PTindptr,
+                                PTcscdata,
+                                PTcscindices,
+                                PTcscindptr,
+                                k,
+                                idx)
+
+        
+    # now substract contribution from p1^T @ p2
+    for i in range(num_idx):
+        s -= p1[k]*p2[idx[i]]
+        s -= p1[idx[i]]*p2[k]
+    s -= p1[k]*p2[k]
+    
+    return s
+
+def compute_delta_PT_moveout(
+        PTdata,
+        PTindices,
+        PTindptr,
+        PTcscdata,
+        PTcscindices,
+        PTcscindptr,
+        k:int,
+        idx)->float:
+    """ return the gain in stability obtained by moving node
+        k outside of the community defined by index list in idx. 
+        
+        PT is the PT matrix (in csr) and PTcsc is the same matrix
+        in csc format
+    """
+    s = 0.0
+    num_idx = idx.shape[0]
+    
+    idx_set = list()
+    
+    for i in range(num_idx):
+        idx_set.append(idx[i])
+    
+
+    for j in range(PTindptr[k],PTindptr[k+1]):
+        if idx_set.count(PTindices[j]):
+            s -= PTdata[j]
+    for j in range(PTcscindptr[k],PTcscindptr[k+1]):
+        if idx_set.count(PTcscindices[j]):
+            s -= PTcscdata[j]
+                    
+    # add PT_kk
+    j = PTindptr[k]
+    l = PTindices[j]
+    # check if PT[k,k] is nonzero
+    while l < k and j + 1 < PTindptr[k+1]:
+        j += 1
+        l = PTindices[j]
+    if l == k:
+        s += PTdata[j]
+        
+    return s
+
+def cython_compute_delta_S_moveout(
+    PTdata,
+    PTindices,
+    PTindptr,
+    PTcscdata,
+    PTcscindices,
+    PTcscindptr,
+    k:int,
+    idx,
+    p1,
+    p2)->float:
+    """ return the gain in stability obtained by moving node
+        k outside of the community defined by index list in idx. 
+        
+        PT is the PT matrix (in csr) and PTcsc is the same matrix
+        in csc format
+    """
+    
+    s = 0.0
+    num_idx = idx.shape[0]
+    s = compute_delta_PT_moveout(PTdata, PTindices, PTindptr,
+                                 PTcscdata, PTcscindices, PTcscindptr,
+                                 k, idx)
+    # now substract contribution from p1^T @ p2
+    for i in range(num_idx):
+        s += p1[k]*p2[idx[i]]
+        s += p1[idx[i]]*p2[k]
+    s -= p1[k]*p2[k]
+    return s

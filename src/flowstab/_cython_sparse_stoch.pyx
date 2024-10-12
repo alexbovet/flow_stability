@@ -726,7 +726,7 @@ cpdef double get_submat_sum(double[:] Adata,
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_aggregate_csr_mat(double[:] Adata,
+def aggregate_csr_mat(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] idxs_array,
@@ -761,7 +761,7 @@ def cython_aggregate_csr_mat(double[:] Adata,
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_aggregate_csr_mat_2(double[:] Adata,
+def aggregate_csr_mat_2(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] idxs_array,
@@ -800,7 +800,7 @@ def cython_aggregate_csr_mat_2(double[:] Adata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_compute_delta_PT_moveto(double[:] PTdata,
+cpdef double compute_delta_PT_moveto(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -847,7 +847,7 @@ cpdef double cython_compute_delta_PT_moveto(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_compute_delta_S_moveto(double[:] PTdata,
+def compute_delta_S_moveto(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -869,14 +869,14 @@ def cython_compute_delta_S_moveto(double[:] PTdata,
     cdef Py_ssize_t num_idx = idx.shape[0]
     
 
-    s = cython_compute_delta_PT_moveto(PTdata,
-                            PTindices,
-                            PTindptr,
-                            PTcscdata,
-                            PTcscindices,
-                            PTcscindptr,
-                            k,
-                            idx)
+    s = compute_delta_PT_moveto(PTdata,
+                                PTindices,
+                                PTindptr,
+                                PTcscdata,
+                                PTcscindices,
+                                PTcscindptr,
+                                k,
+                                idx)
 
         
     # now substract contribution from p1^T @ p2
@@ -890,7 +890,7 @@ def cython_compute_delta_S_moveto(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_compute_delta_PT_moveout(double[:] PTdata,
+cpdef double compute_delta_PT_moveout(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -936,7 +936,7 @@ cpdef double cython_compute_delta_PT_moveout(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_compute_delta_S_moveout(double[:] PTdata,
+def compute_delta_S_moveout(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -958,14 +958,14 @@ def cython_compute_delta_S_moveout(double[:] PTdata,
     cdef Py_ssize_t num_idx = idx.shape[0]
     
 
-    s = cython_compute_delta_PT_moveout(PTdata,
-                            PTindices,
-                            PTindptr,
-                            PTcscdata,
-                            PTcscindices,
-                            PTcscindptr,
-                            k,
-                            idx)
+    s = compute_delta_PT_moveout(PTdata,
+                                 PTindices,
+                                 PTindptr,
+                                 PTcscdata,
+                                 PTcscindices,
+                                 PTcscindptr,
+                                 k,
+                                 idx)
 
         
     # now substract contribution from p1^T @ p2

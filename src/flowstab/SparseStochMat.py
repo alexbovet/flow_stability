@@ -39,10 +39,6 @@ USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
     import _cython_sparse_stoch as _css
     from _cython_sparse_stoch import (
-        cython_compute_delta_PT_moveout,
-        cython_compute_delta_PT_moveto,
-        cython_compute_delta_S_moveout,
-        cython_compute_delta_S_moveto,
         cython_inplace_csr_row_normalize_array,
     )
 
@@ -819,48 +815,38 @@ class sparse_autocov_csr_mat:
         k into the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
+        # NOTE: in the non-cython case this might be faster:
+        # return self.S.get_row_idx_sum(k,idx) \
+        #             + self.S.get_col_idx_sum(k,idx) \
+        #             + self.S.get_element(k,k)
+        return _css.compute_delta_PT_moveto(self.S.data,
+                                                self.S.indices,
+                                                self.S.indptr,
+                                                self.Scsc.data,
+                                                self.Scsc.indices,
+                                                self.Scsc.indptr,
+                                                k,
+                                                idx)
 
 
-            return cython_compute_delta_PT_moveto(self.S.data,
-                                                   self.S.indices,
-                                                   self.S.indptr,
-                                                   self.Scsc.data,
-                                                   self.Scsc.indices,
-                                                   self.Scsc.indptr,
-                                                   k,
-                                                   idx)
-
-
-
-
-        else:
-            return self.S.get_row_idx_sum(k,idx) \
-                        + self.S.get_col_idx_sum(k,idx) \
-                        + self.S.get_element(k,k)
 
     def _compute_delta_S_moveout(self, k, idx):
         """Return the gain in stability obtained by moving node
         k outside the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
-
-            return cython_compute_delta_PT_moveout(self.S.data,
-                                                   self.S.indices,
-                                                   self.S.indptr,
-                                                   self.Scsc.data,
-                                                   self.Scsc.indices,
-                                                   self.Scsc.indptr,
-                                                   k,
-                                                   np.array(idx, dtype=np.int32))
-
-
-
-        else:
-            return - self.S.get_row_idx_sum(k,idx) \
-                        - self.S.get_col_idx_sum(k,idx) \
-                        + self.S.get_element(k,k)
+        # NOTE: in the non-cython case this might be faster:
+        # return - self.S.get_row_idx_sum(k,idx) \
+        #             - self.S.get_col_idx_sum(k,idx) \
+        #             + self.S.get_element(k,k)
+        return _css.compute_delta_PT_moveout(self.S.data,
+                                                self.S.indices,
+                                                self.S.indptr,
+                                                self.Scsc.data,
+                                                self.Scsc.indices,
+                                                self.Scsc.indptr,
+                                                k,
+                                                np.array(idx, dtype=np.int32))
 
 
 
@@ -1218,72 +1204,67 @@ class sparse_autocov_mat:
         k into the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
+        # NOTE: in the non-cython case this might be faster:
+        # return self._S.get_row_idx_sum(k,idx) \
+        #             + self._S.get_col_idx_sum(k,idx) \
+        #             + self._S.get_element(k,k)
+        if self.p_scalars:
+            PTsum = _css.compute_delta_PT_moveto(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    idx)
 
-            if self.p_scalars:
-                PTsum = cython_compute_delta_PT_moveto(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       idx)
-
-                return PTsum - (2*len(idx)+1)*self.p1p2
-
-            else:
-                return cython_compute_delta_S_moveto(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       idx,
-                                                       self.p1,
-                                                       self.p2)
+            return PTsum - (2*len(idx)+1)*self.p1p2
 
         else:
-            return self._S.get_row_idx_sum(k,idx) \
-                        + self._S.get_col_idx_sum(k,idx) \
-                        + self._S.get_element(k,k)
+            return _css.compute_delta_S_moveto(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    idx,
+                                                    self.p1,
+                                                    self.p2)
+
 
     def _compute_delta_S_moveout(self, k, idx):
         """Return the gain in stability obtained by moving node
         k outside the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
+        # NOTE: in the non-cython case this might be faster:
+        # return - self._S.get_row_idx_sum(k,idx) \
+        #             - self._S.get_col_idx_sum(k,idx) \
+        #             + self._S.get_element(k,k)
+        if self.p_scalars:
+            PTsum = _css.compute_delta_PT_moveout(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    np.array(idx, dtype=np.int32))
 
-            if self.p_scalars:
-                PTsum = cython_compute_delta_PT_moveout(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       np.array(idx, dtype=np.int32))
-
-                return PTsum + (2*len(idx)-1)*self.p1p2
-
-            else:
-                return cython_compute_delta_S_moveout(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       np.array(idx, dtype=np.int32),
-                                                       self.p1,
-                                                       self.p2)
+            return PTsum + (2*len(idx)-1)*self.p1p2
 
         else:
-            return - self._S.get_row_idx_sum(k,idx) \
-                        - self._S.get_col_idx_sum(k,idx) \
-                        + self._S.get_element(k,k)
+            return _ccs.compute_delta_S_moveout(self.PT.data,
+                                                self.PT.indices,
+                                                self.PT.indptr,
+                                                self.PTcsc.data,
+                                                self.PTcsc.indices,
+                                                self.PTcsc.indptr,
+                                                k,
+                                                np.array(idx, dtype=np.int32),
+                                                self.p1,
+                                                self.p2)
 
 
 @timing
