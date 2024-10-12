@@ -37,6 +37,7 @@ from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
+    from . import _cython_sparse_stoch as _css
     from _cython_sparse_stoch import (
         cython_aggregate_csr_mat,
         cython_aggregate_csr_mat_2,
@@ -52,7 +53,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_inplace_csr_row_normalize,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
-        cython_sparse_stoch_from_full_csr,
         cython_stoch_mat_add,
         cython_stoch_mat_sub,
     )
@@ -60,6 +60,7 @@ if importlib.util.find_spec("cython") is not None:
 else:
     print("Could not load cython functions. Some functionality might be broken.")
     USE_CYTHON = False
+    from . import _cython_subst as _css
 
 
 USE_SPARSE_DOT_MKL = True
@@ -134,11 +135,12 @@ class sparse_stoch_mat:
             nz_rowcols = np.union1d(nz_rows,nz_cols)
         if USE_CYTHON:
 
-            res = cython_sparse_stoch_from_full_csr(np.array(nz_rowcols, dtype=np.int32),
-                                              Tcsr.data,
-                                              Tcsr.indices,
-                                              Tcsr.indptr,
-                                              diag_val)
+            res = _css.sparse_stoch_from_full_csr(
+                    np.array(nz_rowcols, dtype=np.int32),
+                    Tcsr.data,
+                    Tcsr.indices,
+                    Tcsr.indptr,
+                    diag_val)
 
             return cls(*res)
 

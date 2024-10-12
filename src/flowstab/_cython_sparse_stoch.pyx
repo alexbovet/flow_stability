@@ -856,7 +856,7 @@ def cython_inplace_csr_row_normalize_triu(double[:] X_data,
                 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_sparse_stoch_from_full_csr(int[:] nz_rowcols,
+def sparse_stoch_from_full_csr(int[:] nz_rowcols,
                                       double[:] Tf_data,
                                       int[:] Tf_indices,
                                       int[:] Tf_indptr,
