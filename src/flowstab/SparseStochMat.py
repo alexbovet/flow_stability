@@ -39,8 +39,6 @@ USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
     import _cython_sparse_stoch as _css
     from _cython_sparse_stoch import (
-        cython_aggregate_csr_mat,
-        cython_aggregate_csr_mat_2,
         cython_compute_delta_PT_moveout,
         cython_compute_delta_PT_moveto,
         cython_compute_delta_S_moveout,
@@ -767,51 +765,32 @@ class sparse_autocov_csr_mat:
 
         new_size = idxptr.size-1
 
-        if USE_CYTHON:
-            # choose the fastest version
-            if new_size**2 < self.S.data.size:
-                Sdata, Srows, Scols, new_size = cython_aggregate_csr_mat(self.S.data,
-                                                                        self.S.indices,
-                                                                        self.S.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
-            else:
-                Sdata, Srows, Scols, new_size = cython_aggregate_csr_mat_2(self.S.data,
-                                                                        self.S.indices,
-                                                                        self.S.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
-
-            if new_size**2 < self.PT.data.size:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
-            else:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat_2(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
+        # choose the fastest version
+        if new_size**2 < self.S.data.size:
+            Sdata, Srows, Scols, new_size = _css.aggregate_csr_mat(self.S.data,
+                                                                    self.S.indices,
+                                                                    self.S.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
         else:
-            # AtoB = {}
-            # for kb in range(new_size):
-            #     for ka in range(idxptr[kb],idxptr[kb+1]):
-            #         AtoB[idxs_array[ka]] = kb
+            Sdata, Srows, Scols, new_size = _css.aggregate_csr_mat_2(self.S.data,
+                                                                    self.S.indices,
+                                                                    self.S.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
 
-            # Bdata = []
-            # Brows = []
-            # Bcols = []
-            # # loop over values of A
-            # for row in range(self.S.indptr.shape[0]-1):
-            #     for k in range(self.S.indptr[row],self.S.indptr[row+1]):
-            #         col = self.S.indices[k]
-
-            #         Bdata.append(self.S.data[k])
-            #         Brows.append(AtoB[row])
-            #         Bcols.append(AtoB[col])
-            raise NotImplementedError
+        if new_size**2 < self.PT.data.size:
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
+        else:
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat_2(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
 
         newPT = coo_matrix((PTdata,(PTrows,PTcols)), shape=(new_size,new_size))
         newS = coo_matrix((Sdata,(Srows,Scols)), shape=(new_size,new_size))
@@ -1178,37 +1157,19 @@ class sparse_autocov_mat:
 
         new_size = idxptr.size-1
 
-        if USE_CYTHON:
-            # choose the fastest version
-            if new_size**2 < self.PT.data.size:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
-            else:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat_2(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
+        # choose the fastest version
+        if new_size**2 < self.PT.data.size:
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
         else:
-            AtoB = {}
-            for kb in range(new_size):
-                for ka in range(idxptr[kb],idxptr[kb+1]):
-                    AtoB[idxs_array[ka]] = kb
-
-            Bdata = []
-            Brows = []
-            Bcols = []
-            # loop over values of A
-            for row in range(self.PT.indptr.shape[0]-1):
-                for k in range(self.PT.indptr[row],self.PT.indptr[row+1]):
-                    col = self.PT.indices[k]
-
-                    Bdata.append(self.PT.data[k])
-                    Brows.append(AtoB[row])
-                    Bcols.append(AtoB[col])
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat_2(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
 
         newPT = coo_matrix((PTdata,(PTrows,PTcols)), shape=(new_size,new_size))
 

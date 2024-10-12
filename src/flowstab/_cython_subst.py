@@ -358,3 +358,32 @@ def get_submat_sum(
                 s += Adata[j]
                 
     return s
+
+def aggregate_csr_mat(
+    Adata,
+    Aindices,
+    Aindptr,
+    idxs_array,
+    idxptr):
+    """
+        Aggregates a csr matrix A 
+        and returns a coo matrix B
+        
+        performs B.shape[0]**2 operations
+    """
+    raise NotImplementedError
+
+def aggregate_csr_mat_2(
+    Adata,
+    Aindices,
+    Aindptr,
+    idxs_array,
+    idxptr):
+    """
+        Aggregates a csr matrix A 
+        and returns a coo matrix B
+        
+        Performs Adata.size operations
+    """
+    raise NotImplementedError
+
