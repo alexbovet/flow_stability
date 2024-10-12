@@ -37,7 +37,7 @@ from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
-    from . import _cython_sparse_stoch as _css
+    import _cython_sparse_stoch as _css
     from _cython_sparse_stoch import (
         cython_aggregate_csr_mat,
         cython_aggregate_csr_mat_2,
