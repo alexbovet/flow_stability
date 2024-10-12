@@ -50,7 +50,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_csr_csrT_matmul,
         cython_csr_matmul,
         cython_get_submat_sum,
-        cython_inplace_csr_row_normalize,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
         cython_stoch_mat_add,
@@ -133,41 +132,15 @@ class sparse_stoch_mat:
         if nz_rowcols is None:
             nz_rows, nz_cols = (Tcsr - diag_val * eye(Tcsr.shape[0], format="csr")).nonzero()
             nz_rowcols = np.union1d(nz_rows,nz_cols)
-        if USE_CYTHON:
 
-            res = _css.sparse_stoch_from_full_csr(
-                    np.array(nz_rowcols, dtype=np.int32),
-                    Tcsr.data,
-                    Tcsr.indices,
-                    Tcsr.indptr,
-                    diag_val)
+        res = _css.sparse_stoch_from_full_csr(
+                np.array(nz_rowcols, dtype=np.int32),
+                Tcsr.data,
+                Tcsr.indices,
+                Tcsr.indptr,
+                diag_val)
 
-            return cls(*res)
-
-        else:
-
-            T_s_nnz = Tcsr.nnz - Tcsr.shape[0] + nz_rowcols.size
-
-            T_s_data = np.zeros(T_s_nnz, dtype=np.float64)
-            T_s_indices = -1*np.ones(T_s_nnz, dtype=np.int32)
-            T_s_indptr = -1*np.ones(nz_rowcols.size+1, dtype=np.int32)
-
-            #map indices from big to small T
-            BtoS = {v:k for k,v in enumerate(nz_rowcols)}
-
-            its = 0
-            T_s_indptr[0] = 0
-            for tsrow, tbrow in enumerate(nz_rowcols):
-                nzr = 0
-                for k in range(Tcsr.indptr[tbrow],Tcsr.indptr[tbrow+1]):
-                    T_s_data[its] = Tcsr.data[k]
-                    T_s_indices[its] = BtoS[Tcsr.indices[k]]
-                    its += 1
-                    nzr += 1
-                T_s_indptr[tsrow+1] = T_s_indptr[tsrow] + nzr
-
-            return cls(Tcsr.shape[0], T_s_data, T_s_indices, T_s_indptr,
-                       nz_rowcols, diag_val=diag_val)
+        return cls(*res)
 
     @classmethod
     def create_diag(cls, size, diag_val=1.0):
@@ -187,18 +160,11 @@ class sparse_stoch_mat:
 
     def inplace_row_normalize(self, row_sum=1.0):
 
-        if USE_CYTHON:
-            self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
-            self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
+        self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
+        self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
 
-            cython_inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
-                                             self.T_small.shape[0], row_sum)
-        else:
-
-            for i in range(self.T_small.shape[0]):
-                row_sum_tmp = self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]].sum()
-                if row_sum_tmp != 0:
-                    self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]] /= (row_sum_tmp/row_sum)
+        _css.inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
+                                            self.T_small.shape[0], row_sum)
 
         self.diag_val = row_sum
 

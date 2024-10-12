@@ -2,6 +2,9 @@
 This module provides drop-in replacement functions in case cython is not installed.
 """
 import numpy as np
+from scipy.sparse import (
+    csr_matrix,
+    )
 
 def sparse_stoch_from_full_csr(nz_rowcols, Tf_data, Tf_indices, Tf_indptr, diag_val):
     """Pure python implementation of the sparce_stoch_mat
@@ -31,3 +34,12 @@ def sparse_stoch_from_full_csr(nz_rowcols, Tf_data, Tf_indices, Tf_indptr, diag_
             T_s_indptr,
             nz_rowcols,
             diag_val)
+
+
+def inplace_csr_row_normalize(T_small:csr_matrix, row_sum:float):
+    """Row normalize a scipy sparse csr matrix inplace
+    """
+    for i in range(T_small.shape[0]):
+        row_sum_tmp = T_small.data[T_small.indptr[i]:T_small.indptr[i+1]].sum()
+        if row_sum_tmp != 0:
+            T_small.data[T_small.indptr[i]:T_small.indptr[i+1]] /= (row_sum_tmp/row_sum)
