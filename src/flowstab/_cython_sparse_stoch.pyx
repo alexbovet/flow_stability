@@ -350,7 +350,7 @@ def cython_csr_csrT_matmul(double[:] Adata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_stoch_mat_add(
+def stoch_mat_add(
             int size, # big matrix size
             double[:] Adata,
             int[:] Aindices,
