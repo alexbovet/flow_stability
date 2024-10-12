@@ -52,7 +52,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_get_submat_sum,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
-        cython_stoch_mat_sub,
     )
 
 else:
@@ -314,118 +313,21 @@ class sparse_stoch_mat:
             if not B.T_small.has_canonical_format:
                 B.T_small.sort_indices()
 
-            if USE_CYTHON:
+            size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
+                _css.stoch_mat_sub(self.size, # big matrix size
+                                self.T_small.data,
+                                self.T_small.indices,
+                                self.T_small.indptr,
+                                self.nz_rowcols,
+                                self.diag_val,
+                                B.T_small.data,
+                                B.T_small.indices,
+                                B.T_small.indptr,
+                                B.nz_rowcols,
+                                B.diag_val)
 
-                size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
-                    cython_stoch_mat_sub(self.size, # big matrix size
-                                    self.T_small.data,
-                                    self.T_small.indices,
-                                    self.T_small.indptr,
-                                    self.nz_rowcols,
-                                    self.diag_val,
-                                    B.T_small.data,
-                                    B.T_small.indices,
-                                    B.T_small.indptr,
-                                    B.nz_rowcols,
-                                    B.diag_val)
-
-                return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols, Cdiag_val)
-
-            else:
-
-                Anz_set = set(self.nz_rowcols)
-                Bnz_set = set(B.nz_rowcols)
-                Cnz_set = Anz_set.union(Bnz_set)
-
-                interset = Anz_set.intersection(Bnz_set)
-                Anz_only = Anz_set - interset
-                Bnz_only = Bnz_set - interset
-
-                # size of C.T_small
-                small_size = len(Cnz_set)
-
-                Cnz_rowcols = sorted(list(Cnz_set))
-
-                spa = SPA(small_size)
-
-                Cdata = np.zeros(self.T_small.nnz + B.T_small.nnz,
-                                 dtype=np.float64)
-
-                Cindices = -1*np.ones(self.T_small.nnz + B.T_small.nnz,
-                                      dtype=np.int32)
-                Cindptr = -1*np.ones(small_size+1, dtype=np.int32)
-
-                Cnz_rowcols = -1*np.ones(small_size,
-                                      dtype=np.int32)
-
-                kc = 0 # data/indices index
-
-                ia = 0 # row index of A.T_small
-                ib = 0 # row index of B.T_small
-                ic = 0 # row index of C.T_small
-
-                Acol_to_Ccol = np.zeros(self.nz_rowcols.size, dtype=np.int32)
-
-                ia_col = 0
-                ic_col = 0
-                for ia_col in range(self.nz_rowcols.size): # map col in A to col in C
-                    while self.nz_rowcols[ia_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Acol_to_Ccol[ia_col] = ic_col
-
-                Bcol_to_Ccol = np.zeros(B.nz_rowcols.size, dtype=np.int32)
-
-                ib_col = 0
-                ic_col = 0
-                for ib_col in range(B.nz_rowcols.size): # map col in A to col in C
-                    while B.nz_rowcols[ib_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Bcol_to_Ccol[ib_col] = ic_col
-
-                Cindptr[0] = 0
-                for i in Cnz_rowcols: # iterate thourgh rows
-                    spa.reset(current_row=i)
-
-                    if i in Anz_set:
-                        for val, pos in zip(self.T_small.data[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]],
-                                            self.T_small.indices[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]]):
-                            spa.scatter(val, Acol_to_Ccol[pos])
-                        ia += 1
-
-                    if i in Bnz_set:
-                        for val, pos in zip(B.T_small.data[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]],
-                                            B.T_small.indices[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]]):
-                            spa.scatter(-1*val, Bcol_to_Ccol[pos])
-                        ib += 1
-
-                    if i in Anz_only:
-                        # we need to add the diagonal term of B
-                        spa.scatter(-1*B.diag_val, ic)
-                    if i in Bnz_only:
-                        # we need to add the diagonal term of A
-                        spa.scatter(self.diag_val, ic)
-
-
-                    # set col indices and data for C
-                    nzi = 0 # num nonzero in row i of C
-                    for indnz in spa.LS:
-                        Cindices[kc] = indnz
-                        Cdata[kc] = spa.w[indnz]
-                        nzi += 1
-                        kc += 1
-
-
-                    # set indptr for C
-                    Cindptr[ic+1] = Cindptr[ic] + nzi
-
-                    ic += 1
-
-
-                return sparse_stoch_mat(self.size,
-                                        Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols,
-                                        diag_val=self.diag_val - B.diag_val)
+            return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
+                                    Cnz_rowcols, Cdiag_val)
 
         elif isinstance(B, (spmatrix, np.ndarray)):
             return self.to_full_mat() - B

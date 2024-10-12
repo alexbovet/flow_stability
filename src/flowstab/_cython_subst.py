@@ -91,7 +91,7 @@ def stoch_mat_add(
     Bindptr,
     Bnz_rowcols,
     Bdiag_val:float):
-    """ addition of square stochastic sparse matrices C = A + B
+    """ subtraction of square stochastic sparse matrices C = A - B
     """
     Asize = Anz_rowcols.shape[0]
     Bsize = Bnz_rowcols.shape[0]
@@ -113,7 +113,6 @@ def stoch_mat_add(
     Cdata = np.zeros(Aindptr.shape[0] + Bindptr.shape[0] + \
                           Adata.shape[0] + Bdata.shape[0],
                      dtype=np.float64)
-
     Cindices = -1*np.ones(Aindptr.shape[0] + Bindptr.shape[0] + \
                           Adata.shape[0] + Bdata.shape[0],
                           dtype=np.int32)
@@ -162,7 +161,7 @@ def stoch_mat_add(
 
         if i in Anz_only:
             # we need to add the diagonal term of B
-            spa.scatter(B.diag_val, ic)
+            spa.scatter(Bdiag_val, ic)
         if i in Bnz_only:
             # we need to add the diagonal term of A
             spa.scatter(Adiag_val, ic)
@@ -181,5 +180,107 @@ def stoch_mat_add(
         Cindptr[ic+1] = Cindptr[ic] + nzi
 
         ic += 1
-    
     return (size, Cdata, Cindices, Cindptr, Cnz_rowcols, Adiag_val + Bdiag_val)
+
+def stoch_mat_sub(
+    size:int, # big matrix size
+    Adata,
+    Aindices,
+    Aindptr,
+    Anz_rowcols,
+    Adiag_val:float,
+    Bdata,
+    Bindices,
+    Bindptr,
+    Bnz_rowcols,
+    Bdiag_val:float):
+    """ addition of square stochastic sparse matrices C = A + B
+    """
+    Asize = Anz_rowcols.shape[0]
+    Bsize = Bnz_rowcols.shape[0]
+    Anz_set = set(Anz_rowcols)
+    Bnz_set = set(Bnz_rowcols)
+    Cnz_set = Anz_set.union(Bnz_set)
+
+    interset = Anz_set.intersection(Bnz_set)
+    Anz_only = Anz_set - interset
+    Bnz_only = Bnz_set - interset
+
+    # size of C.T_small
+    small_size = len(Cnz_set)
+
+    Cnz_rowcols = sorted(list(Cnz_set))
+
+    spa = SPA(small_size)
+
+    Cdata = np.zeros(Aindptr.shape[0] + Bindptr.shape[0] + \
+                          Adata.shape[0] + Bdata.shape[0],
+                     dtype=np.float64)
+
+    Cindices = -1*np.ones(Aindptr.shape[0] + Bindptr.shape[0] + \
+                          Adata.shape[0] + Bdata.shape[0],
+                          dtype=np.int32)
+    Cindptr = -1*np.ones(small_size+1, dtype=np.int32)
+
+    kc = 0 # data/indices index
+
+    ia = 0 # row index of A.T_small
+    ib = 0 # row index of B.T_small
+    ic = 0 # row index of C.T_small
+
+    Acol_to_Ccol = np.zeros(Asize, dtype=np.int32)
+
+    ia_col = 0
+    ic_col = 0
+    for ia_col in range(Asize): # map col in A to col in C
+        while Anz_rowcols[ia_col] != Cnz_rowcols[ic_col]:
+            ic_col+=1
+        Acol_to_Ccol[ia_col] = ic_col
+
+    Bcol_to_Ccol = np.zeros(Bnz_rowcols.size, dtype=np.int32)
+
+    ib_col = 0
+    ic_col = 0
+    for ib_col in range(Bsize): # map col in A to col in C
+        while Bnz_rowcols[ib_col] != Cnz_rowcols[ic_col]:
+            ic_col+=1
+        Bcol_to_Ccol[ib_col] = ic_col
+
+    Cindptr[0] = 0
+    for i in Cnz_rowcols: # iterate thourgh rows
+        spa.reset(current_row=i)
+
+        if i in Anz_set:
+            for val, pos in zip(Adata[Aindptr[ia]:Aindptr[ia+1]],
+                                Aindices[Aindptr[ia]:Aindptr[ia+1]]):
+                spa.scatter(val, Acol_to_Ccol[pos])
+            ia += 1
+
+        if i in Bnz_set:
+            for val, pos in zip(Bdata[Bindptr[ib]:Bindptr[ib+1]],
+                                Bindices[Bindptr[ib]:Bindptr[ib+1]]):
+                spa.scatter(-1*val, Bcol_to_Ccol[pos])
+            ib += 1
+
+        if i in Anz_only:
+            # we need to add the diagonal term of B
+            spa.scatter(-1*Bdiag_val, ic)
+        if i in Bnz_only:
+            # we need to add the diagonal term of A
+            spa.scatter(Adiag_val, ic)
+
+
+        # set col indices and data for C
+        nzi = 0 # num nonzero in row i of C
+        for indnz in spa.LS:
+            Cindices[kc] = indnz
+            Cdata[kc] = spa.w[indnz]
+            nzi += 1
+            kc += 1
+
+
+        # set indptr for C
+        Cindptr[ic+1] = Cindptr[ic] + nzi
+
+        ic += 1
+    return (size, Cdata, Cindices, Cindptr, Cnz_rowcols, Adiag_val - Bdiag_val)

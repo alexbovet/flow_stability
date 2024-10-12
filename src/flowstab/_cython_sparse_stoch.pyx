@@ -476,7 +476,7 @@ def stoch_mat_add(
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_stoch_mat_sub(
+def stoch_mat_sub(
             int size, # big matrix size
             double[:] Adata,
             int[:] Aindices,
