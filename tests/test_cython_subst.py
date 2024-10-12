@@ -48,3 +48,50 @@ def test_inplace_csr_row_normalize(cs_matrix_creator):
     # make sure non-cython is equivalent
     np.testing.assert_equal(A_csr.data, B_csr.data)
     
+
+def test_stoch_mat_add(SSM_matrix_creator):
+    """
+    """
+    from flowstab._cython_subst import stoch_mat_add as sma_subst
+    from flowstab.SparseStochMat import _css
+    size=100000
+    full_size = 10*size
+    A, B = SSM_matrix_creator(nbr=2, size=100000, nbr_non_zeros=1000)
+
+    ssm_args = _css.stoch_mat_add(
+        size=A.size,
+        Adata=A.T_small.data,
+        Aindices=A.T_small.indices,
+        Aindptr=A.T_small.indptr,
+        Anz_rowcols=A.nz_rowcols,
+        Adiag_val=A.diag_val,
+        Bdata=B.T_small.data,
+        Bindices=B.T_small.indices,
+        Bindptr=B.T_small.indptr,
+        Bnz_rowcols=B.nz_rowcols,
+        Bdiag_val=B.diag_val,
+    )
+    ssm_args_subst = sma_subst(
+        size=A.size,
+        Adata=A.T_small.data,
+        Aindices=A.T_small.indices,
+        Aindptr=A.T_small.indptr,
+        Anz_rowcols=A.nz_rowcols,
+        Adiag_val=A.diag_val,
+        Bdata=B.T_small.data,
+        Bindices=B.T_small.indices,
+        Bindptr=B.T_small.indptr,
+        Bnz_rowcols=B.nz_rowcols,
+        Bdiag_val=B.diag_val,
+    )
+
+    # size
+    assert ssm_args[0] == ssm_args_subst[0]
+    # data
+    np.testing.assert_equal(ssm_args_subst[1], ssm_args[1])
+    # indices
+    np.testing.assert_equal(ssm_args_subst[2], ssm_args[2])
+    # indptr
+    np.testing.assert_equal(ssm_args_subst[3], ssm_args[3])
+    # diag val
+    np.testing.assert_equal(ssm_args_subst[4], ssm_args[4])
