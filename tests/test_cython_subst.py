@@ -29,3 +29,22 @@ def test_sparse_stoch_from_full_csr(cs_matrix_creator):
     np.testing.assert_equal(ssm_args_subst[3], ssm_args[3])
     # diag val
     np.testing.assert_equal(ssm_args_subst[4], ssm_args[4])
+
+
+def test_inplace_csr_row_normalize(cs_matrix_creator):
+    """
+    """
+    from flowstab._cython_subst import inplace_csr_row_normalize as icrn_subst
+    from flowstab.SparseStochMat import _css
+    A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
+    B_csr = A_csr.copy()
+    n_row = 333
+    row_sum = 1
+    A_data_old = A_csr.data.copy()
+    _css.inplace_csr_row_normalize(A_csr.data, A_csr.indptr.astype(np.int64), n_row, row_sum)
+    icrn_subst(B_csr.data, B_csr.indptr, n_row, row_sum)
+    # make sure it changed
+    assert not np.array_equal(A_csr.data, A_data_old)
+    # make sure non-cython is equivalent
+    np.testing.assert_equal(A_csr.data, B_csr.data)
+    
