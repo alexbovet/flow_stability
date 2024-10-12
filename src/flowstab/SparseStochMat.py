@@ -45,7 +45,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_compute_delta_PT_moveto,
         cython_compute_delta_S_moveout,
         cython_compute_delta_S_moveto,
-        cython_get_submat_sum,
         cython_inplace_csr_row_normalize_array,
     )
 
@@ -672,15 +671,14 @@ class sparse_autocov_csr_mat:
         defined by the indices in idx, i.e. S[row_idx,col_idx].sum().
             
         """
-        if USE_CYTHON:
-            return cython_get_submat_sum(self.S.data, self.S.indices,
-                                          self.PT.indptr,
-                                          row_idx,
-                                          col_idx)
+        # NOTE: in the non-cython case this might be faster:
+        # return self.S._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
+        return _css.get_submat_sum(self.S.data,
+                                   self.S.indices,
+                                   self.PT.indptr,
+                                   row_idx,
+                                   col_idx)
 
-        else:
-
-            return self.S._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
 
 
 
@@ -708,15 +706,14 @@ class sparse_autocov_csr_mat:
         Autocov[row,idx].sum()
 
         """
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.S.data, self.S.indices,
-                                          self.S.indptr,
-                                          np.array([row], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTrow = self.PT._major_index_fancy(row)
-            PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
+        # NOTE: in the non-cython case this might be faster:
+        # PTrow = self.PT._major_index_fancy(row)
+        # PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
 
+        PTsum = _css.get_submat_sum(self.S.data, self.S.indices,
+                                        self.S.indptr,
+                                        np.array([row], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
         return  PTsum
 
     def get_col_idx_sum(self, col, idx):
@@ -734,17 +731,15 @@ class sparse_autocov_csr_mat:
         Autocov[idx,col].sum()
 
         """
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.Scsc.data, self.Scsc.indices,
-                                          self.Scsc.indptr,
-                                          np.array([col], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTcol = self.Scsc._major_index_fancy(col)
-            PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
+        # NOTE: in the non-cython case this might be faster:
+        # PTcol = self.Scsc._major_index_fancy(col)
+        # PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
+        PTsum = _css.get_submat_sum(self.Scsc.data, self.Scsc.indices,
+                                        self.Scsc.indptr,
+                                        np.array([col], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
 
         return  PTsum
-
 
 
     def aggregate(self, idx_list):
@@ -1075,18 +1070,12 @@ class sparse_autocov_mat:
             #p0_sum = np.outer(self.p1[row_idx],self.p2[col_idx]).sum()
             p0_sum = np.einsum("i,j->i",self.p1[row_idx],self.p2[col_idx]).sum()
 
-
-
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PT.data, self.PT.indices,
-                                          self.PT.indptr,
-                                          row_idx,
-                                          col_idx)
-
-        else:
-
-            PTsum = self.PT._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTsum = self.PT._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
+        PTsum = _css.get_submat_sum(self.PT.data, self.PT.indices,
+                                        self.PT.indptr,
+                                        row_idx,
+                                        col_idx)
         return PTsum - p0_sum
 
     def get_element(self, i,j):
@@ -1123,15 +1112,13 @@ class sparse_autocov_mat:
         else:
             p0 = (self.p1[row] * self.p2[idx]).sum()
 
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PT.data, self.PT.indices,
-                                          self.PT.indptr,
-                                          np.array([row], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTrow = self.PT._major_index_fancy(row)
-            PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTrow = self.PT._major_index_fancy(row)
+        # PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
+        PTsum = _css.get_submat_sum(self.PT.data, self.PT.indices,
+                                        self.PT.indptr,
+                                        np.array([row], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
         return  PTsum - p0
 
     def get_col_idx_sum(self, col, idx):
@@ -1155,15 +1142,13 @@ class sparse_autocov_mat:
             p0 = (self.p1[idx] * self.p2[col]).sum()
 
 
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PTcsc.data, self.PTcsc.indices,
-                                          self.PTcsc.indptr,
-                                          np.array([col], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTcol = self.PTcsc._major_index_fancy(col)
-            PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTcol = self.PTcsc._major_index_fancy(col)
+        # PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
+        PTsum = _css.get_submat_sum(self.PTcsc.data, self.PTcsc.indices,
+                                        self.PTcsc.indptr,
+                                        np.array([col], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
         return  PTsum - p0
 
 

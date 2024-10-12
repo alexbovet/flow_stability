@@ -697,7 +697,7 @@ def sparse_stoch_from_full_csr(int[:] nz_rowcols,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_get_submat_sum(double[:] Adata,
+cpdef double get_submat_sum(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] row_idx,
@@ -747,7 +747,7 @@ def cython_aggregate_csr_mat(double[:] Adata,
     
     for row in range(new_size):
         for col in range(new_size):
-            pt = cython_get_submat_sum(Adata, Aindices, 
+            pt = get_submat_sum(Adata, Aindices, 
                                       Aindptr, 
                                       idxs_array[idxptr[row]:idxptr[row+1]],
                                       idxs_array[idxptr[col]:idxptr[col+1]])

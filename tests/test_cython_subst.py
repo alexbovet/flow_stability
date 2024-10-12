@@ -151,3 +151,27 @@ def test_rebuild_nnz_rowcol(SSM_matrix_creator, compare_SSM_args):
     )
     ssm_args_subst = (size_, data_, indices_, indptr_, A.size)
     compare_SSM_args(ssm_args, ssm_args_subst)
+
+def test_get_submat_sum(cs_matrix_creator):
+    """
+    """
+    from flowstab._cython_subst import get_submat_sum as gss_subst
+    from flowstab.SparseStochMat import _css
+    A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
+    row_idx=np.arange(20, 200).astype(np.int32)
+    col_idx=np.arange(5,500).astype(np.int32)
+    subm_sum = _css.get_submat_sum(
+        Adata=A_csr.data,
+        Aindices=A_csr.indices,
+        Aindptr=A_csr.indptr,
+        row_idx=row_idx,
+        col_idx=col_idx
+    )
+    subm_sum_subst = gss_subst(
+        Adata=A_csr.data,
+        Aindices=A_csr.indices,
+        Aindptr=A_csr.indptr,
+        row_idx=row_idx,
+        col_idx=col_idx
+    )
+    assert subm_sum == subm_sum_subst

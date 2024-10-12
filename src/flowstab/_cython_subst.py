@@ -336,3 +336,25 @@ def rebuild_nnz_rowcol(
     indptr = np.append(0, np.cumsum(rownnz))
 
     return (data, indices, indptr, size)
+
+def get_submat_sum(
+    Adata, Aindices, Aindptr, row_idx, col_idx)->float:
+    """ return the sum of the elements in the submatrix defined by
+        row_idx and col_idx, i.e A[row_ids,:][:,col_idx].sum()
+    
+    """
+    s = 0.0
+    col_set = []
+    num_row = row_idx.shape[0]
+    num_col = col_idx.shape[0]
+    
+    for i in range(num_col):
+        col_set.append(col_idx[i])
+        
+    for i in range(num_row):
+        row = row_idx[i]
+        for j in range(Aindptr[row],Aindptr[row+1]):
+            if col_set.count(Aindices[j]):
+                s += Adata[j]
+                
+    return s
