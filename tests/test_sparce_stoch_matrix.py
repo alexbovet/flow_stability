@@ -4,7 +4,5 @@ def test_SSM():
     from flowstab.SparseStochMat import sparse_stoch_mat
     # TODO
 
-def test_SPA():
-    """Basic operations with the `SpasreStochMat.SPA` class"""
-    from flowstab.SparseStochMat import SPA
-    # TODO
+
+
