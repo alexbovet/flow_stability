@@ -40,53 +40,6 @@ from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
 from flowstab.SPA cimport SPA
 
-def cython_csr_add(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ addition of square csr matrices
-        equivalent speed than scipy addition """
-    
-    cdef int size = Aindptr.shape[0]-1
-    
-    cdef double[:] Cdata = np.zeros(Adata.shape[0] + Bdata.shape[0], dtype=np.float64)
-    cdef int[:] Cindices = -1*np.ones(Adata.shape[0] + Bdata.shape[0], dtype=np.int32)
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t kc = 0 # data/indices index
-    cdef Py_ssize_t i
-    cdef Py_ssize_t k
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-    
-    
-    # sparse accumulator
-    spa = new SPA(size)
-    
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(i)
-        for k in range(Aindptr[i],Aindptr[i+1]):
-            spa.scatter(Adata[k], Aindices[k])
-            
-        for k in range(Bindptr[i],Bindptr[i+1]):
-            spa.scatter(Bdata[k], Bindices[k])
-            
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices[kc] = indnz
-            Cdata[kc] = spa.w[indnz]
-            nzi += 1
-            kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices, Cindptr)
-
-
 
 def cython_csr_matmul(double[:] Adata,
             int[:] Aindices,

@@ -45,7 +45,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_compute_delta_PT_moveto,
         cython_compute_delta_S_moveout,
         cython_compute_delta_S_moveto,
-        cython_csr_add,
         cython_csr_csc_matmul,
         cython_csr_csrT_matmul,
         cython_csr_matmul,
@@ -466,60 +465,6 @@ class sparse_stoch_mat:
 
         """
         return self.__mul__(o)
-
-
-
-
-
-
-
-
-def csr_add(A,B, use_cython=USE_CYTHON):
-    """Addition of square csr matrix"""
-    size = A.shape[0]
-
-    if use_cython:
-
-        Cdata,Cindices,Cindptr = cython_csr_add(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-
-    else:
-
-
-
-        spa = SPA(size)
-
-        Cdata = np.zeros(A.nnz + B.nnz, dtype=A.data.dtype)
-        Cindices = -1*np.ones(A.nnz + B.nnz, dtype=np.int32)
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-            for val, pos in zip(A.data[A.indptr[i]:A.indptr[i+1]],
-                                A.indices[A.indptr[i]:A.indptr[i+1]]):
-                spa.scatter(val, pos)
-            for val, pos in zip(B.data[B.indptr[i]:B.indptr[i+1]],
-                                B.indices[B.indptr[i]:B.indptr[i+1]]):
-                spa.scatter(val, pos)
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for indnz in spa.LS:
-                Cindices[kc] = indnz
-                Cdata[kc] = spa.w[indnz]
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-
-
 
 
 def csr_matmul(A,B, use_cython=USE_CYTHON):
