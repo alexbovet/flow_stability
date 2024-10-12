@@ -90,6 +90,26 @@ def compare_alike():
     return compare_sparse_matrice
 
 @pytest.fixture(scope='session')
+def compare_SSM_args():
+    def compare_SSM_args(ssm_args1, ssm_args2):
+        """Checks if two csr matrices describe the same matrix
+
+        csr notation can deviate in that data and indices can be re-arranged
+        within a indptr slice.
+        """
+        # size
+        assert ssm_args1[0] == ssm_args2[0]
+        # data
+        np.testing.assert_equal(ssm_args1[1], ssm_args2[1])
+        # indices
+        np.testing.assert_equal(ssm_args1[2], ssm_args2[2])
+        # indptr
+        np.testing.assert_equal(ssm_args1[3], ssm_args2[3])
+        # diag val
+        np.testing.assert_equal(ssm_args1[4], ssm_args2[4])
+    return compare_SSM_args
+
+@pytest.fixture(scope='session')
 def probabilities_transition():
     """Create exemplary densities and transition probabilities
     """

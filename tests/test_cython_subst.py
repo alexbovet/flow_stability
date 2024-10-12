@@ -49,7 +49,7 @@ def test_inplace_csr_row_normalize(cs_matrix_creator):
     np.testing.assert_equal(A_csr.data, B_csr.data)
     
 
-def test_stoch_mat_add(SSM_matrix_creator):
+def test_stoch_mat_add(SSM_matrix_creator, compare_SSM_args):
     """
     """
     from flowstab._cython_subst import stoch_mat_add as sma_subst
@@ -84,20 +84,10 @@ def test_stoch_mat_add(SSM_matrix_creator):
         Bnz_rowcols=B.nz_rowcols,
         Bdiag_val=B.diag_val,
     )
-
-    # size
-    assert ssm_args[0] == ssm_args_subst[0]
-    # data
-    np.testing.assert_equal(ssm_args_subst[1], ssm_args[1])
-    # indices
-    np.testing.assert_equal(ssm_args_subst[2], ssm_args[2])
-    # indptr
-    np.testing.assert_equal(ssm_args_subst[3], ssm_args[3])
-    # diag val
-    np.testing.assert_equal(ssm_args_subst[4], ssm_args[4])
+    compare_SSM_args(ssm_args, ssm_args_subst)
     
 
-def test_stoch_mat_sub(SSM_matrix_creator):
+def test_stoch_mat_sub(SSM_matrix_creator, compare_SSM_args):
     """
     """
     from flowstab._cython_subst import stoch_mat_sub as sma_subst
@@ -132,14 +122,32 @@ def test_stoch_mat_sub(SSM_matrix_creator):
         Bnz_rowcols=B.nz_rowcols,
         Bdiag_val=B.diag_val,
     )
+    compare_SSM_args(ssm_args, ssm_args_subst)
 
-    # size
-    assert ssm_args[0] == ssm_args_subst[0]
-    # data
-    np.testing.assert_equal(ssm_args_subst[1], ssm_args[1])
-    # indices
-    np.testing.assert_equal(ssm_args_subst[2], ssm_args[2])
-    # indptr
-    np.testing.assert_equal(ssm_args_subst[3], ssm_args[3])
-    # diag val
-    np.testing.assert_equal(ssm_args_subst[4], ssm_args[4])
+def test_rebuild_nnz_rowcol(SSM_matrix_creator, compare_SSM_args):
+    """
+    """
+    from flowstab._cython_subst import rebuild_nnz_rowcol as rnr_subst
+    from flowstab.SparseStochMat import _css
+    size=100000
+    full_size = 10*size
+    A = SSM_matrix_creator(nbr=2, size=100000, nbr_non_zeros=1000)[0]
+    (data, indices, indptr, size) = _css.rebuild_nnz_rowcol(
+        T_data=A.T_small.data,
+        T_indices=A.T_small.indices.astype(np.int64),
+        T_indptr=A.T_small.indptr.astype(np.int64),
+        nonzero_indices=A.nz_rowcols.astype(np.int64),
+        size=A.size,
+        diag_val=A.diag_val
+    )
+    ssm_args = (size, np.asarray(data), np.asarray(indices), indptr, A.size)
+    (data_, indices_, indptr_, size_) = rnr_subst(
+        T_data=A.T_small.data,
+        T_indices=A.T_small.indices.astype(np.int64),
+        T_indptr=A.T_small.indptr.astype(np.int64),
+        nonzero_indices=A.nz_rowcols.astype(np.int64),
+        size=A.size,
+        diag_val=A.diag_val
+    )
+    ssm_args_subst = (size_, data_, indices_, indptr_, A.size)
+    compare_SSM_args(ssm_args, ssm_args_subst)
