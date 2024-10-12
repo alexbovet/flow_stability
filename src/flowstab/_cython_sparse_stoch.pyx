@@ -41,50 +41,6 @@ from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 from flowstab.SPA cimport SPA
 
 
-def cython_csr_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of square csr matrices 
-        slower than scipy sparse matmul"""
-    
-    cdef int size = Aindptr.shape[0]-1
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t kc = 0 # data/indices index
-    cdef Py_ssize_t i
-    cdef Py_ssize_t k
-    cdef Py_ssize_t j
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        for k in range(Aindptr[i],Aindptr[i+1]):
-            for j in range(Bindptr[Aindices[k]],Bindptr[Aindices[k]+1]):
-                spa.scatter(Adata[k] * Bdata[j], Bindices[j])
-                
-                
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
-            kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
-
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 cdef Py_ssize_t csr_csc_matmul_countnnz(double[:] Adata,
@@ -185,63 +141,6 @@ def cython_csr_csc_matmul_preall(double[:] Adata,
             Cdata[kc] = spa.w[indnz]
             nzi += 1
             kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing
-def cython_csr_csc_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of a NxM csr matrix with a MxN csc matrix
-    
-        returns a NxN matrix 
-        
-        in general, slower than scipy """
-    
-    cdef int size = Aindptr.shape[0]-1 # num row in A
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t i, j, k , l, m
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        
-        if Aindptr[i] != Aindptr[i+1]: # if this row of A is not empty
-            
-            for j in range(size): # j is the column of C
-                
-                l = Bindptr[j] # iterator over B.data col elements
-                if l != Bindptr[j+1]: # if this col of B is not empty
-                    
-                    m = Bindices[l] # iterator over B col elements
-                    for k in range(Aindptr[i],Aindptr[i+1]): # A.indices[k] is the col in A
-                        while m < Aindices[k] and l + 1 < Bindptr[j+1]: # advance in B col until we are at the same position than in A row
-                            l += 1
-                            m = Bindices[l]
-                            
-                        if m == Aindices[k]:
-                            spa.scatter(Adata[k] * Bdata[l], j)
-                    
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
         
         # set indptr for C
         Cindptr[i+1] = Cindptr[i] + nzi
