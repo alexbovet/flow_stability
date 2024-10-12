@@ -984,11 +984,12 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
         if isspmatrix_csc(X):
             print("Warning: row normalization on a CSC matrix will normalize columns.")
 
+        # TODO: resolve this once both cython functions are called via _css
         if USE_CYTHON:
             X.indptr = X.indptr.astype(np.int64, copy=False)
             X.indices = X.indices.astype(np.int64, copy=False)
             if isinstance(row_sum, float):
-                cython_inplace_csr_row_normalize(X.data, X.indptr,
+                _css.inplace_csr_row_normalize(X.data, X.indptr,
                                                  X.shape[0], row_sum)
 
             elif isinstance(row_sum, np.ndarray) and row_sum.dtype == np.float64:

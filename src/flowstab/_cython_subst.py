@@ -36,10 +36,10 @@ def sparse_stoch_from_full_csr(nz_rowcols, Tf_data, Tf_indices, Tf_indptr, diag_
             diag_val)
 
 
-def inplace_csr_row_normalize(T_small:csr_matrix, row_sum:float):
+def inplace_csr_row_normalize(Tf_data, Tf_indptr, n_row:int, row_sum:float):
     """Row normalize a scipy sparse csr matrix inplace
     """
-    for i in range(T_small.shape[0]):
-        row_sum_tmp = T_small.data[T_small.indptr[i]:T_small.indptr[i+1]].sum()
+    for i in range(n_row):
+        row_sum_tmp = Tf_data[Tf_indptr[i]:Tf_indptr[i+1]].sum()
         if row_sum_tmp != 0:
-            T_small.data[T_small.indptr[i]:T_small.indptr[i+1]] /= (row_sum_tmp/row_sum)
+            Tf_data[Tf_indptr[i]:Tf_indptr[i+1]] /= (row_sum_tmp/row_sum)
