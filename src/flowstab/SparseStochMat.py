@@ -47,7 +47,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_compute_delta_S_moveto,
         cython_get_submat_sum,
         cython_inplace_csr_row_normalize_array,
-        cython_rebuild_nnz_rowcol,
     )
 
 else:
@@ -541,52 +540,13 @@ def rebuild_nnz_rowcol(T_small, nonzero_indices, size, diag_val=1.0):
         Full size transition matrix
 
     """
-    if USE_CYTHON:
-        (data, indices, indptr, n_rows) = \
-                    cython_rebuild_nnz_rowcol(T_small.data,
-                                              T_small.indices.astype(np.int64, copy=False),
-                                              T_small.indptr.astype(np.int64, copy=False),
-                                              nonzero_indices.astype(np.int64, copy=False),
-                                              size,
-                                              diag_val)
-    else:
-
-        data = []
-        indices = []
-        rownnz = [] # num nnz element per row
-
-        # n_rows = T_small.shape[0] + zero_indices.shape[0]
-
-        # zero_indices = set(zero_indices)
-
-        # map col indices to new positions
-        # new_col_inds = [i for i in range(size) if i not in zero_indices]
-
-        Ts_indices = [nonzero_indices[i] for i in T_small.indices]
-
-        row_id_small_t = -1
-        for row_id in range(size):
-            row_id_small_t +=1
-            if row_id not in nonzero_indices:
-                # add a row with just 1 on the diagonal
-                if diag_val != 0:
-                    data.append(diag_val)
-                    indices.append(row_id)
-                    rownnz.append(1)
-                else:
-                    rownnz.append(0)
-
-                row_id_small_t -= 1
-            else:
-                row_start = T_small.indptr[row_id_small_t]
-                row_end = T_small.indptr[row_id_small_t+1]
-
-                data.extend(T_small.data[row_start:row_end])
-                indices.extend(Ts_indices[row_start:row_end])
-                rownnz.append(row_end-row_start) # nnz of the row
-
-        indptr = np.append(0, np.cumsum(rownnz))
-
+    (data, indices, indptr, n_rows) = \
+                _css.rebuild_nnz_rowcol(T_small.data,
+                                        T_small.indices.astype(np.int64, copy=False),
+                                        T_small.indptr.astype(np.int64, copy=False),
+                                        nonzero_indices.astype(np.int64, copy=False),
+                                        size,
+                                        diag_val)
     return csr_matrix((data, indices, indptr),
                        shape=(size,size))
 

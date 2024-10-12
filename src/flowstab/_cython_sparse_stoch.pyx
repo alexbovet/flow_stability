@@ -409,7 +409,7 @@ def test_set(int[:] arr):
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing   
-def cython_rebuild_nnz_rowcol(double[:] T_data,
+def rebuild_nnz_rowcol(double[:] T_data,
                               long long [:] T_indices,
                               long long [:] T_indptr,
                               long long [:] nonzero_indices,

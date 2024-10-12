@@ -284,3 +284,55 @@ def stoch_mat_sub(
 
         ic += 1
     return (size, Cdata, Cindices, Cindptr, Cnz_rowcols, Adiag_val - Bdiag_val)
+
+def rebuild_nnz_rowcol(
+    T_data,
+    T_indices,
+    T_indptr,
+    nonzero_indices,
+    size: int,
+    diag_val:float):
+    """ returns a CSR matrix (data,indices,rownnz, shape) built from the CSR 
+        matrix T_small but with
+        added row-colums at zero_indicies (with 1 on the diagonal)
+        
+        Call:
+        -----
+        (data, indices, indptr, n_rows) = rebuild_nnz_rowcol(T_data,
+                                                             T_indices,
+                                                             T_indptr,
+                                                             nonzero_indices,
+                                                             size,
+                                                             diag_val)
+                                    
+    """
+    data = []
+    indices = []
+    rownnz = [] # num nnz element per row
+
+    Ts_indices = [nonzero_indices[i] for i in T_indices]
+ 
+    row_id_small_t = -1
+    for row_id in range(size):
+        row_id_small_t +=1
+        if row_id not in nonzero_indices:
+            # add a row with just 1 on the diagonal
+            if diag_val != 0:
+                data.append(diag_val)
+                indices.append(row_id)
+                rownnz.append(1)
+            else:
+                rownnz.append(0)
+ 
+            row_id_small_t -= 1
+        else:
+            row_start = T_indptr[row_id_small_t]
+            row_end = T_indptr[row_id_small_t+1]
+ 
+            data.extend(T_data[row_start:row_end])
+            indices.extend(Ts_indices[row_start:row_end])
+            rownnz.append(row_end-row_start) # nnz of the row
+ 
+    indptr = np.append(0, np.cumsum(rownnz))
+
+    return (data, indices, indptr, size)
