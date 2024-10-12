@@ -541,10 +541,10 @@ def inplace_csr_row_normalize(double[:] X_data,
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 @cython.cdivision(True)
-def cython_inplace_csr_row_normalize_array(double[:] X_data,
-                                     long long[:] X_indptr,
-                                     Py_ssize_t n_row,
-                                     double[:] row_sum):
+def inplace_csr_row_normalize_array(double[:] X_data,
+                                    long long[:] X_indptr,
+                                    Py_ssize_t n_row,
+                                    double[:] row_sum):
     """ row normalize scipy sparse csr matrices inplace.
         inspired from sklearn sparsefuncs_fast.pyx.
         
@@ -552,7 +552,7 @@ def cython_inplace_csr_row_normalize_array(double[:] X_data,
         
         Call:
         -----
-        cython_inplace_csr_row_normalize_array(double[:] X_data, int [:] X_indptr, Py_ssize_t n_row, double row_sum)
+        inplace_csr_row_normalize_array(double[:] X_data, int [:] X_indptr, Py_ssize_t n_row, double row_sum)
         
     """
     

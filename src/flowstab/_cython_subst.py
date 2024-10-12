@@ -539,3 +539,33 @@ def cython_compute_delta_S_moveout(
         s += p1[idx[i]]*p2[k]
     s -= p1[k]*p2[k]
     return s
+
+def inplace_csr_row_normalize_array(
+    X_data,
+    X_indptr,
+    n_row,
+    row_sum):
+    """ row normalize scipy sparse csr matrices inplace.
+        inspired from sklearn sparsefuncs_fast.pyx.
+        
+        Assumes that X_data has only positive values
+        
+        Call:
+        -----
+        inplace_csr_row_normalize_array(double[:] X_data, int [:] X_indptr, Py_ssize_t n_row, double row_sum)
+        
+    """
+    for i in range(n_row):
+        sum_ = 0.0
+        for j in range(X_indptr[i], X_indptr[i + 1]):
+            sum_ += X_data[j]
+        if sum_ == 0.0:
+            # do not normalize empty rows (can happen if CSR is not pruned
+            # correctly)
+            continue
+        if row_sum[i] == 0.0:
+            for j in range(X_indptr[i], X_indptr[i + 1]):
+                X_data[j] -= sum_/(X_indptr[i + 1]-X_indptr[i])
+        else:
+            for j in range(X_indptr[i], X_indptr[i + 1]):
+                X_data[j] /= (sum_/row_sum[i])  

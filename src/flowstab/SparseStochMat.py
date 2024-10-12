@@ -35,16 +35,10 @@ from scipy.sparse import (
 )
 from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 
-USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
     import _cython_sparse_stoch as _css
-    from _cython_sparse_stoch import (
-        cython_inplace_csr_row_normalize_array,
-    )
-
 else:
     print("Could not load cython functions. Some functionality might be broken.")
-    USE_CYTHON = False
     from . import _cython_subst as _css
 
 
@@ -480,45 +474,32 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
     """
     if isinstance(X, sparse_stoch_mat):
         X.inplace_row_normalize(row_sum=row_sum)
-
-
     elif isspmatrix_csr(X) or isspmatrix_csc(X):
-
         if isspmatrix_csc(X):
             print("Warning: row normalization on a CSC matrix will normalize columns.")
-
         # TODO: resolve this once both cython functions are called via _css
-        if USE_CYTHON:
-            X.indptr = X.indptr.astype(np.int64, copy=False)
-            X.indices = X.indices.astype(np.int64, copy=False)
-            if isinstance(row_sum, float):
-                _css.inplace_csr_row_normalize(X.data, X.indptr,
-                                                 X.shape[0], row_sum)
+        # if isinstance(row_sum, float):
+        #     row_sum = np.ones(X.shape[0])*row_sum
+        # for i in range(X.shape[0]):
+        #     row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
+        #     if row_sum_tmp != 0:
+        #         if row_sum[i] == 0.0:
+        #             X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
+        #         else:
+        #             X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum[i])
+        X.indptr = X.indptr.astype(np.int64, copy=False)
+        X.indices = X.indices.astype(np.int64, copy=False)
+        if isinstance(row_sum, float):
+            _css.inplace_csr_row_normalize(X.data, X.indptr,
+                                                X.shape[0], row_sum)
 
-            elif isinstance(row_sum, np.ndarray) and row_sum.dtype == np.float64:
-                assert row_sum.shape[0] == X.shape[0] and len(row_sum.shape) == 1
+        elif isinstance(row_sum, np.ndarray) and row_sum.dtype == np.float64:
+            assert row_sum.shape[0] == X.shape[0] and len(row_sum.shape) == 1
 
-                cython_inplace_csr_row_normalize_array(X.data, X.indptr,
-                                                       X.shape[0], row_sum)
-
-            else:
-                raise TypeError("row_sum must by float or ndarray of floats")
-
-
+            _css.inplace_csr_row_normalize_array(X.data, X.indptr,
+                                                    X.shape[0], row_sum)
         else:
-
-            if isinstance(row_sum, float):
-                row_sum = np.ones(X.shape[0])*row_sum
-
-            for i in range(X.shape[0]):
-                row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
-                if row_sum_tmp != 0:
-                    if row_sum[i] == 0.0:
-                        X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
-                    else:
-                        X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum[i])
-
-
+            raise TypeError("row_sum must by float or ndarray of floats")
     else:
         raise TypeError("X must be in ndarray, CSR or sparse_stoch_mat format.")
 
