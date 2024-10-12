@@ -901,58 +901,6 @@ def csr_csrT_matmul(A,B):
 
 
 
-# def inplace_csr_row_normalize(X, row_sum=1.0):
-#     """ row normalize scipy sparse csr matrices inplace such that each row sum
-#         to `row_sum` (default is 1.0).
-#         inspired from sklearn sparsefuncs_fast.pyx.
-
-#         Parameters:
-#         -----------
-
-#         X : csr_matrix or sparse_stoch_mat
-#             Matrix to be row normalized
-
-#         row_sum : float or ndarray of same linear size than X (default is 1.0).
-#             Desired value of the sum of the rows
-
-#         Returns:
-#         --------
-
-#         None : operates in place.
-#     """
-
-#     if isinstance(X, sparse_stoch_mat):
-#         X.inplace_row_normalize(row_sum=row_sum)
-
-#     # elif isinstance(X, np.ndarray) and not isinstance(X, np.matrix):
-#     #     X = X/(X.sum(axis=1)/row_sum)[:, np.newaxis]
-
-#     elif isspmatrix_csr(X):
-
-
-#         if USE_CYTHON:
-
-#             cython_inplace_csr_row_normalize(X.data, X.indptr, X.shape[0], row_sum)
-
-#         else:
-
-#             for i in range(X.shape[0]):
-#                 row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
-#                 if row_sum_tmp != 0:
-
-#                     if row_sum == 0.0:
-#                         X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
-#                     else:
-#                         X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum)
-
-
-#             else:
-#                 raise TypeError('row_sum must by float or ndarray of floats')
-#     else:
-#         raise TypeError('X must be in ndarray, CSR or sparse_stoch_mat format.')
-
-
-
 def inplace_csr_row_normalize(X, row_sum=1.0):
     """Row normalize scipy sparse csr matrices inplace such that each row sum
     to `row_sum` (default is 1.0).
