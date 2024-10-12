@@ -45,7 +45,6 @@ if importlib.util.find_spec("cython") is not None:
         cython_compute_delta_PT_moveto,
         cython_compute_delta_S_moveout,
         cython_compute_delta_S_moveto,
-        cython_csr_csrT_matmul,
         cython_get_submat_sum,
         cython_inplace_csr_row_normalize_array,
         cython_rebuild_nnz_rowcol,
@@ -463,61 +462,6 @@ class sparse_stoch_mat:
 
         """
         return self.__mul__(o)
-
-
-def csr_csrT_matmul(A,B):
-    """Multiply a CSR matrix (A) with a CSC matrix (B) which has the same
-    sparsity pattern than A.T and return a CSR matrix (C)
-    """
-    size = A.shape[0]
-
-    if USE_CYTHON:
-        Cdata,Cindices,Cindptr = cython_csr_csrT_matmul(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-    else:
-
-        spa = SPA(size)
-
-        Cdata = []
-        Cindices = []
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-
-            for j in range(i,size): # j is the column of C, Since C is symmetric,
-                                    # we only compute half
-
-                l = B.indptr[j] # iterator over B.data col elements
-                m = B.indices[l] # iterator over B col elements
-                for k in range(A.indptr[i],A.indptr[i+1]): # A.indices[k] is the col in A
-                    while m < A.indices[k] and l + 1 < B.indptr[j+1]: # advance in B col until we are at the same position than in A row
-                        l += 1
-                        m = B.indices[l]
-
-                    if m == A.indices[k]:
-                        spa.scatter(A.data[k] * B.data[l], j)
-
-
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for irnz in spa.LS:
-                Cindices.append(irnz)
-                Cdata.append(spa.w[irnz])
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata, np.array(Cindices, dtype=np.int32),Cindptr),
-                          shape=(size,size))
-
 
 
 def inplace_csr_row_normalize(X, row_sum=1.0):

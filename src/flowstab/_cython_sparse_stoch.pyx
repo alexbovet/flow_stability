@@ -146,59 +146,6 @@ def cython_csr_csc_matmul_preall(double[:] Adata,
         Cindptr[i+1] = Cindptr[i] + nzi
         
     return (Cdata, Cindices ,Cindptr)
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing
-def cython_csr_csrT_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of a NxM csr matrix with a MxN csc matrix
-    
-        returns a NxN matrix  with only the upper diagonal
-        
-        in general, slower than scipy """
-    
-    cdef int size = Aindptr.shape[0]-1 # num row in A
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t i, j, k , l, m
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        
-        for j in range(i,size): # j is the column of C
-            
-            l = Bindptr[j] # iterator over B.data col elements
-            m = Bindices[l] # iterator over B col elements
-            for k in range(Aindptr[i],Aindptr[i+1]): # A.indices[k] is the col in A
-                while m < Aindices[k] and l + 1 < Bindptr[j+1]: # advance in B col until we are at the same position than in A row
-                    l += 1
-                    m = Bindices[l]
-                    
-                if m == Aindices[k]:
-                    spa.scatter(Adata[k] * Bdata[l], j)
-                
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
