@@ -257,16 +257,16 @@ class sparse_stoch_mat:
 
             size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
                 _css.stoch_mat_add(self.size, # big matrix size
-                                self.T_small.data,
-                                self.T_small.indices,
-                                self.T_small.indptr,
-                                self.nz_rowcols,
-                                self.diag_val,
-                                B.T_small.data,
-                                B.T_small.indices,
-                                B.T_small.indptr,
-                                B.nz_rowcols,
-                                B.diag_val)
+                                   self.T_small.data,
+                                   self.T_small.indices,
+                                   self.T_small.indptr,
+                                   self.nz_rowcols,
+                                   self.diag_val,
+                                   B.T_small.data,
+                                   B.T_small.indices,
+                                   B.T_small.indptr,
+                                   B.nz_rowcols,
+                                   B.diag_val)
 
             return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
                                     Cnz_rowcols, Cdiag_val)
@@ -297,16 +297,16 @@ class sparse_stoch_mat:
 
             size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
                 _css.stoch_mat_sub(self.size, # big matrix size
-                                self.T_small.data,
-                                self.T_small.indices,
-                                self.T_small.indptr,
-                                self.nz_rowcols,
-                                self.diag_val,
-                                B.T_small.data,
-                                B.T_small.indices,
-                                B.T_small.indptr,
-                                B.nz_rowcols,
-                                B.diag_val)
+                                   self.T_small.data,
+                                   self.T_small.indices,
+                                   self.T_small.indptr,
+                                   self.nz_rowcols,
+                                   self.diag_val,
+                                   B.T_small.data,
+                                   B.T_small.indices,
+                                   B.T_small.indptr,
+                                   B.nz_rowcols,
+                                   B.diag_val)
 
             return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
                                     Cnz_rowcols, Cdiag_val)
