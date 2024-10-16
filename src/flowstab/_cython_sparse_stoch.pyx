@@ -40,97 +40,6 @@ from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
 from flowstab.SPA cimport SPA
 
-def cython_csr_add(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ addition of square csr matrices
-        equivalent speed than scipy addition """
-    
-    cdef int size = Aindptr.shape[0]-1
-    
-    cdef double[:] Cdata = np.zeros(Adata.shape[0] + Bdata.shape[0], dtype=np.float64)
-    cdef int[:] Cindices = -1*np.ones(Adata.shape[0] + Bdata.shape[0], dtype=np.int32)
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t kc = 0 # data/indices index
-    cdef Py_ssize_t i
-    cdef Py_ssize_t k
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-    
-    
-    # sparse accumulator
-    spa = new SPA(size)
-    
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(i)
-        for k in range(Aindptr[i],Aindptr[i+1]):
-            spa.scatter(Adata[k], Aindices[k])
-            
-        for k in range(Bindptr[i],Bindptr[i+1]):
-            spa.scatter(Bdata[k], Bindices[k])
-            
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices[kc] = indnz
-            Cdata[kc] = spa.w[indnz]
-            nzi += 1
-            kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices, Cindptr)
-
-
-
-def cython_csr_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of square csr matrices 
-        slower than scipy sparse matmul"""
-    
-    cdef int size = Aindptr.shape[0]-1
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t kc = 0 # data/indices index
-    cdef Py_ssize_t i
-    cdef Py_ssize_t k
-    cdef Py_ssize_t j
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        for k in range(Aindptr[i],Aindptr[i+1]):
-            for j in range(Bindptr[Aindices[k]],Bindptr[Aindices[k]+1]):
-                spa.scatter(Adata[k] * Bdata[j], Bindices[j])
-                
-                
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
-            kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
@@ -173,184 +82,10 @@ cdef Py_ssize_t csr_csc_matmul_countnnz(double[:] Adata,
                             break
                 
     return nz
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing
-def cython_csr_csc_matmul_preall(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of a NxM csr matrix with a MxN csc matrix
-    
-        returns a NxN matrix 
-        
-        in general, slower than scipy """
-    
-    cdef int size = Aindptr.shape[0]-1 # num row in A
-    
-    cdef Py_ssize_t cnz
-    
-    cnz = csr_csc_matmul_countnnz(Adata, Aindices, Aindptr,
-                                  Bdata, Bindices, Bindptr)
-    cdef double[:] Cdata = np.zeros(cnz, dtype=np.float64)
-    cdef int[:] Cindices = -1*np.ones(cnz, dtype=np.int32)
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t i, j, k , l, m
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-    cdef Py_ssize_t kc = 0
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        
-        if Aindptr[i] != Aindptr[i+1]: # if this row of A is not empty
-            
-            for j in range(size): # j is the column of C
-                
-                l = Bindptr[j] # iterator over B.data col elements
-                if l != Bindptr[j+1]: # if this col of B is not empty
-                    
-                    m = Bindices[l] # iterator over B col elements
-                    for k in range(Aindptr[i],Aindptr[i+1]): # A.indices[k] is the col in A
-                        while m < Aindices[k] and l + 1 < Bindptr[j+1]: # advance in B col until we are at the same position than in A row
-                            l += 1
-                            m = Bindices[l]
-                            
-                        if m == Aindices[k]:
-                            spa.scatter(Adata[k] * Bdata[l], j)
-                    
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices[kc] = indnz
-            Cdata[kc] = spa.w[indnz]
-            nzi += 1
-            kc += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing
-def cython_csr_csc_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of a NxM csr matrix with a MxN csc matrix
-    
-        returns a NxN matrix 
-        
-        in general, slower than scipy """
-    
-    cdef int size = Aindptr.shape[0]-1 # num row in A
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t i, j, k , l, m
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        
-        if Aindptr[i] != Aindptr[i+1]: # if this row of A is not empty
-            
-            for j in range(size): # j is the column of C
-                
-                l = Bindptr[j] # iterator over B.data col elements
-                if l != Bindptr[j+1]: # if this col of B is not empty
-                    
-                    m = Bindices[l] # iterator over B col elements
-                    for k in range(Aindptr[i],Aindptr[i+1]): # A.indices[k] is the col in A
-                        while m < Aindices[k] and l + 1 < Bindptr[j+1]: # advance in B col until we are at the same position than in A row
-                            l += 1
-                            m = Bindices[l]
-                            
-                        if m == Aindices[k]:
-                            spa.scatter(Adata[k] * Bdata[l], j)
-                    
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing
-def cython_csr_csrT_matmul(double[:] Adata,
-            int[:] Aindices,
-            int[:] Aindptr,
-            double[:] Bdata,
-            int[:] Bindices,
-            int[:] Bindptr):
-    """ multiplication of a NxM csr matrix with a MxN csc matrix
-    
-        returns a NxN matrix  with only the upper diagonal
-        
-        in general, slower than scipy """
-    
-    cdef int size = Aindptr.shape[0]-1 # num row in A
-    cdef vector[double] Cdata
-    cdef vector[int] Cindices
-    cdef int[:] Cindptr = -1*np.ones(size+1, dtype=np.int32)
-    cdef Py_ssize_t i, j, k , l, m
-    cdef Py_ssize_t nzi
-    cdef Py_ssize_t indnz
-        
-    # sparse accumulator
-    spa = new SPA(size)
-        
-    Cindptr[0] = 0 
-    for i in range(size): # iterate thourgh rows
-        spa.reset(current_row=i)
-        
-        for j in range(i,size): # j is the column of C
-            
-            l = Bindptr[j] # iterator over B.data col elements
-            m = Bindices[l] # iterator over B col elements
-            for k in range(Aindptr[i],Aindptr[i+1]): # A.indices[k] is the col in A
-                while m < Aindices[k] and l + 1 < Bindptr[j+1]: # advance in B col until we are at the same position than in A row
-                    l += 1
-                    m = Bindices[l]
-                    
-                if m == Aindices[k]:
-                    spa.scatter(Adata[k] * Bdata[l], j)
-                
-        # set col indices and data for C
-        nzi = 0 # num nonzero in row i of C
-        for indnz in spa.LS:
-            Cindices.push_back(indnz)
-            Cdata.push_back(spa.w[indnz])
-            nzi += 1
-        
-        # set indptr for C
-        Cindptr[i+1] = Cindptr[i] + nzi
-        
-    return (Cdata, Cindices ,Cindptr)
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_stoch_mat_add(
+def stoch_mat_add(
             int size, # big matrix size
             double[:] Adata,
             int[:] Aindices,
@@ -476,7 +211,7 @@ def cython_stoch_mat_add(
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_stoch_mat_sub(
+def stoch_mat_sub(
             int size, # big matrix size
             double[:] Adata,
             int[:] Aindices,
@@ -610,7 +345,7 @@ def test_set(int[:] arr):
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing   
-def cython_rebuild_nnz_rowcol(double[:] T_data,
+def rebuild_nnz_rowcol(double[:] T_data,
                               long long [:] T_indices,
                               long long [:] T_indptr,
                               long long [:] nonzero_indices,
@@ -698,7 +433,7 @@ def cython_rebuild_nnz_rowcol(double[:] T_data,
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 @cython.cdivision(True)
-def cython_inplace_csr_row_normalize(double[:] X_data,
+def inplace_csr_row_normalize(double[:] X_data,
                                      long long[:] X_indptr,
                                      Py_ssize_t n_row,
                                      double row_sum=1.0):
@@ -709,7 +444,7 @@ def cython_inplace_csr_row_normalize(double[:] X_data,
         
         Call:
         -----
-        cython_inplace_csr_row_normalize(double[:] X_data, long long [:] X_indptr, Py_ssize_t n_row, double row_sum)
+        inplace_csr_row_normalize(double[:] X_data, long long [:] X_indptr, Py_ssize_t n_row, double row_sum)
         
     """
     
@@ -742,10 +477,10 @@ def cython_inplace_csr_row_normalize(double[:] X_data,
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 @cython.cdivision(True)
-def cython_inplace_csr_row_normalize_array(double[:] X_data,
-                                     long long[:] X_indptr,
-                                     Py_ssize_t n_row,
-                                     double[:] row_sum):
+def inplace_csr_row_normalize_array(double[:] X_data,
+                                    long long[:] X_indptr,
+                                    Py_ssize_t n_row,
+                                    double[:] row_sum):
     """ row normalize scipy sparse csr matrices inplace.
         inspired from sklearn sparsefuncs_fast.pyx.
         
@@ -753,7 +488,7 @@ def cython_inplace_csr_row_normalize_array(double[:] X_data,
         
         Call:
         -----
-        cython_inplace_csr_row_normalize(double[:] X_data, int [:] X_indptr, Py_ssize_t n_row, double row_sum)
+        inplace_csr_row_normalize_array(double[:] X_data, int [:] X_indptr, Py_ssize_t n_row, double row_sum)
         
     """
     
@@ -856,7 +591,7 @@ def cython_inplace_csr_row_normalize_triu(double[:] X_data,
                 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_sparse_stoch_from_full_csr(int[:] nz_rowcols,
+def sparse_stoch_from_full_csr(int[:] nz_rowcols,
                                       double[:] Tf_data,
                                       int[:] Tf_indices,
                                       int[:] Tf_indptr,
@@ -898,7 +633,7 @@ def cython_sparse_stoch_from_full_csr(int[:] nz_rowcols,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_get_submat_sum(double[:] Adata,
+cpdef double get_submat_sum(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] row_idx,
@@ -927,7 +662,7 @@ cpdef double cython_get_submat_sum(double[:] Adata,
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_aggregate_csr_mat(double[:] Adata,
+def aggregate_csr_mat(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] idxs_array,
@@ -948,7 +683,7 @@ def cython_aggregate_csr_mat(double[:] Adata,
     
     for row in range(new_size):
         for col in range(new_size):
-            pt = cython_get_submat_sum(Adata, Aindices, 
+            pt = get_submat_sum(Adata, Aindices, 
                                       Aindptr, 
                                       idxs_array[idxptr[row]:idxptr[row+1]],
                                       idxs_array[idxptr[col]:idxptr[col+1]])
@@ -962,7 +697,7 @@ def cython_aggregate_csr_mat(double[:] Adata,
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_aggregate_csr_mat_2(double[:] Adata,
+def aggregate_csr_mat_2(double[:] Adata,
                             int[:] Aindices,
                             int[:] Aindptr,
                             int[:] idxs_array,
@@ -1001,7 +736,7 @@ def cython_aggregate_csr_mat_2(double[:] Adata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_compute_delta_PT_moveto(double[:] PTdata,
+cpdef double compute_delta_PT_moveto(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -1048,7 +783,7 @@ cpdef double cython_compute_delta_PT_moveto(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_compute_delta_S_moveto(double[:] PTdata,
+def compute_delta_S_moveto(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -1070,14 +805,14 @@ def cython_compute_delta_S_moveto(double[:] PTdata,
     cdef Py_ssize_t num_idx = idx.shape[0]
     
 
-    s = cython_compute_delta_PT_moveto(PTdata,
-                            PTindices,
-                            PTindptr,
-                            PTcscdata,
-                            PTcscindices,
-                            PTcscindptr,
-                            k,
-                            idx)
+    s = compute_delta_PT_moveto(PTdata,
+                                PTindices,
+                                PTindptr,
+                                PTcscdata,
+                                PTcscindices,
+                                PTcscindptr,
+                                k,
+                                idx)
 
         
     # now substract contribution from p1^T @ p2
@@ -1091,7 +826,7 @@ def cython_compute_delta_S_moveto(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-cpdef double cython_compute_delta_PT_moveout(double[:] PTdata,
+cpdef double compute_delta_PT_moveout(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -1137,7 +872,7 @@ cpdef double cython_compute_delta_PT_moveout(double[:] PTdata,
     
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
-def cython_compute_delta_S_moveout(double[:] PTdata,
+def compute_delta_S_moveout(double[:] PTdata,
                             int[:] PTindices,
                             int[:] PTindptr,
                             double[:] PTcscdata,
@@ -1159,14 +894,14 @@ def cython_compute_delta_S_moveout(double[:] PTdata,
     cdef Py_ssize_t num_idx = idx.shape[0]
     
 
-    s = cython_compute_delta_PT_moveout(PTdata,
-                            PTindices,
-                            PTindptr,
-                            PTcscdata,
-                            PTcscindices,
-                            PTcscindptr,
-                            k,
-                            idx)
+    s = compute_delta_PT_moveout(PTdata,
+                                 PTindices,
+                                 PTindptr,
+                                 PTcscdata,
+                                 PTcscindices,
+                                 PTcscindptr,
+                                 k,
+                                 idx)
 
         
     # now substract contribution from p1^T @ p2

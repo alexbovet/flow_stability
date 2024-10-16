@@ -35,31 +35,11 @@ from scipy.sparse import (
 )
 from scipy.sparse._sparsetools import csr_scale_columns, csr_scale_rows
 
-USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
-    from _cython_sparse_stoch import (
-        cython_aggregate_csr_mat,
-        cython_aggregate_csr_mat_2,
-        cython_compute_delta_PT_moveout,
-        cython_compute_delta_PT_moveto,
-        cython_compute_delta_S_moveout,
-        cython_compute_delta_S_moveto,
-        cython_csr_add,
-        cython_csr_csc_matmul,
-        cython_csr_csrT_matmul,
-        cython_csr_matmul,
-        cython_get_submat_sum,
-        cython_inplace_csr_row_normalize,
-        cython_inplace_csr_row_normalize_array,
-        cython_rebuild_nnz_rowcol,
-        cython_sparse_stoch_from_full_csr,
-        cython_stoch_mat_add,
-        cython_stoch_mat_sub,
-    )
-
+    import _cython_sparse_stoch as _css
 else:
     print("Could not load cython functions. Some functionality might be broken.")
-    USE_CYTHON = False
+    from . import _cython_subst as _css
 
 
 USE_SPARSE_DOT_MKL = True
@@ -132,40 +112,15 @@ class sparse_stoch_mat:
         if nz_rowcols is None:
             nz_rows, nz_cols = (Tcsr - diag_val * eye(Tcsr.shape[0], format="csr")).nonzero()
             nz_rowcols = np.union1d(nz_rows,nz_cols)
-        if USE_CYTHON:
 
-            res = cython_sparse_stoch_from_full_csr(np.array(nz_rowcols, dtype=np.int32),
-                                              Tcsr.data,
-                                              Tcsr.indices,
-                                              Tcsr.indptr,
-                                              diag_val)
+        res = _css.sparse_stoch_from_full_csr(
+                np.array(nz_rowcols, dtype=np.int32),
+                Tcsr.data,
+                Tcsr.indices,
+                Tcsr.indptr,
+                diag_val)
 
-            return cls(*res)
-
-        else:
-
-            T_s_nnz = Tcsr.nnz - Tcsr.shape[0] + nz_rowcols.size
-
-            T_s_data = np.zeros(T_s_nnz, dtype=np.float64)
-            T_s_indices = -1*np.ones(T_s_nnz, dtype=np.int32)
-            T_s_indptr = -1*np.ones(nz_rowcols.size+1, dtype=np.int32)
-
-            #map indices from big to small T
-            BtoS = {v:k for k,v in enumerate(nz_rowcols)}
-
-            its = 0
-            T_s_indptr[0] = 0
-            for tsrow, tbrow in enumerate(nz_rowcols):
-                nzr = 0
-                for k in range(Tcsr.indptr[tbrow],Tcsr.indptr[tbrow+1]):
-                    T_s_data[its] = Tcsr.data[k]
-                    T_s_indices[its] = BtoS[Tcsr.indices[k]]
-                    its += 1
-                    nzr += 1
-                T_s_indptr[tsrow+1] = T_s_indptr[tsrow] + nzr
-
-            return cls(Tcsr.shape[0], T_s_data, T_s_indices, T_s_indptr,
-                       nz_rowcols, diag_val=diag_val)
+        return cls(*res)
 
     @classmethod
     def create_diag(cls, size, diag_val=1.0):
@@ -185,18 +140,11 @@ class sparse_stoch_mat:
 
     def inplace_row_normalize(self, row_sum=1.0):
 
-        if USE_CYTHON:
-            self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
-            self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
+        self.T_small.indptr = self.T_small.indptr.astype(np.int64, copy=False)
+        self.T_small.indices = self.T_small.indices.astype(np.int64, copy=False)
 
-            cython_inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
-                                             self.T_small.shape[0], row_sum)
-        else:
-
-            for i in range(self.T_small.shape[0]):
-                row_sum_tmp = self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]].sum()
-                if row_sum_tmp != 0:
-                    self.T_small.data[self.T_small.indptr[i]:self.T_small.indptr[i+1]] /= (row_sum_tmp/row_sum)
+        _css.inplace_csr_row_normalize(self.T_small.data, self.T_small.indptr,
+                                            self.T_small.shape[0], row_sum)
 
         self.diag_val = row_sum
 
@@ -307,118 +255,22 @@ class sparse_stoch_mat:
             if not B.T_small.has_canonical_format:
                 B.T_small.sort_indices()
 
-            if USE_CYTHON:
+            size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
+                _css.stoch_mat_add(self.size, # big matrix size
+                                   self.T_small.data,
+                                   self.T_small.indices,
+                                   self.T_small.indptr,
+                                   self.nz_rowcols,
+                                   self.diag_val,
+                                   B.T_small.data,
+                                   B.T_small.indices,
+                                   B.T_small.indptr,
+                                   B.nz_rowcols,
+                                   B.diag_val)
 
-                size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
-                    cython_stoch_mat_add(self.size, # big matrix size
-                                    self.T_small.data,
-                                    self.T_small.indices,
-                                    self.T_small.indptr,
-                                    self.nz_rowcols,
-                                    self.diag_val,
-                                    B.T_small.data,
-                                    B.T_small.indices,
-                                    B.T_small.indptr,
-                                    B.nz_rowcols,
-                                    B.diag_val)
+            return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
+                                    Cnz_rowcols, Cdiag_val)
 
-                return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols, Cdiag_val)
-
-            else:
-
-                Anz_set = set(self.nz_rowcols)
-                Bnz_set = set(B.nz_rowcols)
-                Cnz_set = Anz_set.union(Bnz_set)
-
-                interset = Anz_set.intersection(Bnz_set)
-                Anz_only = Anz_set - interset
-                Bnz_only = Bnz_set - interset
-
-                # size of C.T_small
-                small_size = len(Cnz_set)
-
-                Cnz_rowcols = sorted(list(Cnz_set))
-
-                spa = SPA(small_size)
-
-                Cdata = np.zeros(self.T_small.nnz + B.T_small.nnz + \
-                                      self.T_small.shape[0] + B.T_small.shape[0],
-                                 dtype=np.float64)
-
-                Cindices = -1*np.ones(self.T_small.nnz + B.T_small.nnz + \
-                                      self.T_small.shape[0] + B.T_small.shape[0],
-                                      dtype=np.int32)
-                Cindptr = -1*np.ones(small_size+1, dtype=np.int32)
-
-
-                kc = 0 # data/indices index
-
-                ia = 0 # row index of A.T_small
-                ib = 0 # row index of B.T_small
-                ic = 0 # row index of C.T_small
-
-                Acol_to_Ccol = np.zeros(self.nz_rowcols.size, dtype=np.int32)
-
-                ia_col = 0
-                ic_col = 0
-                for ia_col in range(self.nz_rowcols.size): # map col in A to col in C
-                    while self.nz_rowcols[ia_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Acol_to_Ccol[ia_col] = ic_col
-
-                Bcol_to_Ccol = np.zeros(B.nz_rowcols.size, dtype=np.int32)
-
-                ib_col = 0
-                ic_col = 0
-                for ib_col in range(B.nz_rowcols.size): # map col in A to col in C
-                    while B.nz_rowcols[ib_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Bcol_to_Ccol[ib_col] = ic_col
-
-                Cindptr[0] = 0
-                for i in Cnz_rowcols: # iterate thourgh rows
-                    spa.reset(current_row=i)
-
-                    if i in Anz_set:
-                        for val, pos in zip(self.T_small.data[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]],
-                                            self.T_small.indices[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]]):
-                            spa.scatter(val, Acol_to_Ccol[pos])
-                        ia += 1
-
-                    if i in Bnz_set:
-                        for val, pos in zip(B.T_small.data[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]],
-                                            B.T_small.indices[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]]):
-                            spa.scatter(val, Bcol_to_Ccol[pos])
-                        ib += 1
-
-                    if i in Anz_only:
-                        # we need to add the diagonal term of B
-                        spa.scatter(B.diag_val, ic)
-                    if i in Bnz_only:
-                        # we need to add the diagonal term of A
-                        spa.scatter(self.diag_val, ic)
-
-
-                    # set col indices and data for C
-                    nzi = 0 # num nonzero in row i of C
-                    for indnz in spa.LS:
-                        Cindices[kc] = indnz
-                        Cdata[kc] = spa.w[indnz]
-                        nzi += 1
-                        kc += 1
-
-
-                    # set indptr for C
-                    Cindptr[ic+1] = Cindptr[ic] + nzi
-
-                    ic += 1
-
-
-                return sparse_stoch_mat(self.size,
-                                        Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols,
-                                        diag_val=self.diag_val + B.diag_val)
 
         elif isinstance(B, (spmatrix, np.ndarray)):
             return self.to_full_mat() + B
@@ -443,118 +295,21 @@ class sparse_stoch_mat:
             if not B.T_small.has_canonical_format:
                 B.T_small.sort_indices()
 
-            if USE_CYTHON:
+            size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
+                _css.stoch_mat_sub(self.size, # big matrix size
+                                   self.T_small.data,
+                                   self.T_small.indices,
+                                   self.T_small.indptr,
+                                   self.nz_rowcols,
+                                   self.diag_val,
+                                   B.T_small.data,
+                                   B.T_small.indices,
+                                   B.T_small.indptr,
+                                   B.nz_rowcols,
+                                   B.diag_val)
 
-                size, Cdata,Cindices,Cindptr, Cnz_rowcols, Cdiag_val = \
-                    cython_stoch_mat_sub(self.size, # big matrix size
-                                    self.T_small.data,
-                                    self.T_small.indices,
-                                    self.T_small.indptr,
-                                    self.nz_rowcols,
-                                    self.diag_val,
-                                    B.T_small.data,
-                                    B.T_small.indices,
-                                    B.T_small.indptr,
-                                    B.nz_rowcols,
-                                    B.diag_val)
-
-                return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols, Cdiag_val)
-
-            else:
-
-                Anz_set = set(self.nz_rowcols)
-                Bnz_set = set(B.nz_rowcols)
-                Cnz_set = Anz_set.union(Bnz_set)
-
-                interset = Anz_set.intersection(Bnz_set)
-                Anz_only = Anz_set - interset
-                Bnz_only = Bnz_set - interset
-
-                # size of C.T_small
-                small_size = len(Cnz_set)
-
-                Cnz_rowcols = sorted(list(Cnz_set))
-
-                spa = SPA(small_size)
-
-                Cdata = np.zeros(self.T_small.nnz + B.T_small.nnz,
-                                 dtype=np.float64)
-
-                Cindices = -1*np.ones(self.T_small.nnz + B.T_small.nnz,
-                                      dtype=np.int32)
-                Cindptr = -1*np.ones(small_size+1, dtype=np.int32)
-
-                Cnz_rowcols = -1*np.ones(small_size,
-                                      dtype=np.int32)
-
-                kc = 0 # data/indices index
-
-                ia = 0 # row index of A.T_small
-                ib = 0 # row index of B.T_small
-                ic = 0 # row index of C.T_small
-
-                Acol_to_Ccol = np.zeros(self.nz_rowcols.size, dtype=np.int32)
-
-                ia_col = 0
-                ic_col = 0
-                for ia_col in range(self.nz_rowcols.size): # map col in A to col in C
-                    while self.nz_rowcols[ia_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Acol_to_Ccol[ia_col] = ic_col
-
-                Bcol_to_Ccol = np.zeros(B.nz_rowcols.size, dtype=np.int32)
-
-                ib_col = 0
-                ic_col = 0
-                for ib_col in range(B.nz_rowcols.size): # map col in A to col in C
-                    while B.nz_rowcols[ib_col] != Cnz_rowcols[ic_col]:
-                        ic_col+=1
-                    Bcol_to_Ccol[ib_col] = ic_col
-
-                Cindptr[0] = 0
-                for i in Cnz_rowcols: # iterate thourgh rows
-                    spa.reset(current_row=i)
-
-                    if i in Anz_set:
-                        for val, pos in zip(self.T_small.data[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]],
-                                            self.T_small.indices[self.T_small.indptr[ia]:self.T_small.indptr[ia+1]]):
-                            spa.scatter(val, Acol_to_Ccol[pos])
-                        ia += 1
-
-                    if i in Bnz_set:
-                        for val, pos in zip(B.T_small.data[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]],
-                                            B.T_small.indices[B.T_small.indptr[ib]:B.T_small.indptr[ib+1]]):
-                            spa.scatter(-1*val, Bcol_to_Ccol[pos])
-                        ib += 1
-
-                    if i in Anz_only:
-                        # we need to add the diagonal term of B
-                        spa.scatter(-1*B.diag_val, ic)
-                    if i in Bnz_only:
-                        # we need to add the diagonal term of A
-                        spa.scatter(self.diag_val, ic)
-
-
-                    # set col indices and data for C
-                    nzi = 0 # num nonzero in row i of C
-                    for indnz in spa.LS:
-                        Cindices[kc] = indnz
-                        Cdata[kc] = spa.w[indnz]
-                        nzi += 1
-                        kc += 1
-
-
-                    # set indptr for C
-                    Cindptr[ic+1] = Cindptr[ic] + nzi
-
-                    ic += 1
-
-
-                return sparse_stoch_mat(self.size,
-                                        Cdata,Cindices,Cindptr,
-                                        Cnz_rowcols,
-                                        diag_val=self.diag_val - B.diag_val)
+            return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
+                                    Cnz_rowcols, Cdiag_val)
 
         elif isinstance(B, (spmatrix, np.ndarray)):
             return self.to_full_mat() - B
@@ -695,296 +450,6 @@ class sparse_stoch_mat:
         return self.__mul__(o)
 
 
-
-
-
-
-
-class SPA:
-    """sparse accumulator
-    with multiple switch technique
-        
-    from: Implementing Sparse Matrices for Graph Algorithms. 
-    in Graph Algorithms in the Language of Linear Algebra 
-    94720, 287–313 (2011).
-    """
-
-    def __init__(self, size, current_row=0):
-
-        self.size = size
-        # values
-        self.w = np.zeros(size, dtype=np.float64)
-
-        # switch: if == current row, position is occupied
-        self.b = -1*np.ones(size, dtype=np.int32)
-        self.LS = list()
-        self.current_row = current_row
-
-
-    def scatter(self, value, pos ):
-
-        if self.b[pos] < self.current_row:
-            self.w[pos] = value
-            self.b[pos] = self.current_row
-            self.LS.append(pos)
-        else:
-            self.w[pos] += value
-
-    def reset(self, current_row):
-
-        self.current_row = current_row
-        self.LS = []
-
-def csr_add(A,B, use_cython=USE_CYTHON):
-    """Addition of square csr matrix"""
-    size = A.shape[0]
-
-    if use_cython:
-
-        Cdata,Cindices,Cindptr = cython_csr_add(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-
-    else:
-
-
-
-        spa = SPA(size)
-
-        Cdata = np.zeros(A.nnz + B.nnz, dtype=A.data.dtype)
-        Cindices = -1*np.ones(A.nnz + B.nnz, dtype=np.int32)
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-            for val, pos in zip(A.data[A.indptr[i]:A.indptr[i+1]],
-                                A.indices[A.indptr[i]:A.indptr[i+1]]):
-                spa.scatter(val, pos)
-            for val, pos in zip(B.data[B.indptr[i]:B.indptr[i+1]],
-                                B.indices[B.indptr[i]:B.indptr[i+1]]):
-                spa.scatter(val, pos)
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for indnz in spa.LS:
-                Cindices[kc] = indnz
-                Cdata[kc] = spa.w[indnz]
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-
-
-
-
-def csr_matmul(A,B, use_cython=USE_CYTHON):
-
-    size = A.shape[0]
-
-    if use_cython:
-        Cdata,Cindices,Cindptr = cython_csr_matmul(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-    else:
-
-        spa = SPA(size)
-
-        Cdata = []
-        Cindices = []
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-            for k in range(A.indptr[i],A.indptr[i+1]): # k is the col in A
-                for j in range(B.indptr[A.indices[k]],B.indptr[A.indices[k]+1]): # for each COL of B, we add its contribution
-                    spa.scatter(A.data[k] * B.data[j], B.indices[j])
-
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for irnz in spa.LS:
-                Cindices.append(irnz)
-                Cdata.append(spa.w[irnz])
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata, np.array(Cindices, dtype=np.int32),Cindptr),
-                          shape=(size,size))
-
-
-
-
-def csr_csc_matmul(A,B):
-    """Multiply a CSR matrix (A) with a CSC matrix (B) and return a CSR matrix (C)"""
-    size = A.shape[0]
-
-    if USE_CYTHON:
-        Cdata,Cindices,Cindptr = cython_csr_csc_matmul(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-    else:
-
-        spa = SPA(size)
-
-        Cdata = []
-        Cindices = []
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-
-            for j in range(size): # j is the column of C
-
-                l = B.indptr[j] # iterator over B.data col elements
-                m = B.indices[l] # iterator over B col elements
-                for k in range(A.indptr[i],A.indptr[i+1]): # A.indices[k] is the col in A
-                    while m < A.indices[k] and l + 1 < B.indptr[j+1]: # advance in B col until we are at the same position than in A row
-                        l += 1
-                        m = B.indices[l]
-
-                    if m == A.indices[k]:
-                        spa.scatter(A.data[k] * B.data[l], j)
-
-
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for irnz in spa.LS:
-                Cindices.append(irnz)
-                Cdata.append(spa.w[irnz])
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata, np.array(Cindices, dtype=np.int32),Cindptr),
-                          shape=(size,size))
-
-
-
-def csr_csrT_matmul(A,B):
-    """Multiply a CSR matrix (A) with a CSC matrix (B) which has the same
-    sparsity pattern than A.T and return a CSR matrix (C)
-    """
-    size = A.shape[0]
-
-    if USE_CYTHON:
-        Cdata,Cindices,Cindptr = cython_csr_csrT_matmul(A.data, A.indices, A.indptr,
-                                                B.data, B.indices, B.indptr)
-
-        return csr_matrix((Cdata,Cindices,Cindptr), shape=(size,size))
-    else:
-
-        spa = SPA(size)
-
-        Cdata = []
-        Cindices = []
-        Cindptr = -1*np.ones(size+1, dtype=np.int32)
-        kc = 0 # data/indices index
-
-        Cindptr[0] = 0
-        for i in range(size): # iterate thourgh rows
-            spa.reset(current_row=i)
-
-            for j in range(i,size): # j is the column of C, Since C is symmetric,
-                                    # we only compute half
-
-                l = B.indptr[j] # iterator over B.data col elements
-                m = B.indices[l] # iterator over B col elements
-                for k in range(A.indptr[i],A.indptr[i+1]): # A.indices[k] is the col in A
-                    while m < A.indices[k] and l + 1 < B.indptr[j+1]: # advance in B col until we are at the same position than in A row
-                        l += 1
-                        m = B.indices[l]
-
-                    if m == A.indices[k]:
-                        spa.scatter(A.data[k] * B.data[l], j)
-
-
-
-            # set col indices and data for C
-            nzi = 0 # num nonzero in row i of C
-            for irnz in spa.LS:
-                Cindices.append(irnz)
-                Cdata.append(spa.w[irnz])
-                nzi += 1
-                kc += 1
-
-            # set indptr for C
-            Cindptr[i+1] = Cindptr[i] + nzi
-
-        return csr_matrix((Cdata, np.array(Cindices, dtype=np.int32),Cindptr),
-                          shape=(size,size))
-
-
-
-# def inplace_csr_row_normalize(X, row_sum=1.0):
-#     """ row normalize scipy sparse csr matrices inplace such that each row sum
-#         to `row_sum` (default is 1.0).
-#         inspired from sklearn sparsefuncs_fast.pyx.
-
-#         Parameters:
-#         -----------
-
-#         X : csr_matrix or sparse_stoch_mat
-#             Matrix to be row normalized
-
-#         row_sum : float or ndarray of same linear size than X (default is 1.0).
-#             Desired value of the sum of the rows
-
-#         Returns:
-#         --------
-
-#         None : operates in place.
-#     """
-
-#     if isinstance(X, sparse_stoch_mat):
-#         X.inplace_row_normalize(row_sum=row_sum)
-
-#     # elif isinstance(X, np.ndarray) and not isinstance(X, np.matrix):
-#     #     X = X/(X.sum(axis=1)/row_sum)[:, np.newaxis]
-
-#     elif isspmatrix_csr(X):
-
-
-#         if USE_CYTHON:
-
-#             cython_inplace_csr_row_normalize(X.data, X.indptr, X.shape[0], row_sum)
-
-#         else:
-
-#             for i in range(X.shape[0]):
-#                 row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
-#                 if row_sum_tmp != 0:
-
-#                     if row_sum == 0.0:
-#                         X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
-#                     else:
-#                         X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum)
-
-
-#             else:
-#                 raise TypeError('row_sum must by float or ndarray of floats')
-#     else:
-#         raise TypeError('X must be in ndarray, CSR or sparse_stoch_mat format.')
-
-
-
 def inplace_csr_row_normalize(X, row_sum=1.0):
     """Row normalize scipy sparse csr matrices inplace such that each row sum
     to `row_sum` (default is 1.0).
@@ -1009,44 +474,32 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
     """
     if isinstance(X, sparse_stoch_mat):
         X.inplace_row_normalize(row_sum=row_sum)
-
-
     elif isspmatrix_csr(X) or isspmatrix_csc(X):
-
         if isspmatrix_csc(X):
             print("Warning: row normalization on a CSC matrix will normalize columns.")
+        # TODO: resolve this once both cython functions are called via _css
+        # if isinstance(row_sum, float):
+        #     row_sum = np.ones(X.shape[0])*row_sum
+        # for i in range(X.shape[0]):
+        #     row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
+        #     if row_sum_tmp != 0:
+        #         if row_sum[i] == 0.0:
+        #             X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
+        #         else:
+        #             X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum[i])
+        X.indptr = X.indptr.astype(np.int64, copy=False)
+        X.indices = X.indices.astype(np.int64, copy=False)
+        if isinstance(row_sum, float):
+            _css.inplace_csr_row_normalize(X.data, X.indptr,
+                                                X.shape[0], row_sum)
 
-        if USE_CYTHON:
-            X.indptr = X.indptr.astype(np.int64, copy=False)
-            X.indices = X.indices.astype(np.int64, copy=False)
-            if isinstance(row_sum, float):
-                cython_inplace_csr_row_normalize(X.data, X.indptr,
-                                                 X.shape[0], row_sum)
+        elif isinstance(row_sum, np.ndarray) and row_sum.dtype == np.float64:
+            assert row_sum.shape[0] == X.shape[0] and len(row_sum.shape) == 1
 
-            elif isinstance(row_sum, np.ndarray) and row_sum.dtype == np.float64:
-                assert row_sum.shape[0] == X.shape[0] and len(row_sum.shape) == 1
-
-                cython_inplace_csr_row_normalize_array(X.data, X.indptr,
-                                                       X.shape[0], row_sum)
-
-            else:
-                raise TypeError("row_sum must by float or ndarray of floats")
-
-
+            _css.inplace_csr_row_normalize_array(X.data, X.indptr,
+                                                    X.shape[0], row_sum)
         else:
-
-            if isinstance(row_sum, float):
-                row_sum = np.ones(X.shape[0])*row_sum
-
-            for i in range(X.shape[0]):
-                row_sum_tmp = X.data[X.indptr[i]:X.indptr[i+1]].sum()
-                if row_sum_tmp != 0:
-                    if row_sum[i] == 0.0:
-                        X.data[X.indptr[i]:X.indptr[i+1]] -= row_sum_tmp/(X.indptr[i+1]-X.indptr[i])
-                    else:
-                        X.data[X.indptr[i]:X.indptr[i+1]] /= (row_sum_tmp/row_sum[i])
-
-
+            raise TypeError("row_sum must by float or ndarray of floats")
     else:
         raise TypeError("X must be in ndarray, CSR or sparse_stoch_mat format.")
 
@@ -1061,52 +514,13 @@ def rebuild_nnz_rowcol(T_small, nonzero_indices, size, diag_val=1.0):
         Full size transition matrix
 
     """
-    if USE_CYTHON:
-        (data, indices, indptr, n_rows) = \
-                    cython_rebuild_nnz_rowcol(T_small.data,
-                                              T_small.indices.astype(np.int64, copy=False),
-                                              T_small.indptr.astype(np.int64, copy=False),
-                                              nonzero_indices.astype(np.int64, copy=False),
-                                              size,
-                                              diag_val)
-    else:
-
-        data = []
-        indices = []
-        rownnz = [] # num nnz element per row
-
-        # n_rows = T_small.shape[0] + zero_indices.shape[0]
-
-        # zero_indices = set(zero_indices)
-
-        # map col indices to new positions
-        # new_col_inds = [i for i in range(size) if i not in zero_indices]
-
-        Ts_indices = [nonzero_indices[i] for i in T_small.indices]
-
-        row_id_small_t = -1
-        for row_id in range(size):
-            row_id_small_t +=1
-            if row_id not in nonzero_indices:
-                # add a row with just 1 on the diagonal
-                if diag_val != 0:
-                    data.append(diag_val)
-                    indices.append(row_id)
-                    rownnz.append(1)
-                else:
-                    rownnz.append(0)
-
-                row_id_small_t -= 1
-            else:
-                row_start = T_small.indptr[row_id_small_t]
-                row_end = T_small.indptr[row_id_small_t+1]
-
-                data.extend(T_small.data[row_start:row_end])
-                indices.extend(Ts_indices[row_start:row_end])
-                rownnz.append(row_end-row_start) # nnz of the row
-
-        indptr = np.append(0, np.cumsum(rownnz))
-
+    (data, indices, indptr, n_rows) = \
+                _css.rebuild_nnz_rowcol(T_small.data,
+                                        T_small.indices.astype(np.int64, copy=False),
+                                        T_small.indptr.astype(np.int64, copy=False),
+                                        nonzero_indices.astype(np.int64, copy=False),
+                                        size,
+                                        diag_val)
     return csr_matrix((data, indices, indptr),
                        shape=(size,size))
 
@@ -1355,18 +769,12 @@ class sparse_autocov_mat:
             #p0_sum = np.outer(self.p1[row_idx],self.p2[col_idx]).sum()
             p0_sum = np.einsum("i,j->i",self.p1[row_idx],self.p2[col_idx]).sum()
 
-
-
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PT.data, self.PT.indices,
-                                          self.PT.indptr,
-                                          row_idx,
-                                          col_idx)
-
-        else:
-
-            PTsum = self.PT._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTsum = self.PT._major_index_fancy(row_idx)._minor_index_fancy(col_idx).sum()
+        PTsum = _css.get_submat_sum(self.PT.data, self.PT.indices,
+                                        self.PT.indptr,
+                                        row_idx,
+                                        col_idx)
         return PTsum - p0_sum
 
     def get_element(self, i,j):
@@ -1403,15 +811,13 @@ class sparse_autocov_mat:
         else:
             p0 = (self.p1[row] * self.p2[idx]).sum()
 
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PT.data, self.PT.indices,
-                                          self.PT.indptr,
-                                          np.array([row], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTrow = self.PT._major_index_fancy(row)
-            PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTrow = self.PT._major_index_fancy(row)
+        # PTsum = PTrow.data[np.isin(PTrow.indices,idx)].sum()
+        PTsum = _css.get_submat_sum(self.PT.data, self.PT.indices,
+                                        self.PT.indptr,
+                                        np.array([row], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
         return  PTsum - p0
 
     def get_col_idx_sum(self, col, idx):
@@ -1435,15 +841,13 @@ class sparse_autocov_mat:
             p0 = (self.p1[idx] * self.p2[col]).sum()
 
 
-        if USE_CYTHON:
-            PTsum = cython_get_submat_sum(self.PTcsc.data, self.PTcsc.indices,
-                                          self.PTcsc.indptr,
-                                          np.array([col], dtype=np.int32),
-                                          np.array(idx, dtype=np.int32))
-        else:
-            PTcol = self.PTcsc._major_index_fancy(col)
-            PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
-
+        # NOTE: in the non-cython case this might be faster:
+        # PTcol = self.PTcsc._major_index_fancy(col)
+        # PTsum = PTcol.data[np.isin(PTcol.indices,idx)].sum()
+        PTsum = _css.get_submat_sum(self.PTcsc.data, self.PTcsc.indices,
+                                        self.PTcsc.indptr,
+                                        np.array([col], dtype=np.int32),
+                                        np.array(idx, dtype=np.int32))
         return  PTsum - p0
 
 
@@ -1473,37 +877,19 @@ class sparse_autocov_mat:
 
         new_size = idxptr.size-1
 
-        if USE_CYTHON:
-            # choose the fastest version
-            if new_size**2 < self.PT.data.size:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
-            else:
-                PTdata, PTrows, PTcols, new_size = cython_aggregate_csr_mat_2(self.PT.data,
-                                                                        self.PT.indices,
-                                                                        self.PT.indptr,
-                                                                        idxs_array,
-                                                                        idxptr)
+        # choose the fastest version
+        if new_size**2 < self.PT.data.size:
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
         else:
-            AtoB = {}
-            for kb in range(new_size):
-                for ka in range(idxptr[kb],idxptr[kb+1]):
-                    AtoB[idxs_array[ka]] = kb
-
-            Bdata = []
-            Brows = []
-            Bcols = []
-            # loop over values of A
-            for row in range(self.PT.indptr.shape[0]-1):
-                for k in range(self.PT.indptr[row],self.PT.indptr[row+1]):
-                    col = self.PT.indices[k]
-
-                    Bdata.append(self.PT.data[k])
-                    Brows.append(AtoB[row])
-                    Bcols.append(AtoB[col])
+            PTdata, PTrows, PTcols, new_size = _css.aggregate_csr_mat_2(self.PT.data,
+                                                                    self.PT.indices,
+                                                                    self.PT.indptr,
+                                                                    idxs_array,
+                                                                    idxptr)
 
         newPT = coo_matrix((PTdata,(PTrows,PTcols)), shape=(new_size,new_size))
 
@@ -1552,72 +938,67 @@ class sparse_autocov_mat:
         k into the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
+        # NOTE: in the non-cython case this might be faster:
+        # return self._S.get_row_idx_sum(k,idx) \
+        #             + self._S.get_col_idx_sum(k,idx) \
+        #             + self._S.get_element(k,k)
+        if self.p_scalars:
+            PTsum = _css.compute_delta_PT_moveto(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    idx)
 
-            if self.p_scalars:
-                PTsum = cython_compute_delta_PT_moveto(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       idx)
-
-                return PTsum - (2*len(idx)+1)*self.p1p2
-
-            else:
-                return cython_compute_delta_S_moveto(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       idx,
-                                                       self.p1,
-                                                       self.p2)
+            return PTsum - (2*len(idx)+1)*self.p1p2
 
         else:
-            return self._S.get_row_idx_sum(k,idx) \
-                        + self._S.get_col_idx_sum(k,idx) \
-                        + self._S.get_element(k,k)
+            return _css.compute_delta_S_moveto(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    idx,
+                                                    self.p1,
+                                                    self.p2)
+
 
     def _compute_delta_S_moveout(self, k, idx):
         """Return the gain in stability obtained by moving node
         k outside the community defined by index list in idx.
             
         """
-        if USE_CYTHON:
+        # NOTE: in the non-cython case this might be faster:
+        # return - self._S.get_row_idx_sum(k,idx) \
+        #             - self._S.get_col_idx_sum(k,idx) \
+        #             + self._S.get_element(k,k)
+        if self.p_scalars:
+            PTsum = _css.compute_delta_PT_moveout(self.PT.data,
+                                                    self.PT.indices,
+                                                    self.PT.indptr,
+                                                    self.PTcsc.data,
+                                                    self.PTcsc.indices,
+                                                    self.PTcsc.indptr,
+                                                    k,
+                                                    np.array(idx, dtype=np.int32))
 
-            if self.p_scalars:
-                PTsum = cython_compute_delta_PT_moveout(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       np.array(idx, dtype=np.int32))
-
-                return PTsum + (2*len(idx)-1)*self.p1p2
-
-            else:
-                return cython_compute_delta_S_moveout(self.PT.data,
-                                                       self.PT.indices,
-                                                       self.PT.indptr,
-                                                       self.PTcsc.data,
-                                                       self.PTcsc.indices,
-                                                       self.PTcsc.indptr,
-                                                       k,
-                                                       np.array(idx, dtype=np.int32),
-                                                       self.p1,
-                                                       self.p2)
+            return PTsum + (2*len(idx)-1)*self.p1p2
 
         else:
-            return - self._S.get_row_idx_sum(k,idx) \
-                        - self._S.get_col_idx_sum(k,idx) \
-                        + self._S.get_element(k,k)
+            return _ccs.compute_delta_S_moveout(self.PT.data,
+                                                self.PT.indices,
+                                                self.PT.indptr,
+                                                self.PTcsc.data,
+                                                self.PTcsc.indices,
+                                                self.PTcsc.indptr,
+                                                k,
+                                                np.array(idx, dtype=np.int32),
+                                                self.p1,
+                                                self.p2)
 
 
 @timing
