@@ -24,7 +24,7 @@ def get_csr_matrix_large():
     density = nbr_non_zeros / size
     return csr_matrix((data, (row, col)), shape=(size, size)), density
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def cs_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
@@ -50,7 +50,7 @@ def cs_matrix_creator():
         return tuple(matrices)
     return _get_matrix
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def SSM_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
