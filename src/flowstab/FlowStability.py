@@ -37,7 +37,6 @@ from .SparseStochMat import (
     USE_SPARSE_DOT_MKL,
     inplace_csr_matmul_diag,
     inplace_diag_matmul_csr,
-    sparse_autocov_csr_mat,
     sparse_autocov_mat,
     sparse_gram_matrix,
     sparse_matmul,
@@ -1419,8 +1418,7 @@ class SparseClustering(Clustering):
             raise ValueError("At least T or S must be provided")
 
         if T is None:
-            assert isinstance(S, sparse_autocov_mat) or \
-                   isinstance(S, sparse_autocov_csr_mat), "S must be a sparse_autocov_mat."
+            assert isinstance(S, sparse_autocov_mat), "S must be a sparse_autocov_mat."
 
             # only if S provided, T will only be used to look for neighours.
             # so set T to S.PT.
@@ -1465,8 +1463,7 @@ class SparseClustering(Clustering):
             self._S = self._compute_S()
 
         else:
-            if not (isinstance(S, sparse_autocov_mat) or \
-                    isinstance(S, sparse_autocov_csr_mat)):
+            if not isinstance(S, sparse_autocov_mat):
                 raise TypeError("S must be a sparse_autocov_mat.")
             assert S.shape == self.T.shape, "T and S must have the same shape."
 

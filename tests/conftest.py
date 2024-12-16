@@ -64,8 +64,8 @@ def SSM_matrix_creator():
             col = np.sort(np.random.randint(0, size, size=nbr_non_zeros))
             data = np.random.randint(0,1, size=nbr_non_zeros)
             _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
-            _a_csr.indptr = _a_csr.indptr.astype(np.int32, copy=False)
-            _a_csr.indices = _a_csr.indices.astype(np.int64, copy=False)
+            _a_csr.data = _a_csr.data.astype(np.float64, copy=False)
+            _a_csr.indices = _a_csr.indices.astype(np.int32, copy=False)
             matrices.append(sparse_stoch_mat.from_full_csr_matrix(_a_csr))
         return tuple(matrices)
     return _get_matrix
@@ -87,6 +87,26 @@ def compare_alike():
             np.testing.assert_equal(A.indices[A_s:A_e][A_sorted], B.indices[B_s:B_e][B_sorted])
             np.testing.assert_equal(B.data[B_s:B_e][B_sorted], A.data[A_s:A_e][A_sorted])
     return compare_sparse_matrice
+
+@pytest.fixture(scope='session')
+def compare_SSM_args():
+    def compare_SSM_args(ssm_args1, ssm_args2):
+        """Checks if two csr matrices describe the same matrix
+
+        csr notation can deviate in that data and indices can be re-arranged
+        within a indptr slice.
+        """
+        # size
+        assert ssm_args1[0] == ssm_args2[0]
+        # data
+        np.testing.assert_equal(ssm_args1[1], ssm_args2[1])
+        # indices
+        np.testing.assert_equal(ssm_args1[2], ssm_args2[2])
+        # indptr
+        np.testing.assert_equal(ssm_args1[3], ssm_args2[3])
+        # diag val
+        np.testing.assert_equal(ssm_args1[4], ssm_args2[4])
+    return compare_SSM_args
 
 @pytest.fixture(scope='session')
 def probabilities_transition():
