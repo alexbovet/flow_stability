@@ -9,7 +9,6 @@ from scipy.sparse import (
 )
 
 from flowstab.SparseStochMat import (
-    csr_add, 
     csr_matmul,
     csr_csc_matmul,
     csr_csrT_matmul,
@@ -194,23 +193,6 @@ def test_rebuild_nnz_rowcol(cs_matrix_creator, compare_alike):
 
 # ### Testing the csr operations
 # ###
-
-def test_csr_add_compare(cs_matrix_creator, compare_alike):
-    """Compare the csr_add to a native implementation"""
-    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=10000,
-                                       nbr_non_zeros=500, mode='r')
-    sum_csr_native = A_ssm1 + A_ssm2
-    sum_csr = csr_add(A_ssm1, A_ssm2)
-    # np.testing.assert_allclose(sum_csr_native.data, sum_csr.data)
-    # np.testing.assert_equal(sum_csr_native.indices, sum_csr.indices)
-    # np.testing.assert_equal(sum_csr_native.indptr, sum_csr.indptr)
-    compare_alike(sum_csr, sum_csr_native)
-
-def test_csr_add_memory(cs_matrix_creator):
-    """Check the csr_add function for timing and memory consumption"""
-    A_ssm1, A_ssm2 = cs_matrix_creator(nbr=2, size=1000000,
-                                       nbr_non_zeros=20000, mode='r')
-    _ = csr_add(A_ssm1, A_ssm2)
 
 def test_csr_add_native_memory(cs_matrix_creator):
     """Check the csr native addition for timing and memory consumption"""
