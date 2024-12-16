@@ -242,11 +242,6 @@ def test_inplace_diag_matmul_csr(cs_matrix_creator):
 # ###
 # Testing the autocovaraince matrix class
 # ###
-def test_SparseAutocovMatrixCSR():
-    """Check basic operations on sparse_autocov_csr_mat"""
-    from flowstab.SparseStochMat import sparse_autocov_csr_mat as SAMCSR
-    # ignoring this for now
-    pass
 
 @pytest.mark.parametrize("p1, p2, size",
                          [(np.random.random(size=1000),
@@ -328,17 +323,17 @@ def test_SAM_from_T_forward(p1, p2, size, cs_matrix_creator):
         SAM.from_T_forward(T=T, p1=p1, p2=p2).PT.data
     )
 
-def test_sparse_matmul_mkl_memory(csr_matrix_creator):
+def test_sparse_matmul_mkl_memory(cs_matrix_creator):
     """
     """
     from sparse_dot_mkl import dot_product_mkl as mkl_matmul
-    A, B = csr_matrix_creator(nbr=2)
+    A, B = cs_matrix_creator(nbr=2)
     for _ in range(1000):
         _ = mkl_matmul(A, B)
 
-def test_sparse_matmul_memory(csr_matrix_creator):
+def test_sparse_matmul_memory(cs_matrix_creator):
     """
     """
-    A, B = csr_matrix_creator(nbr=2)
+    A, B = cs_matrix_creator(nbr=2)
     for _ in range(1000):
         _ = A @ B
