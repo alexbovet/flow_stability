@@ -69,6 +69,10 @@ def sum_Sout(double[:, ::1] S , int k, list ix_ci):
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 def compute_S(double[:] p1, double[:] p2, double[:,:] T):
+    """Computes the internal matrix comparing probabilities for each node
+
+            S[i,j] = p1[i]*T[i,j] - p1[i]*p2[j]
+    """
     
     cdef Py_ssize_t imax = T.shape[0]
     cdef Py_ssize_t jmax = T.shape[1]

@@ -1,5 +1,7 @@
 # distutils: language = c++
 # cython: profile=False
+# cython: linetrace=True
+
 """
 #
 # flow stability
@@ -434,9 +436,9 @@ def rebuild_nnz_rowcol(double[:] T_data,
 @cython.wraparound(False)   # Deactivate negative indexing
 @cython.cdivision(True)
 def inplace_csr_row_normalize(double[:] X_data,
-                                     long long[:] X_indptr,
-                                     Py_ssize_t n_row,
-                                     double row_sum=1.0):
+                              long long[:] X_indptr,
+                              Py_ssize_t n_row,
+                              double row_sum=1.0):
     """ row normalize scipy sparse csr matrices inplace.
         inspired from sklearn sparsefuncs_fast.pyx.
         
@@ -592,11 +594,10 @@ def cython_inplace_csr_row_normalize_triu(double[:] X_data,
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)   # Deactivate negative indexing
 def sparse_stoch_from_full_csr(int[:] nz_rowcols,
-                                      double[:] Tf_data,
-                                      int[:] Tf_indices,
-                                      int[:] Tf_indptr,
-                                      double diag_val):
-
+                               double[:] Tf_data,
+                               int[:] Tf_indices,
+                               int[:] Tf_indptr,
+                               double diag_val):
         """ initialize sparse_stoch_mat from a full size row stochastic 
             csr_matrix 
         """

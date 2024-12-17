@@ -18,6 +18,9 @@
 
 
 """
+from __future__ import annotations
+from typing import Collection
+
 import importlib.util
 import os
 import time
@@ -39,11 +42,21 @@ from .SparseStochMat import (
     sparse_matmul,
     sparse_stoch_mat,
 )
-from .TemporalNetwork import inplace_csr_row_normalize, set_to_zeroes, sparse_lapl_expm
+from .TemporalNetwork import (
+    inplace_csr_row_normalize,
+    set_to_zeroes,
+    sparse_lapl_expm
+)
 
 USE_CYTHON = True
 if importlib.util.find_spec("cython") is not None:
-    from _cython_fast_funcs import compute_S, cython_nmi, cython_nvi, sum_Sout, sum_Sto
+    from _cython_fast_funcs import (
+        compute_S,
+        cython_nmi,
+        cython_nvi,
+        sum_Sout,
+        sum_Sto
+    )
 else:
     print("Could not load cython functions")
     USE_CYTHON = False
@@ -55,10 +68,22 @@ class Partition:
     and a node to cluster dict.
     """
 
-    def __init__(self, num_nodes,
-                 cluster_list=None,
-                 node_to_cluster_dict=None,
-                 check_integrity=False):
+    def __init__(self,
+                 num_nodes:int,
+                 cluster_list:Collection|None=None,
+                 node_to_cluster_dict:dict|None=None,
+                 check_integrity:bool=False):
+        """
+        Parameters
+        ----------
+        num_nodes:
+          The number of nodes in the partition
+        cluster_list:
+          A list of clusters with each cluster being a set of nodes
+        node_to_custer_dict:
+          A mapping that maps each node to the index of the corresponding
+          cluster in `cluster_list`
+        """
 
         self.num_nodes = num_nodes
 
@@ -2360,6 +2385,7 @@ def static_clustering(A, t=1, rnd_seed=None, discrete_time_rw=False,
         return Clustering(p1=pi,p2=pi,T=T, rnd_seed=rnd_seed)
 
 
+# TODO: move to helper scripts
 def n_random_seeds(n):
     # generate n random seeds
 

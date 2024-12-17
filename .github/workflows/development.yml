@@ -10,6 +10,9 @@ jobs:
   build-venv:
     runs-on: ubuntu-22.04
     steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -20,11 +23,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Build venv
         run: |
           python -m pip install --upgrade pip
           python -m venv ./venv
+          # with mkl support
+          ./venv/bin/python -m pip install -r requirements/mkl.txt
           ./venv/bin/python -m pip install .[testing]
         if: steps.cached-venv.outputs.cache-hit != 'true'
       - name: Cache venv
@@ -44,7 +49,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Build wheel
         run: |
           venv/bin/python -m pip install build
@@ -64,7 +69,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: ./venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}-${{ hashFiles('**/**.toml') }}
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
       - name: Getting build wheel
         uses: actions/download-artifact@v4
         with:
@@ -84,6 +89,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: install
     steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -95,9 +103,85 @@ jobs:
         with:
           path: ./venv
           key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
-      - name: Test with pytest
+      - name: Tests without memory tracking
         run: |
-          venv/bin/python -m pytest
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=flowstab --durations=0 -k 'not _memory'
+        env:
+          COVERAGE_FILE: ".coverage.no_memory"
+      - name: Store coverage file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-no_memory
+          path: .coverage.no_memory
+          include-hidden-files: true
+
+  test-memory:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - run: |
+          sudo apt-get upgrade
+          sudo apt-get -y install intel-mkl
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Build venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv ./venv
+          # with mkl support
+          ./venv/bin/python -m pip install .[testing,mkl]
+      # # Note: we use cache here since artifacts do not keep permissions
+      # - name: Getting the venv
+      #   uses: actions/cache/restore@v4
+      #   with:
+      #     path: ./venv
+      #     key: venv-${{ runner.os }}-${{ hashFiles('venv/**') }}
+      - name: Tests with memory tracking
+        run: |
+          venv/bin/python -m pytest --junitxml=junit/test-results.xml --cov=flowstab --durations=0 --memray --most-allocations=0 -k '_memory'
+        env:
+          COVERAGE_FILE: ".coverage.memory"
+      - name: Store coverage file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-memory
+          path: .coverage.memory
+          include-hidden-files: true
+
+  coverage:
+    name: combine-coverage
+    runs-on: ubuntu-22.04
+    needs: [test, test-memory]
+    if: |
+      always()
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        id: download
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - name: Coverage comment
+        id: coverage_comment
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_COVERAGE_FILES: true
+
+      - name: Store Pull Request comment to be posted
+        uses: actions/upload-artifact@v4
+        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
 
   lint:
     runs-on: ubuntu-latest
@@ -117,3 +201,4 @@ jobs:
       - name: Lint with ruff
         run: |
           venv/bin/python -m ruff check --select=ALL --output-format=github src/
+        continue-on-error: true

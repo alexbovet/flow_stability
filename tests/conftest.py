@@ -24,7 +24,7 @@ def get_csr_matrix_large():
     density = nbr_non_zeros / size
     return csr_matrix((data, (row, col)), shape=(size, size)), density
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def cs_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
@@ -50,7 +50,7 @@ def cs_matrix_creator():
         return tuple(matrices)
     return _get_matrix
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def SSM_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
@@ -65,7 +65,6 @@ def SSM_matrix_creator():
             data = np.random.randint(0,1, size=nbr_non_zeros)
             _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
             _a_csr.data = _a_csr.data.astype(np.float64, copy=False)
-            _a_csr.indptr = _a_csr.indptr.astype(np.int32, copy=False)
             _a_csr.indices = _a_csr.indices.astype(np.int32, copy=False)
             matrices.append(sparse_stoch_mat.from_full_csr_matrix(_a_csr))
         return tuple(matrices)
