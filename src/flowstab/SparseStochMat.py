@@ -1086,7 +1086,7 @@ class sparse_autocov_mat:
             return PTsum + (2*len(idx)-1)*self.p1p2
 
         else:
-            return _ccs.compute_delta_S_moveout(self.PT.data,
+            return _css.compute_delta_S_moveout(self.PT.data,
                                                 self.PT.indices,
                                                 self.PT.indptr,
                                                 self.PTcsc.data,
