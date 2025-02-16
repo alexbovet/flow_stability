@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-venv:
-    runs-on: ubuntu-24.10
+    runs-on: ubuntu-24.04
     steps:
       - run: |
           sudo apt-get upgrade
