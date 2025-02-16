@@ -251,8 +251,8 @@ def test_inplace_diag_matmul_csr(cs_matrix_creator):
                           (None, 0.1, 1000),
                           (None, None, 1000)])
 def test_SAM_init(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.sparse_stoch_mat import sparse_autocov_mat as SAM
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
     from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )
@@ -277,8 +277,8 @@ def test_SAM_init(p1, p2, size, cs_matrix_creator):
                           (None, 0.1, 100000),
                           (None, None, 100000)])
 def test_SAM_from_T(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.sparse_stoch_mat import sparse_autocov_mat as SAM
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
     from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )
@@ -304,8 +304,8 @@ def test_SAM_from_T(p1, p2, size, cs_matrix_creator):
                           (None, 0.1, 100000),
                           (None, None, 100000)])
 def test_SAM_from_T_forward(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.sparse_stoch_mat import sparse_autocov_mat as SAM
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
     from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )

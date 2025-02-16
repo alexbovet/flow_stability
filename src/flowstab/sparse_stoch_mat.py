@@ -672,7 +672,7 @@ def inplace_diag_matmul_csr(A:csr_matrix | csc_matrix, diag_vec: NDArray)->None:
         raise ValueError("A must be a csr or csc matrix")
 
 
-class sparse_autocov_mat:
+class SparseAutocovMat:
     """Class for autocovariance matrix in the form:
         
         S = PT - P0
@@ -747,7 +747,7 @@ class sparse_autocov_mat:
             
         Returns
         -------
-        sparse_autocov_mat
+        SparseAutocovMat
 
         """
         assert isspmatrix_csr(T)
@@ -794,7 +794,7 @@ class sparse_autocov_mat:
             
         Returns
         -------
-        sparse_autocov_mat
+        SparseAutocovMat
 
         """
         assert isspmatrix_csr(T)
@@ -948,7 +948,7 @@ class sparse_autocov_mat:
 
 
     def aggregate(self, idx_list):
-        """Returns a new sparse_autocol_mat where elements of
+        """Returns a new SparseAutocovMat where elements of
             the original mat have been aggregated according to 
             idx_list.
         
@@ -960,7 +960,7 @@ class sparse_autocov_mat:
 
         Returns
         -------
-        new aggregated sparse_autocov_mat
+        new aggregated SparseAutocovMat
 
         """
         # convert idx_list to a single array of indices and an array of

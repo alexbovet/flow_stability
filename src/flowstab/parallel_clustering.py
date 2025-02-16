@@ -28,7 +28,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from .flow_stability import Clustering, SparseClustering, norm_var_information
-from .sparse_stoch_mat import sparse_autocov_mat
+from .sparse_stoch_mat import SparseAutocovMat
 
 # A global dictionary storing the variables passed from the initializer.
 var_dict = {}
@@ -126,7 +126,7 @@ def _init_sub_worker_sparse(PTdata, PTindices, PTindptr, N, p1raw, p2raw, PT_sym
                                   np.frombuffer(PTindptr, dtype=np.int64)),
                                  shape=(N,N))
 
-    S = sparse_autocov_mat(PT,
+    S = SparseAutocovMat(PT,
                            np.frombuffer(p1raw, dtype=np.float64),
                            np.frombuffer(p2raw, dtype=np.float64),
                            PT_symmetric=PT_symmetric)

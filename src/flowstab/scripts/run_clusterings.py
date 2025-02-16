@@ -61,7 +61,7 @@ from ..sparse_stoch_mat import (
     inplace_csr_matmul_diag,
     inplace_csr_row_normalize,
     inplace_diag_matmul_csr,
-    sparse_autocov_mat,
+    SparseAutocovMat,
 )
 from ..temporal_network import set_to_zeroes
 
@@ -295,7 +295,7 @@ def load_autocov_int(file, init_p1=False, direction=None):
             print("PID ", os.getpid(),
                   f", max(row_sum|ITPT - pTp|) after normalization {max_S_row_diff_norm}")
 
-        S = sparse_autocov_mat(PT=ITPT,
+        S = SparseAutocovMat(PT=ITPT,
                                p1 = 1/num_nodes,
                                p2 = 1/num_nodes,
                                PT_symmetric=True)
@@ -371,7 +371,7 @@ def load_autocov_int(file, init_p1=False, direction=None):
                   f", max(row_sum|ITPT - pTp|) after normalization {max_S_row_diff_norm}")
 
 
-        S = sparse_autocov_mat(PT=ITPT,
+        S = SparseAutocovMat(PT=ITPT,
                            p1 = p,
                            p2 = p,
                            PT_symmetric=True)
@@ -476,7 +476,7 @@ def _init_sub_worker(file, PTdata, PTindices, PTindptr, N, p1raw, p2raw, PT_symm
                                   np.frombuffer(PTindptr, dtype=np.int64)),
                                  shape=(N,N))
 
-    S = sparse_autocov_mat(PT,
+    S = SparseAutocovMat(PT,
                            np.frombuffer(p1raw, dtype=np.float64),
                            np.frombuffer(p2raw, dtype=np.float64),
                            PT_symmetric=PT_symmetric)
@@ -510,7 +510,7 @@ def _init_sub_worker_list(file, PTdata_list, PTindices_list, PTindptr_list,
                                       np.frombuffer(PTindptr, dtype=np.int64)),
                                      shape=(N,N))
 
-        var_dict[file]["S_list"].append(sparse_autocov_mat(PT,
+        var_dict[file]["S_list"].append(SparseAutocovMat(PT,
                                np.frombuffer(p1raw, dtype=np.float64),
                                np.frombuffer(p2raw, dtype=np.float64),
                                PT_symmetric=PT_symmetric))
