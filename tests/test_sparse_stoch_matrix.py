@@ -27,7 +27,7 @@ def test_timing(capfd):
 def test_SSM_small(get_csr_matrix_small):
     """Bacic operations with the 'spares_stoch_mat' class
     """
-    from flowstab.sparse_stoch_mat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     # Inits
     # ###
     # inti from scipy.sparse.csr_matrix
@@ -46,7 +46,7 @@ def test_SSM_small(get_csr_matrix_small):
 def test_SSM_large(get_csr_matrix_large):
     """Make sure an SSM does not get expanded during creation
     """
-    from flowstab.sparse_stoch_mat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     # Inits
     # ###
     # inti from scipy.sparse.csr_matrix
@@ -178,7 +178,7 @@ def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
 def test_rebuild_nnz_rowcol(cs_matrix_creator, compare_alike):
     """Test conversions from ssm to csr and back
     """
-    from flowstab.sparse_stoch_mat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
     A_ssm = SSM.from_full_csr_matrix(Tcsr=A_csr)
     A_rebuild = A_ssm.to_full_mat()

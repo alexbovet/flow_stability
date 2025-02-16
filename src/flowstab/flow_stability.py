@@ -40,7 +40,7 @@ from .sparse_stoch_mat import (
     sparse_autocov_mat,
     sparse_gram_matrix,
     sparse_matmul,
-    sparse_stoch_mat,
+    SparseStochMat,
 )
 from .temporal_network import (
     inplace_csr_row_normalize,
@@ -1429,8 +1429,8 @@ class SparseClustering(Clustering):
 
             self.num_nodes = T.shape[0]
 
-            if not (isinstance(T, sparse_stoch_mat) or isspmatrix_csr(T)):
-                raise TypeError("T must be a csr or sparse_stoch_mat.")
+            if not (isinstance(T, SparseStochMat) or isspmatrix_csr(T)):
+                raise TypeError("T must be a csr or SparseStochMat.")
 
             # assert np.allclose(T.sum(1),np.ones(T.shape[1])),\
             #                     "Transition matrix must be stochastic"
@@ -1712,12 +1712,12 @@ class FlowIntegralClustering:
                                      " (not numpy matrices)" + \
                                      " or scipy CSR matrices.")
 
-            elif isinstance(T_list[0], sparse_stoch_mat):
+            elif isinstance(T_list[0], SparseStochMat):
                 is_sparse_stoch = True
 
             if not (is_sparse or is_nparray or is_sparse_stoch):
                 raise TypeError("T_list must contain numpy arrays" + \
-                                     ", scipy CSR matrices or sparse_stoch_mats.")
+                                     ", scipy CSR matrices or SparseStochMat.")
 
             self.T_list = T_list
         else:
@@ -1734,12 +1734,12 @@ class FlowIntegralClustering:
                                      " (not numpy matrices)" + \
                                      " or scipy CSR matrices.")
 
-            elif isinstance(T_inter_list[0], sparse_stoch_mat):
+            elif isinstance(T_inter_list[0], SparseStochMat):
                 is_sparse_stoch = True
 
             if not (is_sparse or is_nparray or is_sparse_stoch):
                 raise TypeError("T_inter_list must contain numpy arrays" + \
-                                     ", scipy CSR matrices or sparse_stoch_mats.")
+                                     ", scipy CSR matrices or SparseStochMat.")
 
             if reverse_time:
                 T_inter_list = T_inter_list[::-1]

@@ -76,7 +76,7 @@ def timing(f:Callable)->Callable:
     return wrapper
 
 
-class sparse_stoch_mat:
+class SparseStochMat:
     """A sparse stochastic matrix representation.
         
     Represents a matrix as an array of indices corresponding to 
@@ -87,9 +87,9 @@ class sparse_stoch_mat:
 
     def __init__(self, size:int, data:NDArray, indices:NDArray, indptr:NDArray,
                  nz_rowcols:NDArray, diag_val:float=1.0):
-        """Initialize sparse_stoch_mat
+        """Initialize SparseStochMat
 
-        The sparse_stoch_mat will be a square matrix of size `size` with
+        The SparseStochMat will be a square matrix of size `size` with
         row/columns of a diagonal matrix for every row/column index not present
         in `nz_rowcols`.
         For the row/column indices present in `nz_rowcols` the matching
@@ -142,10 +142,10 @@ class sparse_stoch_mat:
 
     @classmethod
     def from_small_csr_matrix(cls, size:int, T_small:csr_matrix, nz_rowcols:NDArray,
-                              diag_val:float=1.0)->sparse_stoch_mat:
-        """Initialize sparse_stoch_mat from a small csr_matrix
+                              diag_val:float=1.0)->SparseStochMat:
+        """Initialize SparseStochMat from a small csr_matrix
 
-        The sparse_stoch_mat will be a square matrix of size `size` with
+        The SparseStochMat will be a square matrix of size `size` with
         row/columns of a diagonal matrix for every row/column index not present
         in `nz_rowcols`. For the row/column indices present in `nz_rowcols`
         the matching row/column of `T_small` will be used to fill the empty
@@ -183,8 +183,8 @@ class sparse_stoch_mat:
 
     @classmethod
     def from_full_csr_matrix(cls, Tcsr:csr_matrix, nz_rowcols:NDArray|None=None,
-                             diag_val:float=1.0)->sparse_stoch_mat:
-        """Init sparse_stoch_mat from a full size row stochastic csr_matrix
+                             diag_val:float=1.0)->SparseStochMat:
+        """Init SparseStochMat from a full size row stochastic csr_matrix
         """
         if not isspmatrix_csr(Tcsr):
             raise TypeError("T_small must be in CSR format.")
@@ -204,7 +204,7 @@ class sparse_stoch_mat:
 
 
     @classmethod
-    def create_diag(cls, size:int, diag_val:float=1.0)->sparse_stoch_mat:
+    def create_diag(cls, size:int, diag_val:float=1.0)->SparseStochMat:
         """Returns a diagonal matrix with an empty T_small.
 
         Parameters
@@ -265,7 +265,7 @@ class sparse_stoch_mat:
 
     def copy(self):
 
-        return sparse_stoch_mat.from_small_csr_matrix(copy(self.size),
+        return SparseStochMat.from_small_csr_matrix(copy(self.size),
                                                       self.T_small.copy(),
                                                       self.nz_rowcols.copy(),
                                                       copy(self.diag_val))
@@ -279,19 +279,19 @@ class sparse_stoch_mat:
                  "diag_val" : self.diag_val}
 
     def sub_diag(self, diag_val=1.0):
-        """Returns a sparse_stoch_matrix results of
+        """Returns a SparseStochMatrix results of
         self - diag(diag_val)
         """
-        return sparse_stoch_mat.from_small_csr_matrix(self.size,
+        return SparseStochMat.from_small_csr_matrix(self.size,
                                                       self.T_small - diag_val*eye(self.T_small.shape[0],
                                                                                   format="csr"),
                                                       self.nz_rowcols,
                                                       self.diag_val-diag_val)
     def add_diag(self, diag_val=1.0):
-        """Returns a sparse_stoch_matrix results of
+        """Returns a SparseStochMatrix results of
         self + diag(diag_val)
         """
-        return sparse_stoch_mat.from_small_csr_matrix(self.size,
+        return SparseStochMat.from_small_csr_matrix(self.size,
                                                       self.T_small + diag_val*eye(self.T_small.shape[0],
                                                                                   format="csr"),
                                                       self.nz_rowcols,
@@ -303,7 +303,7 @@ class sparse_stoch_mat:
             nz_rowcols = self.nz_rowcols.copy()
         else:
             nz_rowcols = self.nz_rowcols
-        return sparse_stoch_mat.from_small_csr_matrix(self.size,
+        return SparseStochMat.from_small_csr_matrix(self.size,
                                                       T_small=self.T_small.transpose(copy=copy).tocsr(),
                                                       nz_rowcols=nz_rowcols,
                                                       diag_val=self.diag_val)
@@ -313,12 +313,12 @@ class sparse_stoch_mat:
 
     def check_nz_intersect_len(self, B):
         """Returns the length of the intersection of self.nz_rowcols and B.nz_rowcols"""
-        if isinstance(B, sparse_stoch_mat):
+        if isinstance(B, SparseStochMat):
 
             return len(set(self.nz_rowcols).intersection(set(B.nz_rowcols)))
 
         else:
-            raise TypeError("B must be a sparse_stoch_mat")
+            raise TypeError("B must be a SparseStochMat")
 
 
     def __repr__(self):
@@ -331,7 +331,7 @@ class sparse_stoch_mat:
         C = A + B 
             
         """
-        if isinstance(B, sparse_stoch_mat):
+        if isinstance(B, SparseStochMat):
 
             if not self.T_small.has_canonical_format:
                 self.T_small.sort_indices()
@@ -352,7 +352,7 @@ class sparse_stoch_mat:
                                    B.nz_rowcols,
                                    B.diag_val)
 
-            return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
+            return SparseStochMat(size,Cdata,Cindices,Cindptr,
                                     Cnz_rowcols, Cdiag_val)
 
 
@@ -371,7 +371,7 @@ class sparse_stoch_mat:
     def __sub__(self, B):
         """Substraction of two sparse stoch mat.
         """
-        if isinstance(B, sparse_stoch_mat):
+        if isinstance(B, SparseStochMat):
 
             if not self.T_small.has_canonical_format:
                 self.T_small.sort_indices()
@@ -392,7 +392,7 @@ class sparse_stoch_mat:
                                    B.nz_rowcols,
                                    B.diag_val)
 
-            return sparse_stoch_mat(size,Cdata,Cindices,Cindptr,
+            return SparseStochMat(size,Cdata,Cindices,Cindptr,
                                     Cnz_rowcols, Cdiag_val)
 
         elif isinstance(B, (spmatrix, np.ndarray)):
@@ -413,7 +413,7 @@ class sparse_stoch_mat:
         C = A @ B
             
         """
-        if isinstance(B, sparse_stoch_mat):
+        if isinstance(B, SparseStochMat):
             # We split the problem in A @ B = (A-aI) @ (B-bI) + b*A + a*B - a*b*I
             # where a is the diag_val of A and b is the diag_val of B
             # Moreover, if intersection(A.nz_rowvals,B.nz_rowvals) = [],
@@ -475,21 +475,21 @@ class sparse_stoch_mat:
 
                 # build two small_size x small_size matrices for (A-aI) and
                 # (B-bI) in the subspace of Csmall and take their product
-                AmI_small = sparse_stoch_mat.from_small_csr_matrix(small_size,
+                AmI_small = SparseStochMat.from_small_csr_matrix(small_size,
                                                                 self.T_small - \
                                                                     self.diag_val * eye(self.T_small.shape[0],
                                                                                         format="csr"),
                                                                 Acol_to_Ccol,
                                                                 diag_val=0.0)
 
-                BmI_small = sparse_stoch_mat.from_small_csr_matrix(small_size,
+                BmI_small = SparseStochMat.from_small_csr_matrix(small_size,
                                                                 B.T_small - \
                                                                     B.diag_val * eye(B.T_small.shape[0],
                                                                                         format="csr"),
                                                                 Bcol_to_Ccol,
                                                                 diag_val=0.0)
 
-                CmI = sparse_stoch_mat.from_small_csr_matrix(self.size,
+                CmI = SparseStochMat.from_small_csr_matrix(self.size,
                                                              AmI_small.tocsr() @ BmI_small.tocsr(),
                                                              Cnz_rowcols,
                                                              diag_val=0.0)
@@ -518,7 +518,7 @@ class sparse_stoch_mat:
         """
         if isinstance(o, (float,int)):
 
-            return sparse_stoch_mat(self.size,
+            return SparseStochMat(self.size,
                                     self.T_small.data*o,
                                     self.T_small.indices.copy(),
                                     self.T_small.indptr.copy(),
@@ -545,7 +545,7 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
         
     Parameters
     ----------
-        X : csr_matrix or sparse_stoch_mat
+        X : csr_matrix or SparseStochMat
         Matrix to be row normalized
         
     row_sum : float or ndarray of same linear size than X (default is 1.0).
@@ -556,7 +556,7 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
         None : operates in place.
 
     """
-    if isinstance(X, sparse_stoch_mat):
+    if isinstance(X, SparseStochMat):
         X.inplace_row_normalize(row_sum=row_sum)
     elif isspmatrix_csr(X) or isspmatrix_csc(X):
         if isspmatrix_csc(X):
@@ -585,7 +585,7 @@ def inplace_csr_row_normalize(X, row_sum=1.0):
         else:
             raise TypeError("row_sum must by float or ndarray of floats")
     else:
-        raise TypeError("X must be in ndarray, CSR or sparse_stoch_mat format.")
+        raise TypeError("X must be in ndarray, CSR or SparseStochMat format.")
 
 def rebuild_nnz_rowcol(T_small:csr_matrix, nonzero_indices:NDArray,
                        size:int, diag_val:float=1.0)->csr_matrix:

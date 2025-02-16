@@ -598,7 +598,7 @@ def sparse_stoch_from_full_csr(int[:] nz_rowcols,
                                int[:] Tf_indices,
                                int[:] Tf_indptr,
                                double diag_val):
-        """ initialize sparse_stoch_mat from a full size row stochastic 
+        """ initialize SparseStochMat from a full size row stochastic 
             csr_matrix 
         """
         

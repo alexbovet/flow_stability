@@ -54,7 +54,7 @@ def cs_matrix_creator():
 def SSM_matrix_creator():
     """Creat an exemplary csr matrix that can be used for testing
     """
-    from flowstab.sparse_stoch_mat import sparse_stoch_mat
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     size = 1000000
     nbr_non_zeros = 1000
     def _get_matrix(nbr:int=1,size:int=size, nbr_non_zeros:int=nbr_non_zeros):
@@ -66,7 +66,7 @@ def SSM_matrix_creator():
             _a_csr = csr_matrix((data, (row, col)), shape=(size, size))
             _a_csr.data = _a_csr.data.astype(np.float64, copy=False)
             _a_csr.indices = _a_csr.indices.astype(np.int32, copy=False)
-            matrices.append(sparse_stoch_mat.from_full_csr_matrix(_a_csr))
+            matrices.append(SSM.from_full_csr_matrix(_a_csr))
         return tuple(matrices)
     return _get_matrix
 
