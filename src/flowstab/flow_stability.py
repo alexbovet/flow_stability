@@ -33,16 +33,16 @@ from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csc_matrix, csr_matrix, diags, eye, isspmatrix_csr
 from scipy.sparse.linalg import eigs
 
-from .SparseStochMat import (
+from .sparse_stoch_mat import (
     USE_SPARSE_DOT_MKL,
     inplace_csr_matmul_diag,
     inplace_diag_matmul_csr,
-    sparse_autocov_mat,
+    SparseAutocovMat,
     sparse_gram_matrix,
     sparse_matmul,
-    sparse_stoch_mat,
+    SparseStochMat,
 )
-from .TemporalNetwork import (
+from .temporal_network import (
     inplace_csr_row_normalize,
     set_to_zeroes,
     sparse_lapl_expm
@@ -1387,7 +1387,7 @@ class SparseClustering(Clustering):
     p2: numpy.ndarrays
         Nx1 probability density at t2. Default is p1 @ T.
         
-    S: sparse_autocov_mat
+    S: SparseAutocovMat
         NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
         
     cluster_list: list
@@ -1418,7 +1418,7 @@ class SparseClustering(Clustering):
             raise ValueError("At least T or S must be provided")
 
         if T is None:
-            assert isinstance(S, sparse_autocov_mat), "S must be a sparse_autocov_mat."
+            assert isinstance(S, SparseAutocovMat), "S must be a SparseAutocovMat."
 
             # only if S provided, T will only be used to look for neighours.
             # so set T to S.PT.
@@ -1429,8 +1429,8 @@ class SparseClustering(Clustering):
 
             self.num_nodes = T.shape[0]
 
-            if not (isinstance(T, sparse_stoch_mat) or isspmatrix_csr(T)):
-                raise TypeError("T must be a csr or sparse_stoch_mat.")
+            if not (isinstance(T, SparseStochMat) or isspmatrix_csr(T)):
+                raise TypeError("T must be a csr or SparseStochMat.")
 
             # assert np.allclose(T.sum(1),np.ones(T.shape[1])),\
             #                     "Transition matrix must be stochastic"
@@ -1463,8 +1463,8 @@ class SparseClustering(Clustering):
             self._S = self._compute_S()
 
         else:
-            if not isinstance(S, sparse_autocov_mat):
-                raise TypeError("S must be a sparse_autocov_mat.")
+            if not isinstance(S, SparseAutocovMat):
+                raise TypeError("S must be a SparseAutocovMat.")
             assert S.shape == self.T.shape, "T and S must have the same shape."
 
             self._S = S.copy()
@@ -1503,13 +1503,13 @@ class SparseClustering(Clustering):
 
     def _compute_S(self):
         """Computes the internal matrix comparing probabilities for each
-        node as a sparse_autocov_mat
+        node as a SparseAutocovMat
             
                 S[i,j] = p1[i]*T[i,j] - p1[i]*p2[j]
                 
         Saves the matrix in `self._S`.
         """
-        return sparse_autocov_mat.from_T(self.T,
+        return SparseAutocovMat.from_T(self.T,
                                          self.p1,
                                          self.p2)
 
@@ -1712,12 +1712,12 @@ class FlowIntegralClustering:
                                      " (not numpy matrices)" + \
                                      " or scipy CSR matrices.")
 
-            elif isinstance(T_list[0], sparse_stoch_mat):
+            elif isinstance(T_list[0], SparseStochMat):
                 is_sparse_stoch = True
 
             if not (is_sparse or is_nparray or is_sparse_stoch):
                 raise TypeError("T_list must contain numpy arrays" + \
-                                     ", scipy CSR matrices or sparse_stoch_mats.")
+                                     ", scipy CSR matrices or SparseStochMat.")
 
             self.T_list = T_list
         else:
@@ -1734,12 +1734,12 @@ class FlowIntegralClustering:
                                      " (not numpy matrices)" + \
                                      " or scipy CSR matrices.")
 
-            elif isinstance(T_inter_list[0], sparse_stoch_mat):
+            elif isinstance(T_inter_list[0], SparseStochMat):
                 is_sparse_stoch = True
 
             if not (is_sparse or is_nparray or is_sparse_stoch):
                 raise TypeError("T_inter_list must contain numpy arrays" + \
-                                     ", scipy CSR matrices or sparse_stoch_mats.")
+                                     ", scipy CSR matrices or SparseStochMat.")
 
             if reverse_time:
                 T_inter_list = T_inter_list[::-1]
@@ -1814,7 +1814,7 @@ class FlowIntegralClustering:
             else:
                 pp1 = self.p1
 
-            self.I_list = [sparse_autocov_mat(PT, pp1, pp1, PT_symmetric=True) for PT in PT_list]
+            self.I_list = [SparseAutocovMat(PT, pp1, pp1, PT_symmetric=True) for PT in PT_list]
 
 
         self.clustering = {}

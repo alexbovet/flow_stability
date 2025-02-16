@@ -39,8 +39,8 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
-from ..FlowStability import FlowIntegralClustering
-from ..TemporalNetwork import ContTempNetwork as NetClass
+from ..flow_stability import FlowIntegralClustering
+from ..temporal_network import ContTempNetwork as NetClass
 
 # raise Exception
 

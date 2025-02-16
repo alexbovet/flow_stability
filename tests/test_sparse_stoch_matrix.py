@@ -12,7 +12,7 @@ def test_timing(capfd):
     """Bacic operations with the 'spares_stoch_mat' class
     """
     from time import sleep
-    from flowstab.SparseStochMat import timing
+    from flowstab.sparse_stoch_mat import timing
     
     @timing
     def sleep_some(some=0.3, **params):
@@ -27,7 +27,7 @@ def test_timing(capfd):
 def test_SSM_small(get_csr_matrix_small):
     """Bacic operations with the 'spares_stoch_mat' class
     """
-    from flowstab.SparseStochMat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     # Inits
     # ###
     # inti from scipy.sparse.csr_matrix
@@ -46,7 +46,7 @@ def test_SSM_small(get_csr_matrix_small):
 def test_SSM_large(get_csr_matrix_large):
     """Make sure an SSM does not get expanded during creation
     """
-    from flowstab.SparseStochMat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     # Inits
     # ###
     # inti from scipy.sparse.csr_matrix
@@ -67,7 +67,7 @@ def test_SSM_large(get_csr_matrix_large):
 def test_SSM_from_full_csr_cython_memory(get_csr_matrix_large):
     """Check the cython implementation
     """
-    from flowstab.SparseStochMat import (
+    from flowstab.sparse_stoch_mat import (
         _css
     )
     A_csr, _ = get_csr_matrix_large
@@ -112,7 +112,7 @@ def test_SSM_from_full_csr_nocython_memory(get_csr_matrix_large):
 def test_SSM_from_full_csr_equivalence(get_csr_matrix_large):
     """Check if both cython and native python implementations match
     """
-    from flowstab.SparseStochMat import (
+    from flowstab.sparse_stoch_mat import (
         _css
     )
     from flowstab._cython_sparse_stoch_subst import (
@@ -155,7 +155,7 @@ def test_SSM_from_full_csr_equivalence(get_csr_matrix_large):
 def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
     """Make sure the cython and pure python implementations are equivalent
     """
-    from flowstab.SparseStochMat import (
+    from flowstab.sparse_stoch_mat import (
         _css
     )
     from flowstab._cython_sparse_stoch_subst import (
@@ -178,7 +178,7 @@ def test_SSM_inplace_row_normalize_equivalence(SSM_matrix_creator):
 def test_rebuild_nnz_rowcol(cs_matrix_creator, compare_alike):
     """Test conversions from ssm to csr and back
     """
-    from flowstab.SparseStochMat import sparse_stoch_mat as SSM
+    from flowstab.sparse_stoch_mat import SparseStochMat as SSM
     A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
     A_ssm = SSM.from_full_csr_matrix(Tcsr=A_csr)
     A_rebuild = A_ssm.to_full_mat()
@@ -209,7 +209,7 @@ def test_csr_csrT_matmul_native_memory(cs_matrix_creator):
 
 def test_inplace_diag_matmul_csr(cs_matrix_creator):
     """Check the inplace diagonal multiplication for csr and csc"""
-    from flowstab.SparseStochMat import (
+    from flowstab.sparse_stoch_mat import (
         inplace_csr_matmul_diag,
         inplace_diag_matmul_csr
     )
@@ -251,9 +251,9 @@ def test_inplace_diag_matmul_csr(cs_matrix_creator):
                           (None, 0.1, 1000),
                           (None, None, 1000)])
 def test_SAM_init(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.SparseStochMat import sparse_autocov_mat as SAM
-    from flowstab.SparseStochMat import (
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
+    from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )
     T = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=1000)[0]
@@ -277,9 +277,9 @@ def test_SAM_init(p1, p2, size, cs_matrix_creator):
                           (None, 0.1, 100000),
                           (None, None, 100000)])
 def test_SAM_from_T(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.SparseStochMat import sparse_autocov_mat as SAM
-    from flowstab.SparseStochMat import (
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
+    from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )
     T = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=1000)[0]
@@ -304,9 +304,9 @@ def test_SAM_from_T(p1, p2, size, cs_matrix_creator):
                           (None, 0.1, 100000),
                           (None, None, 100000)])
 def test_SAM_from_T_forward(p1, p2, size, cs_matrix_creator):
-    """Check basic operations on sparse_autocov_mat"""
-    from flowstab.SparseStochMat import sparse_autocov_mat as SAM
-    from flowstab.SparseStochMat import (
+    """Check basic operations on SparseAutocovMat"""
+    from flowstab.sparse_stoch_mat import SparseAutocovMat as SAM
+    from flowstab.sparse_stoch_mat import (
         inplace_diag_matmul_csr
     )
     T = cs_matrix_creator(nbr=1, size=size, nbr_non_zeros=1000)[0]

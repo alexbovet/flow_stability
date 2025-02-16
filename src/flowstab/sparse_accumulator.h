@@ -18,8 +18,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SPA_H
-#define SPA_H
+#ifndef SPARSE_ACCUMULATOR_H
+#define SPARSE_ACCUMULATOR_H
 
 #include <vector> 
 
@@ -42,4 +42,4 @@ class SPA
     
 }; 
 
-#endif
+#endif // SPARSE_ACCUMULATOR_H

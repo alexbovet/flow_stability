@@ -42,7 +42,7 @@ from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import eigsh, expm
 
 from .parallel_expm import compute_subspace_expm_parallel
-from .SparseStochMat import inplace_csr_row_normalize, sparse_stoch_mat
+from .sparse_stoch_mat import inplace_csr_row_normalize, SparseStochMat
 
 
 class ContTempNetwork:
@@ -381,7 +381,7 @@ class ContTempNetwork:
         not already present and saves it together with 
         inter_T[lamda][0] in a pickle file.
         otherwise, saves inter_T[lamda] directly (good if used with
-        sparse_stoch_matrices).
+        SparseStochMat instances).
             
         Parameters
         ----------
@@ -449,8 +449,8 @@ class ContTempNetwork:
 
             if save_delta:
                 assert not isinstance(self.inter_T[lamda][0],
-                                  sparse_stoch_mat),\
-                                "inter_T must not be sparse_stoch_mat"
+                                  SparseStochMat),\
+                                "inter_T must not be SparseStochMat"
 
                 if not hasattr(self, "delta_inter_T") and \
                                     hasattr(self, "inter_T"):
@@ -498,8 +498,8 @@ class ContTempNetwork:
 
                 for lamda in lamdas:
                     assert isinstance(self.inter_T[lamda][0],
-                                      sparse_stoch_mat),\
-                                    "inter_T needs to be sparse_stoch_mat"
+                                      SparseStochMat),\
+                                    "inter_T needs to be SparseStochMat"
 
                     save_dict["inter_T"][lamda] = []
                     for interT in self.inter_T[lamda]:
@@ -623,8 +623,8 @@ class ContTempNetwork:
                     save_dict["inter_T_lin"][lamda] = dict()
                     for t_s in self.inter_T_lin[lamda].keys():
                         assert isinstance(self.inter_T_lin[lamda][t_s][0],
-                                          sparse_stoch_mat),\
-                                        "inter_T needs to be sparse_stoch_mat"
+                                          SparseStochMat),\
+                                        "inter_T needs to be SparseStochMat"
 
                         save_dict["inter_T_lin"][lamda][t_s] = []
                         for interT in self.inter_T_lin[lamda][t_s]:
@@ -700,7 +700,7 @@ class ContTempNetwork:
 
                 for lamda in load_dict["inter_T"].keys():
                     return_dict["inter_T"][lamda] = \
-                        [sparse_stoch_mat(**mat_dict) for mat_dict in \
+                        [SparseStochMat(**mat_dict) for mat_dict in \
                                           load_dict["inter_T"][lamda]]
 
             else:
@@ -724,7 +724,7 @@ class ContTempNetwork:
                     for t_s in load_dict["inter_T_lin"][lamda].keys():
 
                         return_dict["inter_T_lin"][lamda][t_s] = \
-                            [sparse_stoch_mat(**mat_dict) for mat_dict in \
+                            [SparseStochMat(**mat_dict) for mat_dict in \
                                               load_dict["inter_T_lin"][lamda][t_s]]
 
             else:
@@ -752,7 +752,7 @@ class ContTempNetwork:
         saves a dict with 'T' as key and net.T as item with other 
         useful attributes.
             
-        also works with sparse_stoch_mat.
+        also works with SparseStochMat.
             
         only works if net.T[lamda] is a matrix and not a list of matrices,
         i.e. if compute_transition_matrices was ran without save_intermediate.
@@ -780,7 +780,7 @@ class ContTempNetwork:
             lamdas = [lamda]
 
         for lamda in lamdas:
-            if isinstance(self.T[lamda], sparse_stoch_mat):
+            if isinstance(self.T[lamda], SparseStochMat):
                 save_dict["is_sparse_stoch"] = True
                 if round_zeros:
                     T = self.T[lamda].copy()
@@ -789,7 +789,7 @@ class ContTempNetwork:
                     T = self.T[lamda]
                 save_dict["T"][lamda] = T.to_dict()
 
-                text = "sparse_stoch_mat T"
+                text = "SparseStochMat T"
 
             elif isspmatrix_csr(self.T[lamda]):
 
@@ -803,7 +803,7 @@ class ContTempNetwork:
                 text = "csr T"
 
             else:
-                raise TypeError("T must be csr or sparse_stoch_mat.")
+                raise TypeError("T must be csr or SparseStochMat.")
 
 
         ext = os.path.splitext(filename)[-1]
@@ -836,7 +836,7 @@ class ContTempNetwork:
         saves a dict with 'T_lin' as key and net.T_lin as item with other 
         useful attributes.
             
-        also works with sparse_stoch_mat.
+        also works with SparseStochMat instance.
             
         only works if net.T_lin[lamda][t_s] is a matrix and not a list of matrices,
         i.e. if compute_transition_matrices was ran without save_intermediate.
@@ -866,7 +866,7 @@ class ContTempNetwork:
             save_dict["T_lin"][lamda] = dict()
             for t_s in self.T_lin[lamda].keys():
 
-                if isinstance(self.T_lin[lamda][t_s], sparse_stoch_mat):
+                if isinstance(self.T_lin[lamda][t_s], SparseStochMat):
                     save_dict["is_sparse_stoch"] = True
                     if round_zeros:
                         T = self.T_lin[lamda][t_s].copy()
@@ -876,7 +876,7 @@ class ContTempNetwork:
 
                     save_dict["T_lin"][lamda][t_s] = T.to_dict()
 
-                    text = "sparse_stoch_mat T_lin"
+                    text = "SparseStochMat T_lin"
 
                 elif isspmatrix_csr(self.T_lin[lamda][t_s]):
 
@@ -890,7 +890,7 @@ class ContTempNetwork:
                     text = "csr T_lin"
 
                 else:
-                    raise TypeError("T must be csr or sparse_stoch_mat.")
+                    raise TypeError("T must be csr or SparseStochMat.")
 
 
         ext = os.path.splitext(filename)[-1]
@@ -966,7 +966,7 @@ class ContTempNetwork:
 
                 for lamda in load_dict["T"].keys():
                     return_dict["T"][lamda] = \
-                        sparse_stoch_mat(**load_dict["T"][lamda])
+                        SparseStochMat(**load_dict["T"][lamda])
 
             else:
                 for lamda in load_dict["T"].keys():
@@ -984,7 +984,7 @@ class ContTempNetwork:
                     for t_s in load_dict["T_lin"][lamda].keys():
 
                         return_dict["T_lin"][lamda][t_s] = \
-                            sparse_stoch_mat(**load_dict["T_lin"][lamda][t_s])
+                            SparseStochMat(**load_dict["T_lin"][lamda][t_s])
 
             else:
                 for lamda in load_dict["T_lin"].keys():
@@ -1391,7 +1391,7 @@ class ContTempNetwork:
                     print("PID ", os.getpid(), " no events, trans. matrix = identity")
                 # is there was no event, the transition is identity
                 if use_sparse_stoch:
-                    self.inter_T[lamda].append(sparse_stoch_mat.create_diag(size=self.num_nodes))
+                    self.inter_T[lamda].append(SparseStochMat.create_diag(size=self.num_nodes))
                 else:
                     self.inter_T[lamda].append(eye(self.num_nodes,
                                                       dtype=np.float64,
@@ -1506,7 +1506,7 @@ class ContTempNetwork:
                     print("PID ", os.getpid(), " no events, lin. trans. matrix = identity")
                 # is there was no event, the transition is identity
                 if use_sparse_stoch:
-                    self.inter_T_lin[lamda].append(sparse_stoch_mat.create_diag(size=self.num_nodes))
+                    self.inter_T_lin[lamda].append(SparseStochMat.create_diag(size=self.num_nodes))
                 else:
                     self.inter_T_lin[lamda][t_s].append(eye(self.num_nodes,
                                                       dtype=np.float64,
@@ -2497,13 +2497,13 @@ def sparse_lapl_expm(L, fact, dense_expm=True, nproc=1,
         
     Returns
     -------
-    expm(-fact*L) : `sparse_stoch_mat` object
+    expm(-fact*L) : `SparseStochMat` object
         Transition matrix 
 
     """
     if L.getnnz() == 0: #zero matrix
         # return identity
-        return sparse_stoch_mat.create_diag(L.shape[0])
+        return SparseStochMat.create_diag(L.shape[0])
 
     L_small, nz_inds, size = remove_nnz_rowcol(L)
 
@@ -2540,7 +2540,7 @@ def sparse_lapl_expm(L, fact, dense_expm=True, nproc=1,
         else:
             T_small = expm(-fact*L_small).tocsr()
 
-    return sparse_stoch_mat(size, T_small.data, T_small.indices,
+    return SparseStochMat(size, T_small.data, T_small.indices,
                             T_small.indptr, nz_inds)
 
 
@@ -2550,7 +2550,7 @@ def sparse_lin_approx(T, t, Pi=None, t_s=10, nz_rowcols=None):
         
         Performs computation using `lin_approx_trans_matrix` 
         on a smallest L matrices with no zeros 
-        row/cols and returns a sparse_stoch_mat
+        row/cols and returns a SparseStochMat 
     
 
     Parameters
@@ -2565,31 +2565,31 @@ def sparse_lin_approx(T, t, Pi=None, t_s=10, nz_rowcols=None):
     t_s : float, optional
         Stationarity time at which the interpolation reaches Pi. The default is 10.
     nz_rowcols : ndarray of int32
-        indices of T of nonzero offdiagonal rows/cols to build a sparse_stoch_mat
+        indices of T of nonzero offdiagonal rows/cols to build a SparseStochMat 
 
     Returns
     -------
-    Tapprox : sparse_stoch_mat object
+    Tapprox : SparseStochMat object
             Linear approximation at time t.
 
     """
-    T_ss = sparse_stoch_mat.from_full_csr_matrix(T, nz_rowcols=nz_rowcols)
+    T_ss = SparseStochMat.from_full_csr_matrix(T, nz_rowcols=nz_rowcols)
 
     if Pi is None:
         Pi_small = compute_stationary_transition(T_ss.T_small)
-    elif isinstance(Pi, sparse_stoch_mat):
+    elif isinstance(Pi, SparseStochMat):
         Pi_small = Pi.T_small
     elif isinstance(Pi, csr_matrix):
-        Pi_small = sparse_stoch_mat.from_full_csr_matrix(Pi, nz_rowcols=nz_rowcols).T_small
+        Pi_small = SparseStochMat.from_full_csr_matrix(Pi, nz_rowcols=nz_rowcols).T_small
     else:
-        raise TypeError("Pi must be a csr or sparse_stoch_mat.")
+        raise TypeError("Pi must be a csr or SparseStochMat.")
 
     Tapprox_small = lin_approx_trans_matrix(T_ss.T_small,
                                         t=t,
                                         Pi=Pi_small,
                                         t_s=t_s)
 
-    return sparse_stoch_mat(T_ss.size, Tapprox_small.data, Tapprox_small.indices,
+    return SparseStochMat(T_ss.size, Tapprox_small.data, Tapprox_small.indices,
                             Tapprox_small.indptr, T_ss.nz_rowcols)
 
 
@@ -2606,11 +2606,11 @@ def sparse_stationary_trans(T):
         Transition matrix at stationarity
 
     """
-    T_ss = sparse_stoch_mat.from_full_csr_matrix(T.tocsr())
+    T_ss = SparseStochMat.from_full_csr_matrix(T.tocsr())
 
     Pi_small = compute_stationary_transition(T_ss.T_small)
 
-    return sparse_stoch_mat(T_ss.size, Pi_small.data, Pi_small.indices,
+    return SparseStochMat(T_ss.size, Pi_small.data, Pi_small.indices,
                             Pi_small.indptr, T_ss.nz_rowcols)
 
 
@@ -2627,7 +2627,7 @@ def set_to_zeroes(Tcsr, tol=1e-8, relative=True, use_absolute_value=False):
     If tol is None, does nothing
     """
     if tol is not None:
-        if isinstance(Tcsr, sparse_stoch_mat):
+        if isinstance(Tcsr, SparseStochMat):
             Tcsr.set_to_zeroes(tol, relative=relative)
         elif isinstance(Tcsr, (csr_matrix,csc_matrix)):
             if Tcsr.data.size > 0:
@@ -2643,7 +2643,7 @@ def set_to_zeroes(Tcsr, tol=1e-8, relative=True, use_absolute_value=False):
 
                 Tcsr.eliminate_zeros()
         else:
-            raise TypeError("Tcsr must be csc,csr or sparse_stoch_mat")
+            raise TypeError("Tcsr must be csc,csr or SparseStochMat")
 
 
 

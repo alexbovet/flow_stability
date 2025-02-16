@@ -40,7 +40,7 @@ from libcpp.unordered_map cimport unordered_map as umap
 from cython.operator cimport dereference as deref, preincrement as inc
 from scipy.sparse._sparsetools import csr_diagonal, csc_matvec
 
-from flowstab.SPA cimport SPA
+from flowstab.sparse_accumulator cimport SPA
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -598,7 +598,7 @@ def sparse_stoch_from_full_csr(int[:] nz_rowcols,
                                int[:] Tf_indices,
                                int[:] Tf_indptr,
                                double diag_val):
-        """ initialize sparse_stoch_mat from a full size row stochastic 
+        """ initialize SparseStochMat from a full size row stochastic 
             csr_matrix 
         """
         

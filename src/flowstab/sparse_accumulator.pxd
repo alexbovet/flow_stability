@@ -1,3 +1,4 @@
+"""
 /*
 #
 # flow stability
@@ -17,49 +18,23 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-
-#include "SPA.h"
-
-using namespace std; 
-    
-SPA::SPA() {} 
-//Parametrized Constructor 
-SPA::SPA(int size) 
-{
-    this->size = size;
-    
-    this->w.resize(size);
-    this->b.resize(size);
-    
-    for (int i = 0; i < size; i++) {
-        this->w[i] = 0.0;
-        this->b[i] = -1;
-    }
-    
-    this->current_row = 0;
-    
-}
-//Destructor
-SPA::~SPA () {}
-
-void SPA::scatter(double value, int pos){
-
-    if (this->b[pos] < this->current_row) {
-        this->w[pos] = value;
-        this->b[pos] = this->current_row;
-        this->LS.push_back(pos);
-    }
-    else {
-        this->w[pos] += value;
-    }
-        
-}
-
-void SPA::reset(int current_row) {
-    this->current_row = current_row;
-    this->LS.clear();
-}
+"""
 
 
+from libcpp.vector cimport vector
 
+cdef extern from "sparse_accumulator.cpp":
+    pass
 
+# Declare the class with cdef
+cdef extern from "sparse_accumulator.h":
+    cdef cppclass SPA:
+        SPA() except + 
+        SPA(int size) except +
+        int size
+        int current_row
+        vector[double] w
+        vector[int] b
+        vector[int] LS
+        void scatter(double value, int pos)
+        void reset(int current_row)
