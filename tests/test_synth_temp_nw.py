@@ -1,7 +1,7 @@
 import pytest
 
 def test_distro():
-    from flowstab.SynthTempNetwork import (
+    from flowstab.synth_temp_network import (
         Distro,
     )
     d = Distro(loc=0.0, scale=1.0)
@@ -20,7 +20,7 @@ def test_individual(_id,
                     i_d_loc, i_d_scale, i_d_mf,
                     a_d_loc, a_d_scale, a_d_mf,
                     dist_type, group):
-    from flowstab.SynthTempNetwork import (
+    from flowstab.synth_temp_network import (
         Individual,
     )
     i1 = Individual(ID=_id,
@@ -39,7 +39,7 @@ def test_individual(_id,
     _ = i1.draw_activ_time(time=1.0)
 
 def test_synth_temp_network():
-    from flowstab.SynthTempNetwork import (
+    from flowstab.synth_temp_network import (
         Individual,
         SynthTempNetwork
     )
