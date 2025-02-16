@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: |
+          sudo apt-get update
           sudo apt-get upgrade
           sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
@@ -90,6 +91,7 @@ jobs:
     needs: install
     steps:
       - run: |
+          sudo apt-get update
           sudo apt-get upgrade
           sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
@@ -121,6 +123,7 @@ jobs:
     needs: install
     steps:
       - run: |
+          sudo apt-get update
           sudo apt-get upgrade
           sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
