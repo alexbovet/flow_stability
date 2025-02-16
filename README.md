@@ -31,7 +31,7 @@ want to add the following line in your script:
 
 ```python
 
-from flowstab.FlowStability import FlowIntegralClustering
+from flowstab.flow_stability import FlowIntegralClustering
 
 # forw_flow = FlowIntegralClustering(...
 ```
@@ -59,13 +59,13 @@ this library with `apt-get install libmkl-rt`.
 
 The main classes are:
 - `ContTempNetwork` in the module `temporal_network` which is used to store and save temporal networks and to compute inter-event transition matrices.
-- `FlowIntegralClustering` in the module `FlowStability` which is used to computed the flow stability (integral of covariance) and to find the best forward and backward partition using the Louvain algorithm.
+- `FlowIntegralClustering` in the module `flow_stability` which is used to computed the flow stability (integral of covariance) and to find the best forward and backward partition using the Louvain algorithm.
 
 Additional interesting classes and functions are:
-- `Clustering` and `SparseClustering` in `FlowStability` can be used to directly cluster covariances or integrals of covariances.
-- `static_clustering` in `FlowStability` is an helper function to cluster static networks using Markov Stability.
-- `run_multi_louvain` in `FlowStability` helper function to run the Louvain multiple times on the same covariance in order to check the robustness of the partition.
-- `avg_norm_var_information` in `FlowStability` computes the average Normalized Variation of Information of list of cluster lists obtained with `run_multi_louvain`.
+- `Clustering` and `SparseClustering` in `flow_stability` can be used to directly cluster covariances or integrals of covariances.
+- `static_clustering` in `flow_stability` is an helper function to cluster static networks using Markov Stability.
+- `run_multi_louvain` in `flow_stability` helper function to run the Louvain multiple times on the same covariance in order to check the robustness of the partition.
+- `avg_norm_var_information` in `flow_stability` computes the average Normalized Variation of Information of list of cluster lists obtained with `run_multi_louvain`.
 - `compute_parallel_clustering` in `parallel_clustering`, same than `run_multi_louvain` but in parallel.
 - the `parallel_expm` module contains functions to compute the matrix exponential of very large matrices using different strategies.
 
