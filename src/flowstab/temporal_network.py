@@ -1,4 +1,3 @@
-from __future__ import annotations
 """#
 # flow stability
 #
@@ -19,7 +18,7 @@ from __future__ import annotations
 
 
 """
-
+from __future__ import annotations
 import gzip
 import os
 import pickle
@@ -48,47 +47,39 @@ from .sparse_stoch_mat import inplace_csr_row_normalize, SparseStochMat
 
 class ContTempNetwork:
     """Continuous time temporal network
+
+    This class represents a continuous time temporal network, where events occur
+    between source and target nodes at specified starting and ending times. It
+    allows for the management of events, including the option to relabel nodes,
+    merge overlapping events, and store additional attributes.
     
-    Parameters
+    Attributes
     ----------
-    source_nodes: Python list
-        List of events source nodes, ordered according to `starting_times`.
-    
-    target_nodes: Python list
-        List of target nodes of each event.
-        
-    starting_times: Python list
-        List of starting times of each event.
-        
-    ending_times: Python list
-        List of ending times of each event.
-        
-    extra_attrs: Dict
-        Extra event attributes.
-        Must be given in a dict with {attr_name: list_of_values},
-        where list_of_values has the same order and length as `source_nodes`.
-        
-    relabel_nodes: boolean
-        Relabel nodes from 0 to num_nodes and save original labels in 
-        self.node_to_label_dict. Default is `True`
-        
-    reset_event_table_index: boolean
-        Reset the index of the `events_table` DataFrame. Default is `True`.
-        
-    node_to_label_dict: Python dict
-        If `relabel_nodes` is `False, this can be used to save the original
-        labels of the nodes.
-        
-    merge_overlapping_events: boolean
-        Check for overlapping events (between the same pair of nodes) 
-        and merges them. Default is `False`.
-        
-    events_table: Pandas Dataframe
-        Dataframe with columns 'source_nodes', 'target_nodes', 'starting_times'
-        and 'ending_times' and index corresponding to event index. Used for
-        instantiating a new ConTempNetwork from the event_table of an other one.
-    
-    
+    events_table : pd.DataFrame
+        DataFrame containing event data with columns 'source_nodes', 'target_nodes',
+        'starting_times', and 'ending_times'.
+    node_to_label_dict : dict
+        A dictionary mapping node labels to their corresponding indices.
+    label_to_node_dict : dict
+        A dictionary mapping indices back to their original node labels.
+    node_array : np.ndarray
+        An array of unique nodes in the network.
+    num_nodes : int
+        The total number of unique nodes in the network.
+    num_events : int
+        The total number of events in the network.
+    start_time : float
+        The minimum starting time of all events.
+    end_time : float
+        The maximum ending time of all events.
+    _compute_times : dict
+        A dictionary to record computation times for various operations.
+    _overlapping_events_merged : bool
+        A flag indicating whether overlapping events have been merged.
+    is_directed : bool
+        A flag indicating whether the network is directed.
+    instantaneous_events : bool
+        A flag indicating whether events are instantaneous.
     """
 
     def __init__(self,
@@ -2009,52 +2000,58 @@ class ContTempNetwork:
 
 
 class ContTempInstNetwork(ContTempNetwork):
-    """Continuous time temporal network with instantaneous events
-    
-    This is a subclass of ContTempNetwork for continuous time temporal
+    """
+    Continuous Time Temporal Network with Instantaneous Events.
+
+    This subclass of ContTempNetwork is designed for continuous time temporal
     networks where events do not have a duration.
-    
-    In practice, it is implemented as a ContTempNetwork where 
-    ending_times_k = starting_times_k+1 and where durations (tau_k) = 1  
-    for all events for the computation of the transition matrices.
-        
-    Parameters
+    In this implementation, each event's ending time is defined as one unit
+    after its starting time, effectively making the duration of all events
+    given by `tau_k=1`.
+
+    Attributes
     ----------
-    source_nodes: Python list
-        List of source nodes of each event ordered according to `starting_times`
-    
-    target_nodes: Python list
-        List of target nodes of each event
-        
-    starting_times: Python list
-        List of starting times of each event
-                
-    relabel_nodes: boolean
-        Relabel nodes from 0 to num_nodes and save original labels in 
-        self.node_to_label_dict. Default is `True`
-        
-    reset_event_table_index: boolean
-        Reset the index of the `events_table` DataFrame. Default is `True`.
-        
-    node_to_label_dict: Python dict
-        If `relabel_nodes` is `False, this can be used to save the original
-        labels of the nodes.
-                
-    events_table: Pandas Dataframe
-        Dataframe with columns 'source_nodes', 'target_nodes', 'starting_times'
-        and 'ending_times' and index corresponding to event index. Used for
-        instantiating a new ConTempNetwork from the event_table of an other one.
-    
-    
+    instantaneous_events : bool
+        A flag indicating that all events in this network are instantaneous.
     """
 
-    def __init__(self, source_nodes=[],
-                        target_nodes=[],
-                        starting_times=[],
-                        relabel_nodes=True,
-                        reset_event_table_index=True,
-                        node_to_label_dict=None,
-                        events_table=None):
+    def __init__(self,
+                 source_nodes=[],
+                 target_nodes=[],
+                 starting_times=[],
+                 relabel_nodes=True,
+                 reset_event_table_index=True,
+                 node_to_label_dict=None,
+                 events_table=None):
+        """
+        Initializes the ContTempInstNetwork with the given event data.
+
+        Parameters
+        ----------
+        source_nodes : list
+            List of source nodes for each event, ordered according to `starting_times`.
+        target_nodes : list
+            List of target nodes for each event.
+        starting_times : list
+            List of starting times for each event.
+        relabel_nodes : bool, optional
+            If True, relabel nodes from 0 to num_nodes and save original labels in
+            `self.node_to_label_dict`. Default is True.
+        reset_event_table_index : bool, optional
+            If True, reset the index of the `events_table` DataFrame. Default is True.
+        node_to_label_dict : dict | None
+            If `relabel_nodes` is False, this can be used to save the original
+            labels of the nodes.
+        events_table : pd.DataFrame | None
+            DataFrame with event data. If provided, it will be used to initialize
+            the network instead of the other parameters.
+
+        Raises
+        ------
+        AssertionError
+            If the lengths of `source_nodes`, `target_nodes`, and `starting_times`
+            do not match when `events_table` is None.
+        """
 
         if events_table is None:
 
