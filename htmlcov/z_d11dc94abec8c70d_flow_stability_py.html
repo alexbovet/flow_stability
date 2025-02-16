@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for src/flowstab/FlowStability.py: 10%</title>
+    <title>Coverage for src/flowstab/flow_stability.py: 10%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
     <link rel="stylesheet" href="style_cb_8e611ae1.css" type="text/css">
     <script src="coverage_html_cb_6fb7b396.js" defer></script>
@@ -11,7 +11,7 @@
 <header>
     <div class="content">
         <h1>
-            <span class="text">Coverage for </span><b>src/flowstab/FlowStability.py</b>:
+            <span class="text">Coverage for </span><b>src/flowstab/flow_stability.py</b>:
             <span class="pc_cov">10%</span>
         </h1>
         <aside id="help_panel_wrapper">
@@ -60,12 +60,12 @@
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
-            <a id="prevFileLink" class="nav" href="index.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a id="prevFileLink" class="nav" href="z_d11dc94abec8c70d__cython_subst_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a id="nextFileLink" class="nav" href="z_d11dc94abec8c70d_SparseStochMat_py.html">&#xbb; next</a>
+            <a id="nextFileLink" class="nav" href="z_d11dc94abec8c70d_parallel_clustering_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.6.4">coverage.py v7.6.4</a>,
-            created at 2024-12-17 08:33 +0000
+            created at 2025-02-16 22:02 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -115,16 +115,16 @@
     <p class="run"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="key">from</span> <span class="nam">scipy</span><span class="op">.</span><span class="nam">sparse</span> <span class="key">import</span> <span class="nam">csc_matrix</span><span class="op">,</span> <span class="nam">csr_matrix</span><span class="op">,</span> <span class="nam">diags</span><span class="op">,</span> <span class="nam">eye</span><span class="op">,</span> <span class="nam">isspmatrix_csr</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t"><span class="key">from</span> <span class="nam">scipy</span><span class="op">.</span><span class="nam">sparse</span><span class="op">.</span><span class="nam">linalg</span> <span class="key">import</span> <span class="nam">eigs</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">SparseStochMat</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">sparse_stoch_mat</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t37" href="#t37">37</a></span><span class="t">    <span class="nam">USE_SPARSE_DOT_MKL</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t38" href="#t38">38</a></span><span class="t">    <span class="nam">inplace_csr_matmul_diag</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t39" href="#t39">39</a></span><span class="t">    <span class="nam">inplace_diag_matmul_csr</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t40" href="#t40">40</a></span><span class="t">    <span class="nam">sparse_autocov_mat</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t40" href="#t40">40</a></span><span class="t">    <span class="nam">SparseAutocovMat</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t41" href="#t41">41</a></span><span class="t">    <span class="nam">sparse_gram_matrix</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t42" href="#t42">42</a></span><span class="t">    <span class="nam">sparse_matmul</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t43" href="#t43">43</a></span><span class="t">    <span class="nam">sparse_stoch_mat</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t43" href="#t43">43</a></span><span class="t">    <span class="nam">SparseStochMat</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t44" href="#t44">44</a></span><span class="t"><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t45" href="#t45">45</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">TemporalNetwork</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t45" href="#t45">45</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">temporal_network</span> <span class="key">import</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t46" href="#t46">46</a></span><span class="t">    <span class="nam">inplace_csr_row_normalize</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t47" href="#t47">47</a></span><span class="t">    <span class="nam">set_to_zeroes</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t48" href="#t48">48</a></span><span class="t">    <span class="nam">sparse_lapl_expm</span>&nbsp;</span><span class="r"></span></p>
@@ -1469,7 +1469,7 @@
     <p class="pln"><span class="n"><a id="t1387" href="#t1387">1387</a></span><span class="t"><span class="str">    p2: numpy.ndarrays</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1388" href="#t1388">1388</a></span><span class="t"><span class="str">        Nx1 probability density at t2. Default is p1 @ T.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1389" href="#t1389">1389</a></span><span class="t"><span class="str">        </span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1390" href="#t1390">1390</a></span><span class="t"><span class="str">    S: sparse_autocov_mat</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1390" href="#t1390">1390</a></span><span class="t"><span class="str">    S: SparseAutocovMat</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1391" href="#t1391">1391</a></span><span class="t"><span class="str">        NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1392" href="#t1392">1392</a></span><span class="t"><span class="str">        </span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1393" href="#t1393">1393</a></span><span class="t"><span class="str">    cluster_list: list</span>&nbsp;</span><span class="r"></span></p>
@@ -1500,7 +1500,7 @@
     <p class="mis show_mis"><span class="n"><a id="t1418" href="#t1418">1418</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">"At least T or S must be provided"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1419" href="#t1419">1419</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1420" href="#t1420">1420</a></span><span class="t">        <span class="key">if</span> <span class="nam">T</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1421" href="#t1421">1421</a></span><span class="t">            <span class="key">assert</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">S</span><span class="op">,</span> <span class="nam">sparse_autocov_mat</span><span class="op">)</span><span class="op">,</span> <span class="str">"S must be a sparse_autocov_mat."</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1421" href="#t1421">1421</a></span><span class="t">            <span class="key">assert</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">S</span><span class="op">,</span> <span class="nam">SparseAutocovMat</span><span class="op">)</span><span class="op">,</span> <span class="str">"S must be a SparseAutocovMat."</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1422" href="#t1422">1422</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1423" href="#t1423">1423</a></span><span class="t">            <span class="com"># only if S provided, T will only be used to look for neighours.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1424" href="#t1424">1424</a></span><span class="t">            <span class="com"># so set T to S.PT.</span>&nbsp;</span><span class="r"></span></p>
@@ -1511,8 +1511,8 @@
     <p class="pln"><span class="n"><a id="t1429" href="#t1429">1429</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1430" href="#t1430">1430</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">num_nodes</span> <span class="op">=</span> <span class="nam">T</span><span class="op">.</span><span class="nam">shape</span><span class="op">[</span><span class="num">0</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1431" href="#t1431">1431</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1432" href="#t1432">1432</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="op">(</span><span class="nam">isinstance</span><span class="op">(</span><span class="nam">T</span><span class="op">,</span> <span class="nam">sparse_stoch_mat</span><span class="op">)</span> <span class="key">or</span> <span class="nam">isspmatrix_csr</span><span class="op">(</span><span class="nam">T</span><span class="op">)</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1433" href="#t1433">1433</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"T must be a csr or sparse_stoch_mat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1432" href="#t1432">1432</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="op">(</span><span class="nam">isinstance</span><span class="op">(</span><span class="nam">T</span><span class="op">,</span> <span class="nam">SparseStochMat</span><span class="op">)</span> <span class="key">or</span> <span class="nam">isspmatrix_csr</span><span class="op">(</span><span class="nam">T</span><span class="op">)</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1433" href="#t1433">1433</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"T must be a csr or SparseStochMat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1434" href="#t1434">1434</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1435" href="#t1435">1435</a></span><span class="t">            <span class="com"># assert np.allclose(T.sum(1),np.ones(T.shape[1])),\</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1436" href="#t1436">1436</a></span><span class="t">            <span class="com">#                     "Transition matrix must be stochastic"</span>&nbsp;</span><span class="r"></span></p>
@@ -1545,8 +1545,8 @@
     <p class="mis show_mis"><span class="n"><a id="t1463" href="#t1463">1463</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">_S</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_compute_S</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1464" href="#t1464">1464</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1465" href="#t1465">1465</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1466" href="#t1466">1466</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">S</span><span class="op">,</span> <span class="nam">sparse_autocov_mat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1467" href="#t1467">1467</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"S must be a sparse_autocov_mat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1466" href="#t1466">1466</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">S</span><span class="op">,</span> <span class="nam">SparseAutocovMat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1467" href="#t1467">1467</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"S must be a SparseAutocovMat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1468" href="#t1468">1468</a></span><span class="t">            <span class="key">assert</span> <span class="nam">S</span><span class="op">.</span><span class="nam">shape</span> <span class="op">==</span> <span class="nam">self</span><span class="op">.</span><span class="nam">T</span><span class="op">.</span><span class="nam">shape</span><span class="op">,</span> <span class="str">"T and S must have the same shape."</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1469" href="#t1469">1469</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1470" href="#t1470">1470</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">_S</span> <span class="op">=</span> <span class="nam">S</span><span class="op">.</span><span class="nam">copy</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -1585,13 +1585,13 @@
     <p class="pln"><span class="n"><a id="t1503" href="#t1503">1503</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t1504" href="#t1504">1504</a></span><span class="t">    <span class="key">def</span> <span class="nam">_compute_S</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1505" href="#t1505">1505</a></span><span class="t">        <span class="str">"""Computes the internal matrix comparing probabilities for each</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1506" href="#t1506">1506</a></span><span class="t"><span class="str">        node as a sparse_autocov_mat</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1506" href="#t1506">1506</a></span><span class="t"><span class="str">        node as a SparseAutocovMat</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1507" href="#t1507">1507</a></span><span class="t"><span class="str">            </span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1508" href="#t1508">1508</a></span><span class="t"><span class="str">                S[i,j] = p1[i]*T[i,j] - p1[i]*p2[j]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1509" href="#t1509">1509</a></span><span class="t"><span class="str">                </span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1510" href="#t1510">1510</a></span><span class="t"><span class="str">        Saves the matrix in `self._S`.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1511" href="#t1511">1511</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1512" href="#t1512">1512</a></span><span class="t">        <span class="key">return</span> <span class="nam">sparse_autocov_mat</span><span class="op">.</span><span class="nam">from_T</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">T</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1512" href="#t1512">1512</a></span><span class="t">        <span class="key">return</span> <span class="nam">SparseAutocovMat</span><span class="op">.</span><span class="nam">from_T</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">T</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1513" href="#t1513">1513</a></span><span class="t">                                         <span class="nam">self</span><span class="op">.</span><span class="nam">p1</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1514" href="#t1514">1514</a></span><span class="t">                                         <span class="nam">self</span><span class="op">.</span><span class="nam">p2</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1515" href="#t1515">1515</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -1794,12 +1794,12 @@
     <p class="pln"><span class="n"><a id="t1712" href="#t1712">1712</a></span><span class="t">                                     <span class="str">" (not numpy matrices)"</span> <span class="op">+</span> <span class="xx">\</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1713" href="#t1713">1713</a></span><span class="t">                                     <span class="str">" or scipy CSR matrices."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1714" href="#t1714">1714</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1715" href="#t1715">1715</a></span><span class="t">            <span class="key">elif</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">T_list</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="nam">sparse_stoch_mat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1715" href="#t1715">1715</a></span><span class="t">            <span class="key">elif</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">T_list</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="nam">SparseStochMat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1716" href="#t1716">1716</a></span><span class="t">                <span class="nam">is_sparse_stoch</span> <span class="op">=</span> <span class="key">True</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1717" href="#t1717">1717</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1718" href="#t1718">1718</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="op">(</span><span class="nam">is_sparse</span> <span class="key">or</span> <span class="nam">is_nparray</span> <span class="key">or</span> <span class="nam">is_sparse_stoch</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1719" href="#t1719">1719</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"T_list must contain numpy arrays"</span> <span class="op">+</span> <span class="xx">\</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1720" href="#t1720">1720</a></span><span class="t">                                     <span class="str">", scipy CSR matrices or sparse_stoch_mats."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1720" href="#t1720">1720</a></span><span class="t">                                     <span class="str">", scipy CSR matrices or SparseStochMat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1721" href="#t1721">1721</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1722" href="#t1722">1722</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">T_list</span> <span class="op">=</span> <span class="nam">T_list</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1723" href="#t1723">1723</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -1816,12 +1816,12 @@
     <p class="pln"><span class="n"><a id="t1734" href="#t1734">1734</a></span><span class="t">                                     <span class="str">" (not numpy matrices)"</span> <span class="op">+</span> <span class="xx">\</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1735" href="#t1735">1735</a></span><span class="t">                                     <span class="str">" or scipy CSR matrices."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1736" href="#t1736">1736</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1737" href="#t1737">1737</a></span><span class="t">            <span class="key">elif</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">T_inter_list</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="nam">sparse_stoch_mat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1737" href="#t1737">1737</a></span><span class="t">            <span class="key">elif</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">T_inter_list</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="nam">SparseStochMat</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1738" href="#t1738">1738</a></span><span class="t">                <span class="nam">is_sparse_stoch</span> <span class="op">=</span> <span class="key">True</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1739" href="#t1739">1739</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1740" href="#t1740">1740</a></span><span class="t">            <span class="key">if</span> <span class="key">not</span> <span class="op">(</span><span class="nam">is_sparse</span> <span class="key">or</span> <span class="nam">is_nparray</span> <span class="key">or</span> <span class="nam">is_sparse_stoch</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1741" href="#t1741">1741</a></span><span class="t">                <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="str">"T_inter_list must contain numpy arrays"</span> <span class="op">+</span> <span class="xx">\</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1742" href="#t1742">1742</a></span><span class="t">                                     <span class="str">", scipy CSR matrices or sparse_stoch_mats."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1742" href="#t1742">1742</a></span><span class="t">                                     <span class="str">", scipy CSR matrices or SparseStochMat."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1743" href="#t1743">1743</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1744" href="#t1744">1744</a></span><span class="t">            <span class="key">if</span> <span class="nam">reverse_time</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1745" href="#t1745">1745</a></span><span class="t">                <span class="nam">T_inter_list</span> <span class="op">=</span> <span class="nam">T_inter_list</span><span class="op">[</span><span class="op">:</span><span class="op">:</span><span class="op">-</span><span class="num">1</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
@@ -1896,7 +1896,7 @@
     <p class="pln"><span class="n"><a id="t1814" href="#t1814">1814</a></span><span class="t">            <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1815" href="#t1815">1815</a></span><span class="t">                <span class="nam">pp1</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">p1</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1816" href="#t1816">1816</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1817" href="#t1817">1817</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">I_list</span> <span class="op">=</span> <span class="op">[</span><span class="nam">sparse_autocov_mat</span><span class="op">(</span><span class="nam">PT</span><span class="op">,</span> <span class="nam">pp1</span><span class="op">,</span> <span class="nam">pp1</span><span class="op">,</span> <span class="nam">PT_symmetric</span><span class="op">=</span><span class="key">True</span><span class="op">)</span> <span class="key">for</span> <span class="nam">PT</span> <span class="key">in</span> <span class="nam">PT_list</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t1817" href="#t1817">1817</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">I_list</span> <span class="op">=</span> <span class="op">[</span><span class="nam">SparseAutocovMat</span><span class="op">(</span><span class="nam">PT</span><span class="op">,</span> <span class="nam">pp1</span><span class="op">,</span> <span class="nam">pp1</span><span class="op">,</span> <span class="nam">PT_symmetric</span><span class="op">=</span><span class="key">True</span><span class="op">)</span> <span class="key">for</span> <span class="nam">PT</span> <span class="key">in</span> <span class="nam">PT_list</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1818" href="#t1818">1818</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1819" href="#t1819">1819</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t1820" href="#t1820">1820</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">clustering</span> <span class="op">=</span> <span class="op">{</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
@@ -2567,12 +2567,12 @@
 <footer>
     <div class="content">
         <p>
-            <a class="nav" href="index.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a class="nav" href="z_d11dc94abec8c70d__cython_subst_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a class="nav" href="z_d11dc94abec8c70d_SparseStochMat_py.html">&#xbb; next</a>
+            <a class="nav" href="z_d11dc94abec8c70d_parallel_clustering_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.6.4">coverage.py v7.6.4</a>,
-            created at 2024-12-17 08:33 +0000
+            created at 2025-02-16 22:02 +0000
         </p>
     </div>
 </footer>

@@ -60,12 +60,12 @@
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
-            <a id="prevFileLink" class="nav" href="z_d11dc94abec8c70d__cython_subst_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a id="prevFileLink" class="nav" href="z_d11dc94abec8c70d_flow_stability_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_d11dc94abec8c70d_parallel_expm_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.6.4">coverage.py v7.6.4</a>,
-            created at 2024-12-17 08:33 +0000
+            created at 2025-02-16 22:02 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -109,8 +109,8 @@
     <p class="run"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t"><span class="key">import</span> <span class="nam">numpy</span> <span class="key">as</span> <span class="nam">np</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t"><span class="key">from</span> <span class="nam">scipy</span><span class="op">.</span><span class="nam">sparse</span> <span class="key">import</span> <span class="nam">csr_matrix</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t29" href="#t29">29</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">FlowStability</span> <span class="key">import</span> <span class="nam">Clustering</span><span class="op">,</span> <span class="nam">SparseClustering</span><span class="op">,</span> <span class="nam">norm_var_information</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">SparseStochMat</span> <span class="key">import</span> <span class="nam">sparse_autocov_mat</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">flow_stability</span> <span class="key">import</span> <span class="nam">Clustering</span><span class="op">,</span> <span class="nam">SparseClustering</span><span class="op">,</span> <span class="nam">norm_var_information</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t"><span class="key">from</span> <span class="op">.</span><span class="nam">sparse_stoch_mat</span> <span class="key">import</span> <span class="nam">SparseAutocovMat</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t"><span class="com"># A global dictionary storing the variables passed from the initializer.</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t"><span class="nam">var_dict</span> <span class="op">=</span> <span class="op">{</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
@@ -208,7 +208,7 @@
     <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">                                  <span class="nam">np</span><span class="op">.</span><span class="nam">frombuffer</span><span class="op">(</span><span class="nam">PTindptr</span><span class="op">,</span> <span class="nam">dtype</span><span class="op">=</span><span class="nam">np</span><span class="op">.</span><span class="nam">int64</span><span class="op">)</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t">                                 <span class="nam">shape</span><span class="op">=</span><span class="op">(</span><span class="nam">N</span><span class="op">,</span><span class="nam">N</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">    <span class="nam">S</span> <span class="op">=</span> <span class="nam">sparse_autocov_mat</span><span class="op">(</span><span class="nam">PT</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t">    <span class="nam">S</span> <span class="op">=</span> <span class="nam">SparseAutocovMat</span><span class="op">(</span><span class="nam">PT</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">                           <span class="nam">np</span><span class="op">.</span><span class="nam">frombuffer</span><span class="op">(</span><span class="nam">p1raw</span><span class="op">,</span> <span class="nam">dtype</span><span class="op">=</span><span class="nam">np</span><span class="op">.</span><span class="nam">float64</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t">                           <span class="nam">np</span><span class="op">.</span><span class="nam">frombuffer</span><span class="op">(</span><span class="nam">p2raw</span><span class="op">,</span> <span class="nam">dtype</span><span class="op">=</span><span class="nam">np</span><span class="op">.</span><span class="nam">float64</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t">                           <span class="nam">PT_symmetric</span><span class="op">=</span><span class="nam">PT_symmetric</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -330,12 +330,12 @@
 <footer>
     <div class="content">
         <p>
-            <a class="nav" href="z_d11dc94abec8c70d__cython_subst_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a class="nav" href="z_d11dc94abec8c70d_flow_stability_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_d11dc94abec8c70d_parallel_expm_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.6.4">coverage.py v7.6.4</a>,
-            created at 2024-12-17 08:33 +0000
+            created at 2025-02-16 22:02 +0000
         </p>
     </div>
 </footer>
