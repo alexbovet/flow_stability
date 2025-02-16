@@ -53,7 +53,7 @@ import pandas as pd
 import psutil
 from scipy.sparse import csr_matrix, eye, triu
 
-from ..SparseStochMat import (
+from ..sparse_stoch_mat import (
     inplace_csr_matmul_diag,
     inplace_csr_row_normalize,
     sparse_gram_matrix,

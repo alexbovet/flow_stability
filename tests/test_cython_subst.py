@@ -9,7 +9,7 @@ def test_sparse_stoch_from_full_csr(cs_matrix_creator):
     """
     """
     from flowstab._cython_subst import sparse_stoch_from_full_csr as ssffc_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
     diag_val = 1.0
     nz_rows, nz_cols = (A_csr - diag_val * eye(A_csr.shape[0], format="csr")).nonzero()
@@ -35,7 +35,7 @@ def test_inplace_csr_row_normalize(cs_matrix_creator):
     """
     """
     from flowstab._cython_subst import inplace_csr_row_normalize as icrn_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
     B_csr = A_csr.copy()
     n_row = 333
@@ -53,7 +53,7 @@ def test_stoch_mat_add(SSM_matrix_creator, compare_SSM_args):
     """
     """
     from flowstab._cython_subst import stoch_mat_add as sma_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     size=100000
     full_size = 10*size
     A, B = SSM_matrix_creator(nbr=2, size=100000, nbr_non_zeros=1000)
@@ -91,7 +91,7 @@ def test_stoch_mat_sub(SSM_matrix_creator, compare_SSM_args):
     """
     """
     from flowstab._cython_subst import stoch_mat_sub as sma_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     size=100000
     full_size = 10*size
     A, B = SSM_matrix_creator(nbr=2, size=100000, nbr_non_zeros=1000)
@@ -128,7 +128,7 @@ def test_rebuild_nnz_rowcol(SSM_matrix_creator, compare_SSM_args):
     """
     """
     from flowstab._cython_subst import rebuild_nnz_rowcol as rnr_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     size=100000
     full_size = 10*size
     A = SSM_matrix_creator(nbr=2, size=100000, nbr_non_zeros=1000)[0]
@@ -156,7 +156,7 @@ def test_get_submat_sum(cs_matrix_creator):
     """
     """
     from flowstab._cython_subst import get_submat_sum as gss_subst
-    from flowstab.SparseStochMat import _css
+    from flowstab.sparse_stoch_mat import _css
     A_csr = cs_matrix_creator(nbr=1, size=100000, nbr_non_zeros=1000)[0]
     row_idx=np.arange(20, 200).astype(np.int32)
     col_idx=np.arange(5,500).astype(np.int32)

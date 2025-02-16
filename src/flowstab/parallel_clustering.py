@@ -28,7 +28,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from .FlowStability import Clustering, SparseClustering, norm_var_information
-from .SparseStochMat import sparse_autocov_mat
+from .sparse_stoch_mat import sparse_autocov_mat
 
 # A global dictionary storing the variables passed from the initializer.
 var_dict = {}

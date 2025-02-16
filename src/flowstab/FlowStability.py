@@ -33,7 +33,7 @@ from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csc_matrix, csr_matrix, diags, eye, isspmatrix_csr
 from scipy.sparse.linalg import eigs
 
-from .SparseStochMat import (
+from .sparse_stoch_mat import (
     USE_SPARSE_DOT_MKL,
     inplace_csr_matmul_diag,
     inplace_diag_matmul_csr,

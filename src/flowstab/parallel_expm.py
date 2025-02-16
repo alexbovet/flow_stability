@@ -28,7 +28,7 @@ from scipy.sparse import csc_matrix, csr_matrix, isspmatrix_csc, vstack
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import expm, expm_multiply
 
-from .SparseStochMat import inplace_csr_row_normalize
+from .sparse_stoch_mat import inplace_csr_row_normalize
 
 # A global dictionary storing the variables passed from the initializer.
 var_dict = {}

@@ -42,7 +42,7 @@ from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import eigsh, expm
 
 from .parallel_expm import compute_subspace_expm_parallel
-from .SparseStochMat import inplace_csr_row_normalize, sparse_stoch_mat
+from .sparse_stoch_mat import inplace_csr_row_normalize, sparse_stoch_mat
 
 
 class ContTempNetwork:
@@ -1553,7 +1553,7 @@ class ContTempNetwork:
                 if force_csr:
                     # forcing the first matrix to csr, will ensure that
                     # all products are done in csr format,
-                    # since CSR @ SparseStochMat t is not implemented
+                    # since CSR @ sparse_stoch_mat t is not implemented
                     self.T[lamda] = [self.inter_T[lamda][k_init].tocsr()]
                 else:
                     self.T[lamda] = [self.inter_T[lamda][k_init]]

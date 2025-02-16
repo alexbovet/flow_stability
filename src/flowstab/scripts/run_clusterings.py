@@ -57,7 +57,7 @@ from scipy.sparse import csr_matrix, diags
 from scipy.sparse.csgraph import connected_components
 
 from ..FlowStability import SparseClustering, norm_var_information, static_clustering
-from ..SparseStochMat import (
+from ..sparse_stoch_mat import (
     inplace_csr_matmul_diag,
     inplace_csr_row_normalize,
     inplace_diag_matmul_csr,
