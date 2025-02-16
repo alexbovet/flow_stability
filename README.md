@@ -58,7 +58,7 @@ this library with `apt-get install libmkl-rt`.
 ## Content
 
 The main classes are:
-- `ContTempNetwork` in the module `TemporalNetwork` which is used to store and save temporal networks and to compute inter-event transition matrices.
+- `ContTempNetwork` in the module `temporal_network` which is used to store and save temporal networks and to compute inter-event transition matrices.
 - `FlowIntegralClustering` in the module `FlowStability` which is used to computed the flow stability (integral of covariance) and to find the best forward and backward partition using the Louvain algorithm.
 
 Additional interesting classes and functions are:

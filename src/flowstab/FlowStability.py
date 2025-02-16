@@ -42,7 +42,7 @@ from .SparseStochMat import (
     sparse_matmul,
     sparse_stoch_mat,
 )
-from .TemporalNetwork import (
+from .temporal_network import (
     inplace_csr_row_normalize,
     set_to_zeroes,
     sparse_lapl_expm

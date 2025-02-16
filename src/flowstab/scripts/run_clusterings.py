@@ -63,7 +63,7 @@ from ..SparseStochMat import (
     inplace_diag_matmul_csr,
     sparse_autocov_mat,
 )
-from ..TemporalNetwork import set_to_zeroes
+from ..temporal_network import set_to_zeroes
 
 # raise Exception
 

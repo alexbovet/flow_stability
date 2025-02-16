@@ -40,7 +40,7 @@ import numpy as np
 import pandas as pd
 
 from ..FlowStability import FlowIntegralClustering
-from ..TemporalNetwork import ContTempNetwork as NetClass
+from ..temporal_network import ContTempNetwork as NetClass
 
 # raise Exception
 

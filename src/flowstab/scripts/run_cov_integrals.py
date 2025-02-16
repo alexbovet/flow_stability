@@ -59,7 +59,7 @@ from ..SparseStochMat import (
     sparse_gram_matrix,
     sparse_matmul,
 )
-from ..TemporalNetwork import ContTempNetwork, set_to_zeroes
+from ..temporal_network import ContTempNetwork, set_to_zeroes
 
 # raise Exception
 
