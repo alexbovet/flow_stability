@@ -133,8 +133,13 @@ class ContTempNetwork:
             If the lengths of `source_nodes`, `target_nodes`, `starting_times`, and
             `ending_times` do not match when `events_table` is None.
         """ 
+        # TODO: this should be enought to separate the cases instantaneous / duration
+        self.instantaneous_events = False
 
         if events_table is None:
+            # TODO: we should only allow None as default
+            if ending_times is None or not ending_times:
+                self.instantaneous_events = True
             # TODO: we should make sure that the provided data is not just empty lists
             assert len(source_nodes) == len(target_nodes) == \
                    len(starting_times) == len(ending_times)
@@ -175,6 +180,8 @@ class ContTempNetwork:
                                           inplace=True)
 
         else:
+            if 'target_nodes' not in events_table.columns:
+                self.instantaneous_events = True
             self.events_table = events_table
             reset_event_table_index = False
             if relabel_nodes:
@@ -1162,9 +1169,11 @@ class ContTempNetwork:
         return t, k
 
 
-    def compute_laplacian_matrices(self, t_start=None,
-                                       t_stop=None, verbose=False,
-                                       save_adjacencies=False):
+    def compute_laplacian_matrices(self,
+                                   t_start=None,
+                                   t_stop=None,
+                                   verbose=False,
+                                   save_adjacencies=False):
         """Computes the laplacian matrices and saves them in `self.laplacians`
             
         Computes from the first event time (in `self.times`) before or equal to
@@ -1401,6 +1410,7 @@ class ContTempNetwork:
             Default is end of times.
         verbose : bool, optional
             The default is False.
+        # TODO: get rid of this in favour of self.instantaneous_events
         fix_tau_k : bool, optional
             If true, all interevent times (tau_k) in the formula above are set
             to 1. 
@@ -1504,6 +1514,7 @@ class ContTempNetwork:
             print(f"PID {os.getpid()}: Interevent transition matrices already "
                   f"computed for lamda={lamda}")
 
+    # TODO: get rid of fix_tau_k in favour of self.instantaneous_events
     def compute_lin_inter_transition_matrices(self,
                                               lamda=None,
                                               t_start=None,
@@ -2218,6 +2229,7 @@ class ContTempInstNetwork(ContTempNetwork):
             print("PID ", os.getpid(), " : ","finished in ", t_end)
 
 
+    # TODO: drop this and use the parent method with self.instantaneous_events
     def compute_inter_transition_matrices(self,
                                           lamda=None,
                                           t_start=None,
@@ -2253,6 +2265,7 @@ class ContTempInstNetwork(ContTempNetwork):
         )
 
 
+    # TODO: drop this and use the parent method with self.instantaneous_events
     def compute_lin_inter_transition_matrices(self,
                                               lamda=None,
                                               t_start=None,
