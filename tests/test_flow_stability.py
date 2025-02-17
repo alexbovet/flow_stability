@@ -1,4 +1,10 @@
 import pytest
+from flowstab import FlowStability
+
+def test_FlowStability_initiation():
+    """
+    """
+    flow_stab = FlowStability()
 
 def test_Partition():
     """

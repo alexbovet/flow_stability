@@ -62,6 +62,18 @@ else:
     USE_CYTHON = False
 
 
+class FlowStability:
+    """Class to instantiate a flow stability analysis
+
+    Attributes
+    ----------
+    """
+    def __init__(self,):
+        """
+        Parameters
+        ----------
+        """
+        pass
 
 class Partition:
     """A node partition that can be described as a list of node sets
