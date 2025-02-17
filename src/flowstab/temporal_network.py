@@ -23,7 +23,10 @@ import gzip
 import os
 import pickle
 import time
+
 from functools import partial
+
+from numbers import Number
 
 import numpy as np
 import pandas as pd
@@ -83,10 +86,10 @@ class ContTempNetwork:
     """
 
     def __init__(self,
-                 source_nodes:list=[],
-                 target_nodes:list=[],
-                 starting_times:list=[],
-                 ending_times:list=[],
+                 source_nodes:list[int|str]=[],
+                 target_nodes:list[int|str]=[],
+                 starting_times:list[Number]=[],
+                 ending_times:list[Number]=[],
                  extra_attrs:dict|None=None,
                  relabel_nodes:bool=True,
                  reset_event_table_index:bool=True,
@@ -132,6 +135,7 @@ class ContTempNetwork:
         """ 
 
         if events_table is None:
+            # TODO: we should make sure that the provided data is not just empty lists
             assert len(source_nodes) == len(target_nodes) == \
                    len(starting_times) == len(ending_times)
 
