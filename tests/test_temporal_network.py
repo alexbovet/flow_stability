@@ -33,7 +33,8 @@ class TestTempNetwork:
         self.minimal.events_table = self._to_df(self.minimal)
         self.minimal.nodes = self._get_nodes(self.minimal)
         self.minimal.node_label_id_map = self._get_label_id_map(self.minimal)
-        self.minimal.tmp_pkl = tempfile.NamedTemporaryFile(suffix='.pkl', delete=False)
+        self.minimal.tmp_pkl = tempfile.NamedTemporaryFile(suffix='.pkl',
+                                                           delete=False)
         self.minimal.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
         # create a simple network
@@ -47,7 +48,8 @@ class TestTempNetwork:
         self.simple.events_table = self._to_df(self.simple)
         self.simple.nodes = self._get_nodes(self.simple)
         self.simple.node_label_id_map = self._get_label_id_map(self.simple)
-        self.simple.tmp_pkl = tempfile.NamedTemporaryFile(suffix='.pkl', delete=False)
+        self.simple.tmp_pkl = tempfile.NamedTemporaryFile(suffix='.pkl',
+                                                          delete=False)
         self.simple.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
         # ###
@@ -140,7 +142,7 @@ class TestTempNetwork:
             map_labels_to_ids = {
                 _id: label for label, _id in map_to_original_labels.items()
             }
-            # check that the node labels have been correctly converted to integers
+            # check that the node labels have been correctly converted to int
             new_temp_network = ContTempNetwork(
                 events_table=temp_network.events_table,
                 relabel_nodes=False

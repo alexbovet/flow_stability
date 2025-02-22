@@ -59,8 +59,8 @@ class ContTempNetwork:
     Attributes
     ----------
     events_table : pd.DataFrame
-        DataFrame containing event data with columns 'source_nodes', 'target_nodes',
-        'starting_times', and 'ending_times'.
+        DataFrame containing event data with columns 'source_nodes',
+        'target_nodes', 'starting_times', and 'ending_times'.
     node_to_label_dict : dict
         A dictionary mapping node labels to their corresponding indices.
     label_to_node_dict : dict
@@ -110,37 +110,41 @@ class ContTempNetwork:
         ending_times : list
             List of ending times for each event.
         extra_attrs : dict | None
-            Additional event attributes as a dictionary with {attr_name: list_of_values},
-            where list_of_values has the same order and length as `source_nodes`.
+            Additional event attributes as a dictionary with
+            {attr_name: list_of_values}, where list_of_values has the same order
+            and length as `source_nodes`.
         relabel_nodes : bool, optional
-            If True, relabel nodes from 0 to num_nodes and save original labels in
-            `self.node_to_label_dict`. Default is True.
+            If True, relabel nodes from 0 to num_nodes and save original labels
+            in `self.node_to_label_dict`. Default is True.
         reset_event_table_index : bool, optional
-            If True, reset the index of the `events_table` DataFrame. Default is True.
+            If True, reset the index of the `events_table` DataFrame. Default is
+            True.
         node_to_label_dict : dict | None
             If `relabel_nodes` is False, this can be used to save the original
             labels of the nodes.
         merge_overlapping_events : bool, optional
-            If True, check for overlapping events (between the same pair of nodes)
-            and merge them. Default is False.
+            If True, check for overlapping events (between the same pair of
+            nodes) and merge them. Default is False.
         events_table : pd.DataFrame | None
-            DataFrame with event data. If provided, it will be used to initialize
-            the network instead of the other parameters.
+            DataFrame with event data. If provided, it will be used to
+            initialize the network instead of the other parameters.
 
         Raises
         ------
         AssertionError
-            If the lengths of `source_nodes`, `target_nodes`, `starting_times`, and
-            `ending_times` do not match when `events_table` is None.
+            If the lengths of `source_nodes`, `target_nodes`, `starting_times`,
+            and `ending_times` do not match when `events_table` is `None`.
         """ 
-        # TODO: this should be enought to separate the cases instantaneous / duration
+        # TODO: this should be enought to separate the cases
+        #       instantaneous / duration
         self.instantaneous_events = False
 
         if events_table is None:
             # TODO: we should only allow None as default
             if ending_times is None or not ending_times:
                 self.instantaneous_events = True
-            # TODO: we should make sure that the provided data is not just empty lists
+            # TODO: we should make sure that the provided data is not just
+            #       empty lists
             assert len(source_nodes) == len(target_nodes) == \
                    len(starting_times) == len(ending_times)
 
@@ -150,20 +154,26 @@ class ContTempNetwork:
                 all_nodes = set()
                 all_nodes.update(source_nodes)
                 all_nodes.update(target_nodes)
-                self.label_to_node_dict = {l : n for n, l in enumerate(sorted(all_nodes))}
-                self.node_to_label_dict = {n : l for l, n in self.label_to_node_dict.items()}
+                self.label_to_node_dict = {node : _id
+                                           for _id, node
+                                           in enumerate( sorted(all_nodes))}
+                self.node_to_label_dict = {_id : node
+                                           for node, _id
+                                           in self.label_to_node_dict.items()}
 
-                source_nodes = [self.label_to_node_dict[n] for n in source_nodes]
-                target_nodes = [self.label_to_node_dict[n] for n in target_nodes]
+                source_nodes = [self.label_to_node_dict[n]
+                                for n in source_nodes]
+                target_nodes = [self.label_to_node_dict[n]
+                                for n in target_nodes]
             else:
                 self.node_to_label_dict=node_to_label_dict
 
             data={"source_nodes" : source_nodes,
-                                                  "target_nodes" : target_nodes,
-                                                  "starting_times" : starting_times,
-                                                  "ending_times" : ending_times}
+                  "target_nodes" : target_nodes,
+                  "starting_times" : starting_times,
+                  "ending_times" : ending_times}
             columns=["source_nodes","target_nodes",
-                                             "starting_times","ending_times"]
+                     "starting_times","ending_times"]
 
             if extra_attrs is not None:
                 assert isinstance(extra_attrs, dict)
@@ -176,8 +186,10 @@ class ContTempNetwork:
             self.events_table = pd.DataFrame(data=data,
                                              columns=columns)
 
-            self.events_table.sort_values(by=["starting_times", "ending_times"],
-                                          inplace=True)
+            self.events_table.sort_values(
+                by=["starting_times", "ending_times"],
+                inplace=True
+            )
 
         else:
             if 'target_nodes' not in events_table.columns:
@@ -189,10 +201,10 @@ class ContTempNetwork:
                 all_nodes.update(events_table.source_nodes.tolist())
                 all_nodes.update(events_table.target_nodes.tolist())
                 self.label_to_node_dict = {
-                    l : n for n, l in enumerate(sorted(all_nodes))
+                    node : _id for _id, node in enumerate(sorted(all_nodes))
                 }
                 self.node_to_label_dict = {
-                    n : l for l, n in self.label_to_node_dict.items()
+                    _id : node for node, _id in self.label_to_node_dict.items()
                 }
             else:
                 self.node_to_label_dict=node_to_label_dict
@@ -201,9 +213,10 @@ class ContTempNetwork:
         if reset_event_table_index:
             self.events_table.reset_index(inplace=True, drop=True)
 
-        self.node_array = np.sort(pd.unique(
-            self.events_table[["source_nodes", "target_nodes"]].values.ravel("K")
-        ))
+        self.node_array = np.sort(
+            pd.unique(self.events_table[["source_nodes",
+                                         "target_nodes"]].values.ravel("K"))
+        )
 
         self.num_nodes = self.node_array.shape[0]
 
@@ -395,9 +408,11 @@ class ContTempNetwork:
 
         events_table = graph_dict.pop("events_table")
 
-        net = cls(events_table=events_table,
-                           relabel_nodes=False,
-                           node_to_label_dict=graph_dict.pop("node_to_label_dict"))
+        net = cls(
+            events_table=events_table,
+            relabel_nodes=False,
+            node_to_label_dict=graph_dict.pop("node_to_label_dict")
+        )
 
         for k,val in graph_dict.items():
             if k in matrices_list:
@@ -531,8 +546,10 @@ class ContTempNetwork:
                         save_dict["inter_T"][lamda]["delta_inter_T"] = self.delta_inter_T[lamda]
                         save_dict["inter_T"][lamda]["trans_mat0"] = self.inter_T[lamda][0].copy()
                         if round_zeros:
-                            set_to_zeroes(save_dict["inter_T"][lamda]["trans_mat0"],
-                                          tol=tol)
+                            set_to_zeroes(
+                                save_dict["inter_T"][lamda]["trans_mat0"],
+                                tol=tol
+                            )
 
                 text = "delta trans mats"
 
@@ -577,10 +594,14 @@ class ContTempNetwork:
 
 
 
-    def save_inter_T_lin(self, filename, lamda=None, round_zeros=True, tol=1e-8,
-                                   compressed=False,
-                                   replace_existing=True,
-                                   save_delta=False):
+    def save_inter_T_lin(self,
+                         filename,
+                         lamda=None,
+                         round_zeros=True,
+                         tol=1e-8,
+                         compressed=False,
+                         replace_existing=True,
+                         save_delta=False):
         """Creates delta_inter_T_lin if it is not already present and
         saves it together with inter_T_lin[lamda][t_s][0] in a pickle file.
                         
@@ -1649,9 +1670,10 @@ class ContTempNetwork:
                                     reverse_time=False,
                                     force_csr=False,
                                     tol=None):
-        """Compute transition matrices and saves them in a dict of lists `self.T[lamda]`
-        where `self.T[lamda][k]` is the product of all interevent transition 
-        matrices from t_0 to t_k computed with lamda.
+        """
+        Compute transition matrices and saves them in a dict of lists
+        `self.T[lamda]` where `self.T[lamda][k]` is the product of all
+        interevent transition matrices from t_0 to t_k computed with lamda.
         """
         if not hasattr(self, "inter_T") or \
                 lamda not in self.inter_T.keys():
@@ -1747,9 +1769,11 @@ class ContTempNetwork:
                                         t_s=10,
                                         save_intermediate=True,
                                         reverse_time=False):
-        """Compute transition matrices and saves them in a dict of lists `self.T_lin[lamda][t_s]`
-        where `self.T_lin[lamda][t_s][k]` is the product of all interevent transition 
-        matrices from t_0 to t_k computed with lamda and t_s.
+        """
+        Compute transition matrices and saves them in a dict of lists
+        `self.T_lin[lamda][t_s]` where `self.T_lin[lamda][t_s][k]` is the
+        product of all interevent transition matrices from t_0 to t_k computed
+        with lamda and t_s.
         """
         if not hasattr(self, "inter_T_lin") \
                 or lamda not in self.inter_T_lin.keys() \
@@ -1788,7 +1812,8 @@ class ContTempNetwork:
                         self.inter_T_lin[lamda][t_s][k_init]
                     ]
                 else:
-                    self.T_lin[lamda][t_s] = self.inter_T_lin[lamda][t_s][k_init]
+                    self.T_lin[lamda][t_s] = \
+                        self.inter_T_lin[lamda][t_s][k_init]
 
             if t_s not in self.T_lin[lamda].keys():
                 if save_intermediate:
@@ -1796,7 +1821,8 @@ class ContTempNetwork:
                         self.inter_T_lin[lamda][t_s][k_init]
                     ]
                 else:
-                    self.T_lin[lamda][t_s] = self.inter_T_lin[lamda][t_s][k_init]
+                    self.T_lin[lamda][t_s] = \
+                        self.inter_T_lin[lamda][t_s][k_init]
 
             if verbose:
                 print(f"PID {os.getpid()}: Computing transition matrix for "
@@ -1831,8 +1857,8 @@ class ContTempNetwork:
             if verbose:
                 print(f"PID {os.getpid()}: finished in {t_end=}")
         elif verbose:
-            print(f"PID {os.getpid()}: Transition matrices already computed for "
-                  f"{lamda=}")
+            print(f"PID {os.getpid()}: Transition matrices already computed for"
+                  f" {lamda=}")
 
     def _compute_stationary_transition(self,
                                        t_start=None,
@@ -1881,7 +1907,9 @@ class ContTempNetwork:
 
 
     def _merge_overlapping_events(self, verbose=False):
-        """Merge temporally overlapping undirected event between each pair of nodes.
+        """
+        Merge temporally overlapping undirected event between each pair of
+        nodes.
             
         """
         events_to_keep = np.ones(self.events_table.shape[0],dtype=bool)
@@ -1915,8 +1943,8 @@ class ContTempNetwork:
                 merged = 0
                 for k in range(1,len(evs_list)):
                     ev2 = evs_list[k]
-                    # if ev2 overlaps with ev1, merge them, otherwise ev2 becomes
-                    # ev1
+                    # if ev2 overlaps with ev1, merge them, otherwise ev2
+                    # becomes ev1
                     if ev2.starting_times < ev1.ending_times:
                         #merge
                         events_to_keep[ev2.Index] = False
