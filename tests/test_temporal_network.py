@@ -5,6 +5,7 @@ import pickle
 import tempfile
 
 from types import SimpleNamespace
+from copy import copy
 
 import numpy as np
 import pandas as pd
@@ -37,6 +38,10 @@ class TestTempNetwork:
                                                            delete=False)
         self.minimal.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
+        self.minimal_instant = copy(self.minimal)
+        del(self.minimal_instant.ending_times)
+        self.minimal_instant.events_table.drop(ContTempNetwork._STOPS, axis=1)
+
         # create a simple network
         self.simple = SimpleNamespace()
         # we assume 10 nodes, and each starting a connection in order
@@ -52,6 +57,9 @@ class TestTempNetwork:
                                                           delete=False)
         self.simple.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
+        self.simple_instant = copy(self.simple)
+        del(self.simple.ending_times)
+        self.simple.events_table.drop(ContTempNetwork._STOPS, axis=1)
         # ###
         # gather all networks
         self.networks = [self.minimal, self.simple]
@@ -60,12 +68,25 @@ class TestTempNetwork:
     def _to_df(network: SimpleNamespace):
         """Convert a network from a namespace ot a data frame
         """
-        return pd.DataFrame({
+        as_df = pd.DataFrame({
             "source_nodes": network.source_nodes,
             "target_nodes": network.target_nodes,
             "starting_times": network.starting_times,
-            "ending_times": network.ending_times
         })
+        ending_times = getattr(network, ContTempNetwork._STOPS, None)
+        if ending_times is not None:
+            as_df[ContTempNetwork._STOPS] = ending_times
+        return as_df
+
+    @staticmethod
+    def _get_instance(network: SimpleNamespace, **params):
+        return ContTempNetwork(
+            source_nodes=network.source_nodes,
+            target_nodes=network.target_nodes,
+            starting_times=network.starting_times,
+            ending_times=getattr(network, ContTempNetwork._STOPS, None),
+            **params
+        )
 
     @staticmethod
     def _get_nodes(network: SimpleNamespace):
@@ -99,7 +120,7 @@ class TestTempNetwork:
                 source_nodes=network.source_nodes,
                 target_nodes=network.target_nodes,
                 starting_times=network.starting_times,
-                ending_times=network.ending_times
+                ending_times=getattr(network, ContTempNetwork._STOPS, None)
             )
             assert isinstance(temp_network, ContTempNetwork)
 
@@ -117,8 +138,19 @@ class TestTempNetwork:
         """Make sure we detect variable numbers of events
         """
         with pytest.raises(AssertionError):
+            # error in source and target nodes
             ContTempNetwork(source_nodes=[1, 2, 3], target_nodes=[1, 2],
                             starting_times = [0, 0], ending_times = [1, 1])
+            # not enough ending times
+            ContTempNetwork(source_nodes=[1, 2], target_nodes=[1, 2],
+                            starting_times = [0, 0], ending_times = [1])
+
+    def test_init_missing_params(self):
+        """Make sure we detect variable numbers of events
+        """
+        with pytest.raises(AssertionError):
+            # missing starting times
+            ContTempNetwork(source_nodes=[1, 2], target_nodes=[1, 2],)
 
     def test_init_with_inconsistent_node_type(self):
         with pytest.raises(TypeError):
@@ -131,13 +163,7 @@ class TestTempNetwork:
         """
         # create a network without relabeling nodes
         for network in self.networks:
-            temp_network = ContTempNetwork(
-                source_nodes=network.source_nodes,
-                target_nodes=network.target_nodes,
-                starting_times=network.starting_times,
-                ending_times=network.ending_times,
-                relabel_nodes=True,
-            )
+            temp_network = self._get_instance(network, relabel_nodes=True)
             map_to_original_labels = temp_network.node_to_label_dict
             map_labels_to_ids = {
                 _id: label for label, _id in map_to_original_labels.items()
@@ -160,12 +186,7 @@ class TestTempNetwork:
     @pytest.fixture
     def saved_network(self):
         def _get_network(network: SimpleNamespace):
-            temp_network = ContTempNetwork(
-                source_nodes=network.source_nodes,
-                target_nodes=network.target_nodes,
-                starting_times=network.starting_times,
-                ending_times=network.ending_times
-            )
+            temp_network = self._get_instance(network)
             with open(network.tmp_pkl.name, 'wb') as f:
                 pickle.dump(temp_network, f)
                 return temp_network
@@ -212,10 +233,13 @@ class TestTempNetwork:
                                   merge_overlapping_events=True)
         assert network._overlapping_events_merged
 
-    def test_compute_times(self):
-        # create a network and check that the compute times dictionary is empty
-        network = ContTempNetwork()
-        assert not network._compute_times
+    def test_laplacian_computation(self):
+        for network in self.networks:
+            temp_network = ContTempNetwork(
+                events_table=network.events_table,
+            )
+            temp_network.compute_laplacian_matrices()
+
 
 def test_ContTempNetworkErrors():
     with pytest.raises(AssertionError):
