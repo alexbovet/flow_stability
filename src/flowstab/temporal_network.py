@@ -86,10 +86,10 @@ class ContTempNetwork:
     """
 
     def __init__(self,
-                 source_nodes:list[int|str]=[],
-                 target_nodes:list[int|str]=[],
-                 starting_times:list[Number]=[],
-                 ending_times:list[Number]=[],
+                 source_nodes:list[int|str]|None=None,
+                 target_nodes:list[int|str]|None=None,
+                 starting_times:list[Number]|None=None,
+                 ending_times:list[Number]|None=None,
                  extra_attrs:dict|None=None,
                  relabel_nodes:bool=True,
                  reset_event_table_index:bool=True,
@@ -140,13 +140,26 @@ class ContTempNetwork:
         self.instantaneous_events = False
 
         if events_table is None:
-            # TODO: we should only allow None as default
-            if ending_times is None or not ending_times:
-                self.instantaneous_events = True
-            # TODO: we should make sure that the provided data is not just
-            #       empty lists
+            assert all(
+                input_list is not None
+                for input_list in [source_nodes, target_nodes, starting_times]
+            ), f"{', '.join(self._MANDATORY)} are required arguments."
+
+            # make sure we have a matching number of event elements
             assert len(source_nodes) == len(target_nodes) == \
-                   len(starting_times) == len(ending_times)
+                    len(starting_times), \
+                "Incommplete events: Not all input lists have the same " \
+                f"length:\n{len(source_nodes)=}\n{len(target_nodes)=}\n" \
+                f"{len(starting_times)=}"
+
+            if ending_times is None:
+                self.instantaneous_events = True
+            else:
+                # make sure we have a matching number of starts and stops
+                assert len(ending_times) == len(starting_times), \
+                    "Incommplete events: Not all events have a start and " \
+                    f"ending time:\n{len(starting_times)=}\n" \
+                    f"{len(ending_times)=}"
 
             if relabel_nodes:
                # relabel nodes from 0 to num_nodes and save
