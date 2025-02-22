@@ -84,6 +84,12 @@ class ContTempNetwork:
     instantaneous_events : bool
         A flag indicating whether events are instantaneous.
     """
+    # parametrize the column names > single place to change them:
+    _SOURCES = "source_nodes"
+    _TARGETS = "target_nodes"
+    _STARTS = "starting_times"
+    _MANDATORY = [_SOURCES, _TARGETS, _STARTS]
+    _STOPS = "ending_times"
 
     def __init__(self,
                  source_nodes:list[int|str]|None=None,
@@ -181,12 +187,11 @@ class ContTempNetwork:
             else:
                 self.node_to_label_dict=node_to_label_dict
 
-            data={"source_nodes" : source_nodes,
-                  "target_nodes" : target_nodes,
-                  "starting_times" : starting_times,
-                  "ending_times" : ending_times}
-            columns=["source_nodes","target_nodes",
-                     "starting_times","ending_times"]
+            data={self._SOURCES : source_nodes,
+                  self._TARGETS : target_nodes,
+                  self._STARTS : starting_times,
+                  self._STOPS : ending_times}
+            columns=[self._SOURCES, self._TARGETS, self._STARTS, self._STOPS]
 
             if extra_attrs is not None:
                 assert isinstance(extra_attrs, dict)
@@ -200,12 +205,12 @@ class ContTempNetwork:
                                              columns=columns)
 
             self.events_table.sort_values(
-                by=["starting_times", "ending_times"],
+                by=[self._STARTS, self._STOPS],
                 inplace=True
             )
 
         else:
-            if 'target_nodes' not in events_table.columns:
+            if self._TARGETS not in events_table.columns:
                 self.instantaneous_events = True
             self.events_table = events_table
             reset_event_table_index = False
@@ -227,8 +232,8 @@ class ContTempNetwork:
             self.events_table.reset_index(inplace=True, drop=True)
 
         self.node_array = np.sort(
-            pd.unique(self.events_table[["source_nodes",
-                                         "target_nodes"]].values.ravel("K"))
+            pd.unique(self.events_table[[self._SOURCES,
+                                         self._TARGETS]].values.ravel("K"))
         )
 
         self.num_nodes = self.node_array.shape[0]
@@ -1167,12 +1172,12 @@ class ContTempNetwork:
         self.time_grid = pd.DataFrame(columns=["times","id","is_start"],
                                       index=range(self.events_table.shape[0]*2))
         self.time_grid.iloc[:self.events_table.shape[0],[0,1]] = \
-                     self.events_table.reset_index()[["starting_times","index"]]
+                     self.events_table.reset_index()[[self._STARTS, "index"]]
         self.time_grid["is_start"] = False
         self.time_grid.loc[0:self.events_table.shape[0]-1,"is_start"] = True
 
         self.time_grid.iloc[self.events_table.shape[0]:,[0,1]] = \
-                      self.events_table.reset_index()[["ending_times","index"]]
+                      self.events_table.reset_index()[[self._STOPS, "index"]]
 
         self.time_grid.times = pd.to_numeric(self.time_grid.times)
 
@@ -1302,8 +1307,8 @@ class ContTempNetwork:
                        (self.events_table.ending_times > t_km1)
 
             for event in self.events_table.loc[mask_ini][[
-                "source_nodes",
-                "target_nodes"
+                self._SOURCES,
+                self._TARGETS
             ]].itertuples():
 
                 if A[event.source_nodes, event.target_nodes] != 1:
@@ -1947,7 +1952,7 @@ class ContTempNetwork:
                 evs = self.events_table.loc[np.logical_or(
                     mask_12,
                     mask_21
-                )].sort_values(by=["starting_times", "ending_times"])
+                )].sort_values(by=[self._STARTS, self._STOPS])
 
                 evs_list = list(evs.itertuples())
 
@@ -1963,7 +1968,7 @@ class ContTempNetwork:
                         events_to_keep[ev2.Index] = False
                         self.events_table.loc[
                             ev1.Index,
-                            "ending_times"
+                            self._STOPS,
                         ] = ev2.ending_times
                         ev1._replace(ending_times=ev2.ending_times)
                         merged += 1
