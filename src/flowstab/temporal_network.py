@@ -25,6 +25,7 @@ import pickle
 import time
 
 from functools import partial
+from copy import copy
 
 from numbers import Number
 
@@ -61,12 +62,8 @@ class ContTempNetwork:
     events_table : pd.DataFrame
         DataFrame containing event data with columns 'source_nodes',
         'target_nodes', 'starting_times', and 'ending_times'.
-    node_to_label_dict : dict
-        A dictionary mapping node labels to their corresponding indices.
-    label_to_node_dict : dict
-        A dictionary mapping indices back to their original node labels.
-    node_array : np.ndarray
-        An array of unique nodes in the network.
+    nodes: list
+        A list of unique nodes in the network.
     num_nodes : int
         The total number of unique nodes in the network.
     num_events : int
@@ -88,8 +85,9 @@ class ContTempNetwork:
     _SOURCES = "source_nodes"
     _TARGETS = "target_nodes"
     _STARTS = "starting_times"
+    _ENDINGS = "ending_times"
     _MANDATORY = [_SOURCES, _TARGETS, _STARTS]
-    _STOPS = "ending_times"
+    _ESSENTIAL = [_SOURCES, _TARGETS, _STARTS, _ENDINGS]
 
     def __init__(self,
                  source_nodes:list[int|str]|None=None,
@@ -97,11 +95,10 @@ class ContTempNetwork:
                  starting_times:list[Number]|None=None,
                  ending_times:list[Number]|None=None,
                  extra_attrs:dict|None=None,
-                 relabel_nodes:bool=True,
-                 reset_event_table_index:bool=True,
-                 node_to_label_dict:dict|None=None,
                  merge_overlapping_events:bool=False,
-                 events_table:pd.DataFrame|pd.Series|None=None):
+                 events_table:pd.DataFrame|pd.Series|None=None,
+                 use_as_is:bool=False,
+                 ):
         """
         Initializes the ContTempNetwork with the given event data.
 
@@ -119,21 +116,26 @@ class ContTempNetwork:
             Additional event attributes as a dictionary with
             {attr_name: list_of_values}, where list_of_values has the same order
             and length as `source_nodes`.
-        relabel_nodes : bool, optional
-            If True, relabel nodes from 0 to num_nodes and save original labels
-            in `self.node_to_label_dict`. Default is True.
-        reset_event_table_index : bool, optional
-            If True, reset the index of the `events_table` DataFrame. Default is
-            True.
-        node_to_label_dict : dict | None
-            If `relabel_nodes` is False, this can be used to save the original
-            labels of the nodes.
         merge_overlapping_events : bool, optional
             If True, check for overlapping events (between the same pair of
             nodes) and merge them. Default is False.
         events_table : pd.DataFrame | None
             DataFrame with event data. If provided, it will be used to
             initialize the network instead of the other parameters.
+        use_as_is : bool  (Default: `False`)
+            If `True`, the provided `events_table` is used without any
+            conversion of nodes labels or timestamps.
+            By default, `use_as_is` is set to `False` in which case the data
+            provided by events_table is copied into an internal data frame
+            using standardized indices for nodes.
+
+            Setting `use_as_is` to `True` can lower the memory footprint and
+            speedup the initiation of an instance.
+            However, one needs to make sure that node labels are consistent,
+            i.e. starting with index 0 and ending with $`N-1`$ with $`N`$ being
+            the number of nodes.
+            This argument is ignored if events are provided via `source_nodes`,
+            `target_nodes` and `starting_times`.
 
         Raises
         ------
@@ -144,8 +146,43 @@ class ContTempNetwork:
         # TODO: this should be enought to separate the cases
         #       instantaneous / duration
         self.instantaneous_events = False
+        self._use_as_is = use_as_is
 
-        if events_table is None:
+        if events_table:
+            provided_columns = events_table.columns
+            # first check that the mandatory columns are here
+            for column in self._MANDATORY:
+                assert events_table.get(column) is not None, \
+                    "The provided data frame is missing the mandatory " \
+                    f"column `{column}`. Make sure the column is present " \
+                    "and correctly named."
+            if self._use_as_is:
+                # in this case the column ending_times needs to be present
+                assert self._ENDINGS in provided_columns, \
+                    "The event_table can only be used as is " \
+                    "(`use_as_is=True`) if it also contains the column " \
+                    f"'{self._ENDINGS}'."
+                # we simply trust the provided events table
+                self._events_table = events_table
+            else:
+                # we extract the data from the provided events table so that
+                # it can be processed 
+                _source_nodes = events_table.get(self._SOURCES).tolist()
+                _target_nodes = events_table.get(self._TARGETS).tolist()
+                _starting_times = events_table.get(self._STARTS).tolist()
+                _ending_times = events_table.get(self._ENDINGS)
+                if _ending_times is not None:
+                    _ending_times = _ending_times.tolist()
+
+
+                # Get the non-essential columns
+                _extra_attrs = {col : events_table[col]
+                                for col in provided_columns
+                                if col not in self._ESSENTIAL}
+        else:
+            # in this we cannot use the internal events_table as is
+            self._use_as_is = False
+            # make sure the mandatory lists are here
             assert all(
                 input_list is not None
                 for input_list in [source_nodes, target_nodes, starting_times]
@@ -154,98 +191,104 @@ class ContTempNetwork:
             # make sure we have a matching number of event elements
             assert len(source_nodes) == len(target_nodes) == \
                     len(starting_times), \
-                "Incommplete events: Not all input lists have the same " \
+                "Incomplete events: Not all input lists have the same " \
                 f"length:\n{len(source_nodes)=}\n{len(target_nodes)=}\n" \
                 f"{len(starting_times)=}"
 
-            if ending_times is None:
-                self.instantaneous_events = True
-            else:
+            # copy the lists as we do not want to mess with immutable objects
+            _source_nodes = copy(source_nodes)
+            _target_nodes = copy(target_nodes)
+            _starting_times = copy(starting_times)
+            _ending_times = copy(ending_times)
+            # and prepare a dict for the extra attrs
+            _extra_attrs = dict()
+        
+        if not self._use_as_is:
+            # we now have temporary lists for our data and can construct
+            # the internal events_table
+
+            # compute internal IDs for nodes
+            self.nodes = set(source_nodes)
+            self.nodes.update(target_nodes)
+            # this holds a mapping from list index to provided node label
+            # we use the index as internal node IDs
+            # The inverted relation is not stored in memory but computed on
+            # demand, see self.node_id.
+            self.nodes = sorted(self.nodes)
+
+            # check if we have instantaneous events
+            if _ending_times is None:
                 # make sure we have a matching number of starts and stops
-                assert len(ending_times) == len(starting_times), \
-                    "Incommplete events: Not all events have a start and " \
-                    f"ending time:\n{len(starting_times)=}\n" \
-                    f"{len(ending_times)=}"
+                assert len(_ending_times) == len(_starting_times), \
+                    "Incomplete events: Not all events have a start and " \
+                    "ending time:\n" \
+                    f"# starting_times: {len(_starting_times)}\n" \
+                    f"# ending_times: {len(_ending_times)}"
+                self.instantaneous_events = True
 
-            if relabel_nodes:
-               # relabel nodes from 0 to num_nodes and save
-                # original labels in self.node_to_label_dict
-                all_nodes = set()
-                all_nodes.update(source_nodes)
-                all_nodes.update(target_nodes)
-                self.label_to_node_dict = {node : _id
-                                           for _id, node
-                                           in enumerate( sorted(all_nodes))}
-                self.node_to_label_dict = {_id : node
-                                           for node, _id
-                                           in self.label_to_node_dict.items()}
+                # old version
+                utimes = np.unique(self._starts)
+                end_times_map = {utimes[k] : utimes[k+1]
+                                 for k in range(utimes.size-1)}
+                end_times_map[utimes[-1]] = utimes[-1]+1
+                _ending_times = [end_times_map[t] for t in self._starts]
+                del(end_times_map)
+                # TODO: Check if this is OK too
+                # # create a list of endings
+                # _ending_times = [start + 1 for start in self._starts]
 
-                source_nodes = [self.label_to_node_dict[n]
-                                for n in source_nodes]
-                target_nodes = [self.label_to_node_dict[n]
-                                for n in target_nodes]
-            else:
-                self.node_to_label_dict=node_to_label_dict
-
-            data={self._SOURCES : source_nodes,
-                  self._TARGETS : target_nodes,
-                  self._STARTS : starting_times,
-                  self._STOPS : ending_times}
-            columns=[self._SOURCES, self._TARGETS, self._STARTS, self._STOPS]
-
+            # include the extra_attrs, if provided
             if extra_attrs is not None:
-                assert isinstance(extra_attrs, dict)
+                _extra_attrs.update(extra_attrs)
+            
+            data={self._SOURCES : [self.node_id[n] for n in _source_nodes],
+                  self._TARGETS : [self.node_id[n] for n in _target_nodes],
+                  # TODO: Potentially we want to reset the timeline as well
+                  self._STARTS : _starting_times,
+                  self._ENDINGS : _ending_times}
+            columns=[self._SOURCES, self._TARGETS, self._STARTS, self._ENDINGS]
 
-                for attr_name, val_list in extra_attrs.items():
-                    assert len(val_list) == len(source_nodes)
+            # include extra attributes
+            if _extra_attrs:
+                for attr_name, val_list in _extra_attrs.items():
+                    assert len(val_list) == len(_source_nodes)
                     data[attr_name] = val_list
                     columns.append(attr_name)
 
-            self.events_table = pd.DataFrame(data=data,
-                                             columns=columns)
+            # create the internal event table
+            # Note: see property `self.event_table` for details on how to
+            #       get a version of this data frame using the original node
+            #       labels
+            self._events_table = pd.DataFrame(data=data, columns=columns)
 
-            self.events_table.sort_values(
-                by=[self._STARTS, self._STOPS],
+            # sorting according to start times
+            self._events_table.sort_values(
+                by=[self._STARTS, self._ENDINGS],
                 inplace=True
             )
 
+            # define callables that return the provided node labels and times
+            # if internal values are provided
+            self._mappings = {
+                self._SOURCES : lambda x: self.nodes[x],
+                self._TARGETS : lambda x: self.nodes[x],
+                self._STARTS : lambda x: x,
+                self._ENDINGS : lambda x: x,
+            }
         else:
-            if self._TARGETS not in events_table.columns:
-                self.instantaneous_events = True
-            self.events_table = events_table
-            reset_event_table_index = False
-            if relabel_nodes:
-                all_nodes = set()
-                all_nodes.update(events_table.source_nodes.tolist())
-                all_nodes.update(events_table.target_nodes.tolist())
-                self.label_to_node_dict = {
-                    node : _id for _id, node in enumerate(sorted(all_nodes))
-                }
-                self.node_to_label_dict = {
-                    _id : node for node, _id in self.label_to_node_dict.items()
-                }
-            else:
-                self.node_to_label_dict=node_to_label_dict
+            # events table is used as is, we still need to extract attributes
+            self.nodes = np.sort(pd.unique(self._events_table[
+                [self._SOURCES, self._TARGETS]
+            ].values.ravel("K"))).tolist()
 
 
-        if reset_event_table_index:
-            self.events_table.reset_index(inplace=True, drop=True)
-
-        self.node_array = np.sort(
-            pd.unique(self.events_table[[self._SOURCES,
-                                         self._TARGETS]].values.ravel("K"))
-        )
-
-        self.num_nodes = self.node_array.shape[0]
-
-        self.num_events = self.events_table.shape[0]
-
-        self.start_time = self.events_table.starting_times.min()
-
-        self.end_time = self.events_table.ending_times.max()
-
-        self.events_table["durations"] = self.events_table.ending_times - \
-                            self.events_table.starting_times
+        # setting some helpful attributes
+        self.num_nodes = len(self.nodes)
+        self.num_events = self._events_table.shape[0]
+        self.start_time = self._events_table[self._STARTS].min()
+        self.end_time = self._events_table[self._ENDINGS].max()
+        self._events_table["durations"] = self._events_table[self._ENDINGS] - \
+                            self._events_table[self._STARTS]
 
         # to record compute times
         self._compute_times = {}
@@ -265,6 +308,33 @@ class ContTempNetwork:
     def __repr__(self):
         return str(self.__class__) + \
               f" with {self.num_nodes} nodes and {self.num_events} events"
+
+
+    def node_id(self, node:str|int)->int:
+        """Returns the internal ID for a node label.
+        """
+        try:
+            return self.nodes.index(node)
+        except ValueError as e:
+            # the provided node label does not exist.
+            raise ValueError(
+                f"The provided node label does not exist. {str(e)}"
+            ) from e
+
+    @property
+    def event_table(self):
+        """Get the used data in form of an event table
+
+        Returns
+        -------
+
+        """
+        return pd.DataFrame({
+            col: self._event_table[col].map(self._mappings.get(col,
+                                                               lambda x: x))
+            for col in self.columns
+        })
+
 
     def save(self, filename,
              matrices_list=None,
@@ -1177,7 +1247,7 @@ class ContTempNetwork:
         self.time_grid.loc[0:self.events_table.shape[0]-1,"is_start"] = True
 
         self.time_grid.iloc[self.events_table.shape[0]:,[0,1]] = \
-                      self.events_table.reset_index()[[self._STOPS, "index"]]
+                      self.events_table.reset_index()[[self._ENDINGS, "index"]]
 
         self.time_grid.times = pd.to_numeric(self.time_grid.times)
 
@@ -1935,7 +2005,7 @@ class ContTempNetwork:
         A = self.compute_static_adjacency_matrix()
 
         # loop over nodes
-        for i,n1 in enumerate(self.node_array):
+        for i,n1 in enumerate(self._nodes):
 
             for n2 in (A[n1,:] > 0).nonzero()[1]:
 
@@ -1952,7 +2022,7 @@ class ContTempNetwork:
                 evs = self.events_table.loc[np.logical_or(
                     mask_12,
                     mask_21
-                )].sort_values(by=[self._STARTS, self._STOPS])
+                )].sort_values(by=[self._STARTS, self._ENDINGS])
 
                 evs_list = list(evs.itertuples())
 
@@ -1968,7 +2038,7 @@ class ContTempNetwork:
                         events_to_keep[ev2.Index] = False
                         self.events_table.loc[
                             ev1.Index,
-                            self._STOPS,
+                            self._ENDINGS,
                         ] = ev2.ending_times
                         ev1._replace(ending_times=ev2.ending_times)
                         merged += 1
@@ -1985,7 +2055,7 @@ class ContTempNetwork:
 
         self.events_table.reset_index(inplace=True, drop=True)
 
-        self.num_nodes = self.node_array.shape[0]
+        self.num_nodes = len(self._nodes)
 
         self.num_events = self.events_table.shape[0]
 
