@@ -227,15 +227,15 @@ class ContTempNetwork:
                 self.instantaneous_events = True
 
                 # old version
-                utimes = np.unique(self._starts)
+                utimes = np.unique(_starting_times)
                 end_times_map = {utimes[k] : utimes[k+1]
                                  for k in range(utimes.size-1)}
                 end_times_map[utimes[-1]] = utimes[-1]+1
-                _ending_times = [end_times_map[t] for t in self._starts]
+                _ending_times = [end_times_map[t] for t in _starting_times]
                 del(end_times_map)
                 # TODO: Check if this is OK too
                 # # create a list of endings
-                # _ending_times = [start + 1 for start in self._starts]
+                # _ending_times = [start + 1 for start in _starting_times]
 
             # include the extra_attrs, if provided
             if extra_attrs is not None:
@@ -302,7 +302,6 @@ class ContTempNetwork:
 
 
         self.is_directed = False
-        self.instantaneous_events = False
 
 
     def __repr__(self):
@@ -322,7 +321,7 @@ class ContTempNetwork:
             ) from e
 
     @property
-    def event_table(self):
+    def event_table(self)->pd.DataFrame:
         """Get the used data in form of an event table
 
         Returns
@@ -678,8 +677,6 @@ class ContTempNetwork:
 
                 with open(file, "wb") as fopen:
                     pickle.dump(save_dict, fopen)
-
-
 
 
     def save_inter_T_lin(self,
@@ -1212,14 +1209,14 @@ class ContTempNetwork:
         if end_time is None:
             end_time = self.end_time
 
-        mask = np.logical_and(self.events_table.starting_times < end_time,
-                              self.events_table.ending_times > start_time)
+        mask = np.logical_and(self._events_table.starting_times < end_time,
+                              self._events_table.ending_times > start_time)
 
         # loop on events
         data = []
         cols = []
         rows = []
-        for ev in self.events_table.loc[mask].itertuples():
+        for ev in self._events_table.loc[mask].itertuples():
             data.append(min(ev.ending_times, end_time) - max(ev.starting_times,
                                                              start_time))
             rows.append(ev.source_nodes)
@@ -1239,15 +1236,17 @@ class ContTempNetwork:
         Also creates `self.times`, an array with all the times values.
             
         """
-        self.time_grid = pd.DataFrame(columns=["times","id","is_start"],
-                                      index=range(self.events_table.shape[0]*2))
-        self.time_grid.iloc[:self.events_table.shape[0],[0,1]] = \
-                     self.events_table.reset_index()[[self._STARTS, "index"]]
+        self.time_grid = pd.DataFrame(
+            columns=["times", "id", "is_start"],
+            index=range(self._events_table.shape[0]*2)
+        )
+        self.time_grid.iloc[:self._events_table.shape[0], [0, 1]] = \
+            self._events_table.reset_index()[[self._STARTS, "index"]]
         self.time_grid["is_start"] = False
-        self.time_grid.loc[0:self.events_table.shape[0]-1,"is_start"] = True
+        self.time_grid.loc[0:self._events_table.shape[0] - 1,"is_start"] = True
 
-        self.time_grid.iloc[self.events_table.shape[0]:,[0,1]] = \
-                      self.events_table.reset_index()[[self._ENDINGS, "index"]]
+        self.time_grid.iloc[self._events_table.shape[0]:, [0, 1]] = \
+            self._events_table.reset_index()[[self._ENDINGS, "index"]]
 
         self.time_grid.times = pd.to_numeric(self.time_grid.times)
 
@@ -1376,10 +1375,12 @@ class ContTempNetwork:
             mask_ini = (self.events_table.starting_times <= t_km1) & \
                        (self.events_table.ending_times > t_km1)
 
-            for event in self.events_table.loc[mask_ini][[
+            print(f"{A=}")
+            for event in self._events_table.loc[mask_ini][[
                 self._SOURCES,
                 self._TARGETS
             ]].itertuples():
+                print(f"{event=}")
 
                 if A[event.source_nodes, event.target_nodes] != 1:
                         A[event.source_nodes, event.target_nodes] = 1
@@ -1425,8 +1426,8 @@ class ContTempNetwork:
 
 
             events_k = [
-                self.events_table.loc[
-                    mid, ["source_nodes","target_nodes"]
+                self._events_table.loc[
+                    mid, [self._SOURCES, self._TARGETS]
                 ].astype(np.int64)
                 for mid in meet_id.values
             ]
@@ -2000,26 +2001,26 @@ class ContTempNetwork:
         nodes.
             
         """
-        events_to_keep = np.ones(self.events_table.shape[0],dtype=bool)
+        events_to_keep = np.ones(self._events_table.shape[0],dtype=bool)
 
         A = self.compute_static_adjacency_matrix()
 
         # loop over nodes
-        for i,n1 in enumerate(self._nodes):
+        for i,n1 in enumerate(self.nodes):
 
             for n2 in (A[n1,:] > 0).nonzero()[1]:
 
                 mask_12 = np.logical_and(
-                    self.events_table.source_nodes.values == n1,
-                    self.events_table.target_nodes.values == n2
+                    self._events_table.source_nodes.values == n1,
+                    self._events_table.target_nodes.values == n2
                 )
                 mask_21 = np.logical_and(
-                    self.events_table.source_nodes.values == n2,
-                    self.events_table.target_nodes.values == n1
+                    self._events_table.source_nodes.values == n2,
+                    self._events_table.target_nodes.values == n1
                 )
 
                 #sort by starting times
-                evs = self.events_table.loc[np.logical_or(
+                evs = self._events_table.loc[np.logical_or(
                     mask_12,
                     mask_21
                 )].sort_values(by=[self._STARTS, self._ENDINGS])
@@ -2036,7 +2037,7 @@ class ContTempNetwork:
                     if ev2.starting_times < ev1.ending_times:
                         #merge
                         events_to_keep[ev2.Index] = False
-                        self.events_table.loc[
+                        self._events_table.loc[
                             ev1.Index,
                             self._ENDINGS,
                         ] = ev2.ending_times
@@ -2051,17 +2052,15 @@ class ContTempNetwork:
         print("PID ", os.getpid(), " : ","merged ",
               num_merged, " events")
 
-        self.events_table = self.events_table.loc[events_to_keep]
+        self._events_table = self._events_table.loc[events_to_keep]
 
-        self.events_table.reset_index(inplace=True, drop=True)
+        self._events_table.reset_index(inplace=True, drop=True)
 
-        self.num_nodes = len(self._nodes)
+        self.num_events = self._events_table.shape[0]
 
-        self.num_events = self.events_table.shape[0]
+        self.start_time = self._events_table[self._STARTS].min()
 
-        self.start_time = self.events_table.starting_times.min()
-
-        self.end_time = self.events_table.ending_times.max()
+        self.end_time = self._events_table[self._ENDINGS].max()
 
         self._compute_time_grid()
 
@@ -2205,7 +2204,7 @@ class ContTempInstNetwork(ContTempNetwork):
                              events_table=events_table)
 
 
-        self.events_table["durations"] = [1.0]*self.events_table.shape[0]
+        self._events_table["durations"] = [1.0] * self.events_table.shape[0]
         self.instantaneous_events = True
 
 
@@ -2290,10 +2289,19 @@ class ContTempInstNetwork(ContTempNetwork):
             # starting or ending events
             is_starts = time_ev.is_start.values
 
-            events_k = self.events_table.loc[
+            events_k = self._events_table.loc[
                 meet_id,
-                ["source_nodes","target_nodes"]
+                [self._SOURCES, self._TARGETS]
             ].astype(np.int64)
+
+        # all in
+
+            events_k = self._events_table.loc[
+                meet_id,
+                [self._SOURCES, self._TARGETS]
+            ].astype(np.int64)
+
+            print(f"{events_k=}")
 
             #update instantaneous matrices
             for event, is_start in zip(events_k.itertuples(), is_starts):
