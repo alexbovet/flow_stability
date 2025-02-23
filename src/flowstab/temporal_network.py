@@ -148,7 +148,7 @@ class ContTempNetwork:
         self.instantaneous_events = False
         self._use_as_is = use_as_is
 
-        if events_table:
+        if events_table is not None:
             provided_columns = events_table.columns
             # first check that the mandatory columns are here
             for column in self._MANDATORY:
@@ -208,8 +208,8 @@ class ContTempNetwork:
             # the internal events_table
 
             # compute internal IDs for nodes
-            self.nodes = set(source_nodes)
-            self.nodes.update(target_nodes)
+            self.nodes = set(_source_nodes)
+            self.nodes.update(_target_nodes)
             # this holds a mapping from list index to provided node label
             # we use the index as internal node IDs
             # The inverted relation is not stored in memory but computed on
@@ -218,23 +218,23 @@ class ContTempNetwork:
 
             # check if we have instantaneous events
             if _ending_times is None:
+                self.instantaneous_events = True
+                # # create a list of endings
+                _ending_times = [start + 1 for start in _starting_times]
+            else:
                 # make sure we have a matching number of starts and stops
                 assert len(_ending_times) == len(_starting_times), \
                     "Incomplete events: Not all events have a start and " \
                     "ending time:\n" \
                     f"# starting_times: {len(_starting_times)}\n" \
                     f"# ending_times: {len(_ending_times)}"
-                self.instantaneous_events = True
-
-                # # create a list of endings
-                _ending_times = [start + 1 for start in _starting_times]
 
             # include the extra_attrs, if provided
             if extra_attrs is not None:
                 _extra_attrs.update(extra_attrs)
             
-            data={self._SOURCES : [self.node_id[n] for n in _source_nodes],
-                  self._TARGETS : [self.node_id[n] for n in _target_nodes],
+            data={self._SOURCES : [self.node_id(n) for n in _source_nodes],
+                  self._TARGETS : [self.node_id(n) for n in _target_nodes],
                   # TODO: Potentially we want to reset the timeline as well
                   self._STARTS : _starting_times,
                   self._ENDINGS : _ending_times}
@@ -262,10 +262,10 @@ class ContTempNetwork:
             # define callables that return the provided node labels and times
             # if internal values are provided
             self._mappings = {
-                self._SOURCES : lambda x: self.nodes[x],
-                self._TARGETS : lambda x: self.nodes[x],
-                self._STARTS : lambda x: x,
-                self._ENDINGS : lambda x: x,
+                self._SOURCES : self._get_node,
+                self._TARGETS : self._get_node,
+                self._STARTS : self._get_value,
+                self._ENDINGS : self._get_value
             }
         else:
             # events table is used as is, we still need to extract attributes
@@ -311,6 +311,16 @@ class ContTempNetwork:
             raise ValueError(
                 f"The provided node label does not exist. {str(e)}"
             ) from e
+
+    def _get_node(self, node_id):
+        """Callable to map internal node IDs back to the provided labels
+        """
+        return self.nodes[node_id]
+
+    def _get_value(self, value):
+        """Callable acting as neutral operator to use for non-converted columns
+        """
+        return value
 
     @property
     def event_table(self)->pd.DataFrame:
@@ -1357,8 +1367,8 @@ class ContTempNetwork:
 
             # find events that have started before or at t_k-1
             # and were still occuring at t_k-1
-            mask_ini = (self.events_table.starting_times <= t_km1) & \
-                       (self.events_table.ending_times > t_km1)
+            mask_ini = (self._events_table[self._STARTS] <= t_km1) & \
+                       (self._events_table[self._ENDINGS] > t_km1)
 
             print(f"{A=}")
             for event in self._events_table.loc[mask_ini][[
@@ -2182,7 +2192,7 @@ class ContTempInstNetwork(ContTempNetwork):
                              events_table=events_table)
 
 
-        self._events_table["durations"] = [1.0] * self.events_table.shape[0]
+        self._events_table["durations"] = [1.0] * self._events_table.shape[0]
         self.instantaneous_events = True
 
 
