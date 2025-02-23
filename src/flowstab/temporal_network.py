@@ -349,28 +349,26 @@ class ContTempNetwork:
             List of names of matrices to save.
             The default list is:
                 `matrices_list = ['laplacians',
-                                    'adjacencies',
-                                    'inter_T',
-                                    'inter_T_lin',
-                                    'T',
-                                    'T_lin',
-                                    '_stationary_trans',
-                                    'delta_inter_T',
-                                    'delta_inter_T_lin',]`
+                                  'adjacencies',
+                                  'inter_T',
+                                  'inter_T_lin',
+                                  'T',
+                                  'T_lin',
+                                  '_stationary_trans',
+                                  'delta_inter_T',
+                                  'delta_inter_T_lin',]`
         attributes_list: list of strings
             List of attribute names to save.
             The default list is:
-                `attributes_list = ['node_to_label_dict',
-                                  'events_table',
-                                  'times',
-                                  'time_grid',
-                                  'num_nodes',
-                                  '_compute_times',
-                                  '_t_start_laplacians',
-                                  '_k_start_laplacians',
-                                  '_t_stop_laplacians',
-                                  '_k_stop_laplacians',
-                                  '_overlapping_events_merged',]`
+                `attributes_list = ['_events_table',
+                                    'times',
+                                    'time_grid',
+                                    '_compute_times',
+                                    '_t_start_laplacians',
+                                    '_k_start_laplacians',
+                                    '_t_stop_laplacians',
+                                    '_k_stop_laplacians',
+                                    '_overlapping_events_merged',]`
                                     
             
         """
@@ -378,23 +376,22 @@ class ContTempNetwork:
 
 
         matrices = ["laplacians",
-                      "adjacencies",
-                      "inter_T",
-                      "inter_T_lin",
-                      "T",
-                      "T_lin",
-                      "_stationary_trans",
-                      "delta_inter_T",
-                      "delta_inter_T_lin"]
+                    "adjacencies",
+                    "inter_T",
+                    "inter_T_lin",
+                    "T",
+                    "T_lin",
+                    "_stationary_trans",
+                    "delta_inter_T",
+                    "delta_inter_T_lin"]
 
         if matrices_list is None:
             matrices_list = matrices
 
-        attributes = ["node_to_label_dict",
-                      "events_table",
+        attributes = ["nodes",
+                      "_events_table",
                       "times",
                       "time_grid",
-                      "num_nodes",
                       "_compute_times",
                       "_t_start_laplacians",
                       "_k_start_laplacians",
@@ -447,17 +444,15 @@ class ContTempNetwork:
         attributes_list: list of strings
             List of attribute names to load.
             The default list is:
-                `attributes_list = ['node_to_label_dict',
-                                  'events_table',
-                                  'times',
-                                  'time_grid',
-                                  'num_nodes',
-                                  '_compute_times',
-                                  '_t_start_laplacians',
-                                  '_k_start_laplacians',
-                                  '_t_stop_laplacians',
-                                  '_k_stop_laplacians',
-                                  '_overlapping_events_merged',]`
+                `attributes_list = ['events_table',
+                                    'times',
+                                    'time_grid',
+                                    '_compute_times',
+                                    '_t_start_laplacians',
+                                    '_k_start_laplacians',
+                                    '_t_stop_laplacians',
+                                    '_k_stop_laplacians',
+                                    '_overlapping_events_merged',]`
         """
         matrices = ["laplacians",
                     "adjacencies",
@@ -472,11 +467,9 @@ class ContTempNetwork:
         if matrices_list is None:
             matrices_list = matrices
 
-        attributes = ["node_to_label_dict",
-                      "events_table",
+        attributes = ["_events_table",
                       "times",
                       "time_grid",
-                      "num_nodes",
                       "_compute_times",
                       "_t_start_laplacians",
                       "_k_start_laplacians",
@@ -493,15 +486,14 @@ class ContTempNetwork:
 
         graph_dict = pd.read_pickle(os.path.splitext(filename)[0] +".pickle")
 
-        events_table = graph_dict.pop("events_table")
+        events_table = graph_dict.pop("_events_table")
 
-        net = cls(
-            events_table=events_table,
-            relabel_nodes=False,
-            node_to_label_dict=graph_dict.pop("node_to_label_dict")
-        )
+        # we load an exported instance, so it should be save to import the
+        # data frame as is
+        net = cls(events_table=events_table, use_as_is=True)
 
-        for k,val in graph_dict.items():
+        # load additional pre-computed attributes
+        for k, val in graph_dict.items():
             if k in matrices_list:
                 setattr(net, k, val)
             if k in attributes_list:
@@ -591,7 +583,6 @@ class ContTempNetwork:
             save_dict["times_k_start_to_k_stop+1"] = self.times.values[
                 self._k_start_laplacians:self._k_stop_laplacians+1
             ]
-            save_dict["num_nodes"] = self.num_nodes
             save_dict["_compute_times"] = self._compute_times
 
             if save_delta:
@@ -630,8 +621,10 @@ class ContTempNetwork:
 
                     for lamda in lamdas:
                         save_dict["inter_T"][lamda] = dict()
-                        save_dict["inter_T"][lamda]["delta_inter_T"] = self.delta_inter_T[lamda]
-                        save_dict["inter_T"][lamda]["trans_mat0"] = self.inter_T[lamda][0].copy()
+                        save_dict["inter_T"][lamda]["delta_inter_T"] = \
+                            self.delta_inter_T[lamda]
+                        save_dict["inter_T"][lamda]["trans_mat0"] = \
+                            self.inter_T[lamda][0].copy()
                         if round_zeros:
                             set_to_zeroes(
                                 save_dict["inter_T"][lamda]["trans_mat0"],
@@ -1403,13 +1396,12 @@ class ContTempNetwork:
                     S.data[event.target_nodes] = 0
                     Dm1.data[event.target_nodes] = 1/degrees[event.target_nodes]
 
-
         # time grid for this time range
         time_grid_range = self.time_grid.loc[
             (self.time_grid.index.get_level_values("times") >= \
-                 self._t_start_laplacians) & \
+                self._t_start_laplacians) & \
             (self.time_grid.index.get_level_values("times") < \
-                 self._t_stop_laplacians)
+                self._t_stop_laplacians)
         ]
 
         for k, (tk, time_ev) in enumerate(
@@ -2149,9 +2141,6 @@ class ContTempInstNetwork(ContTempNetwork):
                  source_nodes=[],
                  target_nodes=[],
                  starting_times=[],
-                 relabel_nodes=True,
-                 reset_event_table_index=True,
-                 node_to_label_dict=None,
                  events_table=None):
         """
         Initializes the ContTempInstNetwork with the given event data.
@@ -2197,9 +2186,6 @@ class ContTempInstNetwork(ContTempNetwork):
                              target_nodes=target_nodes,
                              starting_times=starting_times,
                              ending_times=ending_times,
-                             relabel_nodes=relabel_nodes,
-                             reset_event_table_index=reset_event_table_index,
-                             node_to_label_dict=node_to_label_dict,
                              merge_overlapping_events=False,
                              events_table=events_table)
 
