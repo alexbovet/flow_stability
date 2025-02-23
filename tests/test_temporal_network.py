@@ -40,7 +40,7 @@ class TestTempNetwork:
                                                     delete=False)
         self.minimal_instant = copy(self.minimal)
         del(self.minimal_instant.ending_times)
-        self.minimal_instant.events_table.drop(ContTempNetwork._STOPS, axis=1)
+        self.minimal_instant.events_table.drop(ContTempNetwork._ENDINGS, axis=1)
 
         # create a simple network
         self.simple = SimpleNamespace()
@@ -59,7 +59,7 @@ class TestTempNetwork:
                                                     delete=False)
         self.simple_instant = copy(self.simple)
         del(self.simple.ending_times)
-        self.simple.events_table.drop(ContTempNetwork._STOPS, axis=1)
+        self.simple.events_table.drop(ContTempNetwork._ENDINGS, axis=1)
         # ###
         # gather all networks
         self.networks = [self.minimal, self.simple]
@@ -73,9 +73,9 @@ class TestTempNetwork:
             "target_nodes": network.target_nodes,
             "starting_times": network.starting_times,
         })
-        ending_times = getattr(network, ContTempNetwork._STOPS, None)
+        ending_times = getattr(network, ContTempNetwork._ENDINGS, None)
         if ending_times is not None:
-            as_df[ContTempNetwork._STOPS] = ending_times
+            as_df[ContTempNetwork._ENDINGS] = ending_times
         return as_df
 
     @staticmethod
@@ -84,7 +84,7 @@ class TestTempNetwork:
             source_nodes=network.source_nodes,
             target_nodes=network.target_nodes,
             starting_times=network.starting_times,
-            ending_times=getattr(network, ContTempNetwork._STOPS, None),
+            ending_times=getattr(network, ContTempNetwork._ENDINGS, None),
             **params
         )
 
@@ -111,8 +111,17 @@ class TestTempNetwork:
 
     def test_init_with_events_table(self):
         for network in self.networks:
-            temp_network = ContTempNetwork(events_table=network.events_table)
-            assert temp_network.events_table.equals(network.events_table)
+            # loading the data frame as is should not change it
+            temp_network = ContTempNetwork(
+                events_table=network.events_table,
+                use_as_is=True)
+            assert temp_network._events_table.equals(network.events_table)
+            # loading a data frame will overwrite the IDs
+            with pytest.raises(AssertionError):
+                temp_network = ContTempNetwork(
+                    events_table=network.events_table
+                )
+                assert temp_network._events_table.equals(network.events_table)
 
     def test_init_with_source_and_target_nodes(self):
         for network in self.networks:
@@ -120,7 +129,7 @@ class TestTempNetwork:
                 source_nodes=network.source_nodes,
                 target_nodes=network.target_nodes,
                 starting_times=network.starting_times,
-                ending_times=getattr(network, ContTempNetwork._STOPS, None)
+                ending_times=getattr(network, ContTempNetwork._ENDINGS, None)
             )
             assert isinstance(temp_network, ContTempNetwork)
 
@@ -158,31 +167,6 @@ class TestTempNetwork:
             ContTempNetwork(source_nodes=[0, 1], target_nodes=['a', 'b'],
                             starting_times = [0, 0], ending_times = [1, 1])
 
-    def test_relabel_nodes(self):
-        """
-        """
-        # create a network without relabeling nodes
-        for network in self.networks:
-            temp_network = self._get_instance(network, relabel_nodes=True)
-            map_to_original_labels = temp_network.node_to_label_dict
-            map_labels_to_ids = {
-                _id: label for label, _id in map_to_original_labels.items()
-            }
-            # check that the node labels have been correctly converted to int
-            new_temp_network = ContTempNetwork(
-                events_table=temp_network.events_table,
-                relabel_nodes=False
-            )
-            assert map_labels_to_ids == network.node_label_id_map
-            assert map_to_original_labels == {
-                _id: label for _id, label in enumerate(network.nodes)
-            }
-            # The new network should not have the correct ids (since we did not
-            # number them consistently when initiating (minimal and sample)
-            with pytest.raises(AssertionError):
-                np.testing.assert_equal(new_temp_network.node_array,
-                                        np.array(network.nodes))
-
     @pytest.fixture
     def saved_network(self):
         def _get_network(network: SimpleNamespace):
@@ -205,8 +189,8 @@ class TestTempNetwork:
             assert isinstance(temp_network, ContTempNetwork)
             loaded_network = get_loaded_network(network=network)
             assert isinstance(loaded_network, ContTempNetwork)
-            sn_et = temp_network.events_table
-            ln_et = loaded_network.events_table
+            sn_et = temp_network._events_table
+            ln_et = loaded_network._events_table
             pd.testing.assert_series_equal(sn_et.source_nodes,
                                            ln_et.source_nodes)
             pd.testing.assert_series_equal(sn_et.target_nodes,
