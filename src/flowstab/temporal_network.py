@@ -226,16 +226,8 @@ class ContTempNetwork:
                     f"# ending_times: {len(_ending_times)}"
                 self.instantaneous_events = True
 
-                # old version
-                utimes = np.unique(_starting_times)
-                end_times_map = {utimes[k] : utimes[k+1]
-                                 for k in range(utimes.size-1)}
-                end_times_map[utimes[-1]] = utimes[-1]+1
-                _ending_times = [end_times_map[t] for t in _starting_times]
-                del(end_times_map)
-                # TODO: Check if this is OK too
                 # # create a list of endings
-                # _ending_times = [start + 1 for start in _starting_times]
+                _ending_times = [start + 1 for start in _starting_times]
 
             # include the extra_attrs, if provided
             if extra_attrs is not None:
