@@ -88,6 +88,10 @@ class ContTempNetwork:
     _ENDINGS = "ending_times"
     _MANDATORY = [_SOURCES, _TARGETS, _STARTS]
     _ESSENTIAL = [_SOURCES, _TARGETS, _STARTS, _ENDINGS]
+    # to hold endings - starts
+    _DURATIONS = "durations"
+    # for instantaneous event this is the duration to use
+    _DEFAULT_DURATION = 1
 
     def __init__(self,
                  source_nodes:list[int|str]|None=None,
@@ -220,7 +224,8 @@ class ContTempNetwork:
             if _ending_times is None:
                 self.instantaneous_events = True
                 # # create a list of endings
-                _ending_times = [start + 1 for start in _starting_times]
+                _ending_times = [start + self._DEFAULT_DURATION
+                                 for start in _starting_times]
             else:
                 # make sure we have a matching number of starts and stops
                 assert len(_ending_times) == len(_starting_times), \
@@ -248,7 +253,7 @@ class ContTempNetwork:
                     columns.append(attr_name)
 
             # create the internal event table
-            # Note: see property `self.event_table` for details on how to
+            # Note: see property `self.events_table` for details on how to
             #       get a version of this data frame using the original node
             #       labels
             self._events_table = pd.DataFrame(data=data, columns=columns)
@@ -276,10 +281,11 @@ class ContTempNetwork:
 
         # setting some helpful attributes
         self.num_nodes = len(self.nodes)
+        self.columns = self._events_table.columns
         self.num_events = self._events_table.shape[0]
         self.start_time = self._events_table[self._STARTS].min()
         self.end_time = self._events_table[self._ENDINGS].max()
-        self._events_table["durations"] = self._events_table[self._ENDINGS] - \
+        self._events_table[self._DURATIONS] = self._events_table[self._ENDINGS] - \
                             self._events_table[self._STARTS]
 
         # to record compute times
@@ -323,24 +329,31 @@ class ContTempNetwork:
         return value
 
     @property
-    def event_table(self)->pd.DataFrame:
-        """Get the used data in form of an event table
+    def events_table(self)->pd.DataFrame:
+        """Get the used data in the form of an event table.
 
         Returns
         -------
+        pd.DataFrame
+            A DataFrame containing the event table data.
 
         """
-        return pd.DataFrame({
-            col: self._event_table[col].map(self._mappings.get(col,
-                                                               lambda x: x))
-            for col in self.columns
-        })
+        if self._use_as_is:
+            return self._events_table
+        else:
+            # we use self._mappings to retrieve the initially provided values
+            # and fall back to just returning the columns as is
+            return pd.DataFrame({
+                col: self._events_table[col].map(
+                    self._mappings.get(col, lambda x: x)
+                ) for col in self.columns
+            })
 
 
     def save(self, filename,
              matrices_list=None,
              attributes_list=None):
-        """Save graph event_table and matrices as pickle file
+        """Save graph events_table and matrices as pickle file
         
         Parameters
         ----------
@@ -2160,11 +2173,6 @@ class ContTempInstNetwork(ContTempNetwork):
             List of target nodes for each event.
         starting_times : list
             List of starting times for each event.
-        relabel_nodes : bool, optional
-            If True, relabel nodes from 0 to num_nodes and save original labels in
-            `self.node_to_label_dict`. Default is True.
-        reset_event_table_index : bool, optional
-            If True, reset the index of the `events_table` DataFrame. Default is True.
         node_to_label_dict : dict | None
             If `relabel_nodes` is False, this can be used to save the original
             labels of the nodes.
@@ -2197,7 +2205,8 @@ class ContTempInstNetwork(ContTempNetwork):
                              events_table=events_table)
 
 
-        self._events_table["durations"] = [1.0] * self._events_table.shape[0]
+        self._events_table[self._DURATIONS] = [self._DEFAULT_DURATION] * \
+                self._events_table.shape[0]
         self.instantaneous_events = True
 
 
