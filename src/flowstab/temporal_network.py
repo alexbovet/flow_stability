@@ -363,6 +363,7 @@ class ContTempNetwork:
             List of attribute names to save.
             The default list is:
                 `attributes_list = ['_events_table',
+                                    '_use_as_is'
                                     'times',
                                     'time_grid',
                                     '_compute_times',
@@ -392,6 +393,7 @@ class ContTempNetwork:
 
         attributes = ["nodes",
                       "_events_table",
+                      "_use_as_is",
                       "times",
                       "time_grid",
                       "_compute_times",
@@ -447,6 +449,7 @@ class ContTempNetwork:
             List of attribute names to load.
             The default list is:
                 `attributes_list = ['events_table',
+                                    '_use_as_is',
                                     'times',
                                     'time_grid',
                                     '_compute_times',
@@ -470,6 +473,7 @@ class ContTempNetwork:
             matrices_list = matrices
 
         attributes = ["_events_table",
+                      "_use_as_is",
                       "times",
                       "time_grid",
                       "_compute_times",
@@ -491,7 +495,8 @@ class ContTempNetwork:
         events_table = graph_dict.pop("_events_table")
 
         # we load an exported instance, so it should be save to import the
-        # data frame as is
+        # data frame as is (note: below we will overwrite the use as it with
+        # the saved state)
         net = cls(events_table=events_table, use_as_is=True)
 
         # load additional pre-computed attributes
