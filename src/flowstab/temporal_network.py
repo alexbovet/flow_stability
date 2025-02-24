@@ -1506,7 +1506,6 @@ class ContTempNetwork:
                                           t_start=None,
                                           t_stop=None,
                                           verbose=False,
-                                          fix_tau_k=False,
                                           use_sparse_stoch=False,
                                           dense_expm=True):
         """Computes interevent transition matrices.
@@ -1539,13 +1538,6 @@ class ContTempNetwork:
             Computations stop at self.times[self._k_stop_laplacians-1].
             Default is end of times.
         verbose : bool, optional
-            The default is False.
-        # TODO: get rid of this in favour of self.instantaneous_events
-        fix_tau_k : bool, optional
-            If true, all interevent times (tau_k) in the formula above are set
-            to 1. 
-            This decouples the dynamic scale from the length of event which
-            is useful for temporal networks with instantaneous events.
             The default is False.
         use_sparse_stoch : bool, optional
             Whether to use custom sparse stochastic matrix format to save the
@@ -1594,7 +1586,7 @@ class ContTempNetwork:
                           self._k_stop_laplacians-1-self._k_start_laplacians)
                     print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
 
-                if fix_tau_k:
+                if self.instantaneous_events:
                     tau_k = 1.0
                 else:
                     tau_k = self.times[self._k_start_laplacians+k+1] - tk
@@ -1651,7 +1643,6 @@ class ContTempNetwork:
                                               t_stop=None,
                                               verbose=False,
                                               t_s=10,
-                                              fix_tau_k=False,
                                               use_sparse_stoch=False):
         """Compute interevent transition matrices as a linear approximation of
         expm(-tau_k*lamda*L_k) based on the discrete time transition matrix.
@@ -1718,7 +1709,7 @@ class ContTempNetwork:
                     )
                     print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
 
-                if fix_tau_k:
+                if self.instantaneous_events:
                     tau_k = 1.0
                 else:
                     tau_k = self.times[self._k_start_laplacians+k+1] - tk
@@ -2337,82 +2328,6 @@ class ContTempInstNetwork(ContTempNetwork):
         self._compute_times["laplacians"] = t_end
         if verbose:
             print("PID ", os.getpid(), " : ","finished in ", t_end)
-
-
-    # TODO: drop this and use the parent method with self.instantaneous_events
-    def compute_inter_transition_matrices(self,
-                                          lamda=None,
-                                          t_start=None,
-                                          t_stop=None,
-                                          verbose=False,
-                                          use_sparse_stoch=False,
-                                          dense_expm=True):
-        """Compute interevent transition matrices.
-
-        T_k(lamda) = expm(-lamda*L_k)
-        
-        Here, for instantaneous events, all events are assumed to have the 
-        same duration of unit time (i.e. tau_k =1 for all k).
-        
-        The transition matrix T_k is saved in `self.inter_T[lamda][k]`,
-        where self.inter_T is a dictionary with lamda as keys and
-        lists of transition matrices as values.
-            
-        will compute from self.times[self._k_start_laplacians]
-        until self.times[self._k_stop_laplacians-1]
-            
-        the transition matrix at step k, is the probability transition matrix
-        between times[k] and times[k+1]   
-        """
-        super().compute_inter_transition_matrices(
-            lamda=lamda,
-            t_start=t_start,
-            t_stop=t_stop,
-            verbose=verbose,
-            fix_tau_k=True,
-            use_sparse_stoch=use_sparse_stoch,
-            dense_expm=dense_expm
-        )
-
-
-    # TODO: drop this and use the parent method with self.instantaneous_events
-    def compute_lin_inter_transition_matrices(self,
-                                              lamda=None,
-                                              t_start=None,
-                                              t_stop=None,
-                                              verbose=False,
-                                              t_s=10,
-                                              use_sparse_stoch=False):
-        """Compute interevent transition matrices as a linear approximation of
-        expm(-lamda*L_k) based on the discrete time transition matrix.
-            
-        Here, for instantaneous events, all events are assumed to have the 
-        same duration of unit time (i.e. tau_k =1 for all k).
-            
-        `t_s` is the time value for which the linear approximation reaches the
-        stationary transition matrix (default is `t_s=10`).
-        
-        The transition matrix T_k_lin is saved in 
-        `self.inter_T_lin[lamda][t_s][k]`,
-        where `self.inter_T_lin` is a dictionary with lamda as keys and
-        lists of transition matrices as values.
-            
-        will compute from self.times[self._k_start_laplacians]
-        until self.times[self._k_stop_laplacians-1]
-            
-        the transition matrix at step k, is the probability transition matrix
-        between times[k] and times[k+1]
-            
-        """
-        super().compute_lin_inter_transition_matrices(
-            lamda=lamda,
-            t_start=t_start,
-            t_stop=t_stop,
-            verbose=verbose,
-            t_s=t_s,
-            fix_tau_k=True,
-            use_sparse_stoch=use_sparse_stoch
-        )
 
 
 def lin_approx_trans_matrix(T, t, Pi=None,t_s=10):
