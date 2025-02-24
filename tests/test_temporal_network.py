@@ -48,7 +48,7 @@ class TestTempNetwork:
         self.simple.source_nodes = list(range(1, 11))
         # target nodes are also in order
         self.simple.target_nodes = list(range(2,11)) + [1]
-        self.simple.starting_times = [0, 0, 1, 2, 3, 4, 4, 5, 5, 5]
+        self.simple.starting_times = [0, 0.5, 1, 2, 3, 4, 4, 5, 5, 5]
         self.simple.ending_times =   [3, 1, 2, 7, 4, 5, 6, 6, 6, 7]
         self.simple.events_table = self._to_df(self.simple)
         self.simple.nodes = self._get_nodes(self.simple)
@@ -79,14 +79,17 @@ class TestTempNetwork:
         return as_df
 
     @staticmethod
-    def _get_instance(network: SimpleNamespace, **params):
-        return ContTempNetwork(
-            source_nodes=network.source_nodes,
-            target_nodes=network.target_nodes,
-            starting_times=network.starting_times,
-            ending_times=getattr(network, ContTempNetwork._ENDINGS, None),
-            **params
-        )
+    def _get_instance(network: SimpleNamespace, use_df=False, **params):
+        if use_df:
+            return ContTempNetwork(events_table=network.events_table, **params)
+        else:
+            return ContTempNetwork(
+                source_nodes=network.source_nodes,
+                target_nodes=network.target_nodes,
+                starting_times=network.starting_times,
+                ending_times=getattr(network, ContTempNetwork._ENDINGS, None),
+                **params
+            )
 
     @staticmethod
     def _get_nodes(network: SimpleNamespace):
@@ -169,8 +172,8 @@ class TestTempNetwork:
 
     @pytest.fixture
     def saved_network(self):
-        def _get_network(network: SimpleNamespace):
-            temp_network = self._get_instance(network)
+        def _get_network(network: SimpleNamespace, use_df=False, **params):
+            temp_network = self._get_instance(network, use_df=use_df, **params)
             with open(network.tmp_pkl.name, 'wb') as f:
                 pickle.dump(temp_network, f)
                 return temp_network
@@ -185,8 +188,55 @@ class TestTempNetwork:
 
     def test_save_and_load_pickle(self, saved_network, get_loaded_network):
         for network in self.networks:
-            temp_network = saved_network(network=network)
+            # save it wikhout 'use_as_is'
+            temp_network = saved_network(network=network, use_df=True)
+            # now with used as is
+            temp_network_ua = saved_network(network=network, use_df=True,
+                                            use_as_is=True)
             assert isinstance(temp_network, ContTempNetwork)
+            assert isinstance(temp_network_ua, ContTempNetwork)
+            # check if the use as is property is carreid along
+            assert not temp_network._use_as_is
+            assert temp_network_ua._use_as_is
+            # for the converted network, we expect the _events_table to differ
+            # essential columns of the internal df
+            _mandatory_cols = temp_network._events_table[
+                [col for col in temp_network._MANDATORY]
+            ]
+            _mandatory_cols_ua = temp_network_ua._events_table[
+                [col for col in temp_network_ua._MANDATORY]
+            ]
+            # essential columns of the property df
+            mandatory_cols = temp_network.events_table[
+                [col for col in temp_network._MANDATORY]
+            ]
+            mandatory_cols_ua = temp_network_ua.events_table[
+                [col for col in temp_network._MANDATORY]
+            ]
+
+            nw_et = network.events_table
+            # check if the nodes were relabeled as expected
+            for colname in [temp_network._SOURCES, temp_network._TARGETS]:
+                # the property should match in both cases (use as is and not)
+                assert temp_network.events_table[colname].equals(
+                    nw_et[colname]
+                )
+                assert temp_network_ua.events_table[colname].equals(
+                    nw_et[colname]
+                )
+                # for the use as is, also the internal should match
+                assert temp_network_ua._events_table[colname].equals(
+                    nw_et[colname]
+                )
+                with pytest.raises(AssertionError):
+                    # the internal df should not match if not ua
+                    assert temp_network._events_table[colname].equals(
+                        nw_et[colname]
+                    )
+
+            # first save is again
+            temp_network = saved_network(network=network, use_df=False)
+            # load the temp network
             loaded_network = get_loaded_network(network=network)
             assert isinstance(loaded_network, ContTempNetwork)
             sn_et = temp_network._events_table
