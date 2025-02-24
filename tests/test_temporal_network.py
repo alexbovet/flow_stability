@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 
 
-from flowstab.temporal_network import ContTempNetwork
+from flowstab.temporal_network import ContTempNetwork, ContTempInstNetwork
 
 class TestTempNetwork:
     def setup_method(self):
@@ -29,7 +29,7 @@ class TestTempNetwork:
         self.minimal.source_nodes = [1, 2]
         self.minimal.target_nodes = [2, 3]
         self.minimal.starting_times = [0.5, 1.0]
-        self.minimal.ending_times = [1.0, 1.5]
+        self.minimal.ending_times = [1.5, 2.0]
         self.minimal.extra_attrs = {"attr1": [True, False]}
         self.minimal.events_table = self._to_df(self.minimal)
         self.minimal.nodes = self._get_nodes(self.minimal)
@@ -40,7 +40,9 @@ class TestTempNetwork:
                                                     delete=False)
         self.minimal_instant = copy(self.minimal)
         del(self.minimal_instant.ending_times)
-        self.minimal_instant.events_table.drop(ContTempNetwork._ENDINGS, axis=1)
+        self.minimal_instant.events_table = self.minimal.events_table.drop(
+            ContTempNetwork._ENDINGS, axis=1
+        )
 
         # create a simple network
         self.simple = SimpleNamespace()
@@ -58,11 +60,15 @@ class TestTempNetwork:
         self.simple.tmp_json = tempfile.NamedTemporaryFile(suffix='.json',
                                                     delete=False)
         self.simple_instant = copy(self.simple)
-        del(self.simple.ending_times)
-        self.simple.events_table.drop(ContTempNetwork._ENDINGS, axis=1)
+        del(self.simple_instant.ending_times)
+        self.simple_instant.events_table = self.simple.events_table.drop(
+            ContTempNetwork._ENDINGS, axis=1
+        )
         # ###
         # gather all networks
-        self.networks = [self.minimal, self.simple]
+        self.networks = [self.minimal, self.minimal_instant,
+                         self.simple, self.simple_instant]
+        self.minimals = [self.minimal, self.minimal_instant]
 
     @staticmethod
     def _to_df(network: SimpleNamespace):
@@ -267,12 +273,35 @@ class TestTempNetwork:
                                   merge_overlapping_events=True)
         assert network._overlapping_events_merged
 
-    def test_laplacian_computation(self):
+    def test_time_grid(self):
         for network in self.networks:
             temp_network = ContTempNetwork(
                 events_table=network.events_table,
             )
-            temp_network.compute_laplacian_matrices()
+            temp_network._compute_time_grid()
+
+    def test_laplacian_computation(self):
+        """Check if the instant version is equivalent to the non-instant
+        version.
+        """
+
+        for network in self.minimals:
+            temp_network = ContTempNetwork(
+                events_table=network.events_table,
+            )
+            if not hasattr(network, temp_network._ENDINGS):
+                # if we are dealing with an instantaneous network
+                print('\n\nis instant!\n\n')
+                inst_temp_network = ContTempInstNetwork(
+                    events_table=network.events_table,
+                )
+                # use the method form the child class
+                inst_temp_network.compute_laplacian_matrices()
+                print(f"{list(map(lambda x: x.toarray(), inst_temp_network.laplacians))=}")
+            else:
+                # if not instantaneous, simply compute the laplacian
+                temp_network.compute_laplacian_matrices()
+                print(f"{list(map(lambda x: x.toarray(), temp_network.laplacians))=}")
 
 
 def test_ContTempNetworkErrors():

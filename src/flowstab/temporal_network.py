@@ -163,7 +163,7 @@ class ContTempNetwork:
             if self._use_as_is:
                 # in this case the column ending_times needs to be present
                 assert self._ENDINGS in provided_columns, \
-                    "The event_table can only be used as is " \
+                    "The events_table can only be used as is " \
                     "(`use_as_is=True`) if it also contains the column " \
                     f"'{self._ENDINGS}'."
                 # we simply trust the provided events table
@@ -527,14 +527,14 @@ class ContTempNetwork:
                      replace_existing=False):
         """ 
         Saves all the inter transition matrices in `self.inter_T[lamda]` 
-        in a pickle file togheter  with a dictionary including parameters: 
+        in a pickle file together  with a dictionary including parameters:
         `_k_start_laplacians`, `_k_stop_laplacians`, `_t_start_laplacians`,
         `_t_stop_laplacians`, `_t_stop_laplacians`, `times_k_start_to_k_stop+1` 
         (= self.times.values[self._k_start_laplacians:self._k_stop_laplacians+1])
         `num_nodes` and `_compute_times`.
-            
-        if `save_delta` is True, creates delta_inter_T if it is 
-        not already present and saves it together with 
+
+        if `save_delta` is True, creates delta_inter_T if it is
+        not already present and saves it together with
         inter_T[lamda][0] in a pickle file.
         otherwise, saves inter_T[lamda] directly (good if used with
         SparseStochMat instances).
@@ -1243,9 +1243,9 @@ class ContTempNetwork:
 
     def _compute_time_grid(self):
         """Create `self.time_grid`, a dataframe with ('times', 'id') as index,
-        were `id` is the index of the corresponding event in `events_table`,
-        and column 'is_start' which is True is the ('times', 'id') 
-        corresponds to a starting event.
+        were `id` is the index of the corresponding event in
+        `self._events_table`, and column 'is_start' which is True is the
+        ('times', 'id') corresponds to a starting event.
         Also creates `self.times`, an array with all the times values.
             
         """
@@ -1339,9 +1339,14 @@ class ContTempNetwork:
         if not hasattr(self, "time_grid"):
             self._compute_time_grid()
 
-        # instantaneous adjacency matrix
-        A = lil_matrix((self.num_nodes, self.num_nodes),
-                       dtype=np.float64)
+        if self.instantaneous_events:
+            # instantaneous adjacency matrix
+            A = dok_matrix((self.num_nodes, self.num_nodes),
+                           dtype=np.float64)
+        else:
+            # instantaneous adjacency matrix
+            A = lil_matrix((self.num_nodes, self.num_nodes),
+                           dtype=np.float64)
 
         #identity
         I = eye(self.num_nodes,
@@ -1377,7 +1382,8 @@ class ContTempNetwork:
 
         t0 = time.time()
 
-        if self._k_start_laplacians > 0:
+
+        if not self.instantaneous_events and self._k_start_laplacians > 0:
             # initial conditions, we have to find the adjacency mat just before
             # _k_start_laplacians.
 
@@ -1388,12 +1394,10 @@ class ContTempNetwork:
             mask_ini = (self._events_table[self._STARTS] <= t_km1) & \
                        (self._events_table[self._ENDINGS] > t_km1)
 
-            print(f"{A=}")
             for event in self._events_table.loc[mask_ini][[
                 self._SOURCES,
                 self._TARGETS
             ]].itertuples():
-                print(f"{event=}")
 
                 if A[event.source_nodes, event.target_nodes] != 1:
                         A[event.source_nodes, event.target_nodes] = 1
@@ -1443,6 +1447,10 @@ class ContTempNetwork:
                 ].astype(np.int64)
                 for mid in meet_id.values
             ]
+
+            print(f"{events_k=}")
+            # print(f"{self._events_table}")
+            # print(f"{A=}")
 
             #update instantaneous matrices
             for event, is_start in zip(events_k, is_starts):
@@ -2157,56 +2165,34 @@ class ContTempInstNetwork(ContTempNetwork):
         A flag indicating that all events in this network are instantaneous.
     """
 
-    def __init__(self,
-                 source_nodes=[],
-                 target_nodes=[],
-                 starting_times=[],
-                 events_table=None):
-        """
-        Initializes the ContTempInstNetwork with the given event data.
-
-        Parameters
-        ----------
-        source_nodes : list
-            List of source nodes for each event, ordered according to `starting_times`.
-        target_nodes : list
-            List of target nodes for each event.
-        starting_times : list
-            List of starting times for each event.
-        node_to_label_dict : dict | None
-            If `relabel_nodes` is False, this can be used to save the original
-            labels of the nodes.
-        events_table : pd.DataFrame | None
-            DataFrame with event data. If provided, it will be used to initialize
-            the network instead of the other parameters.
-
-        Raises
-        ------
-        AssertionError
-            If the lengths of `source_nodes`, `target_nodes`, and `starting_times`
-            do not match when `events_table` is None.
-        """
-
-        if events_table is None:
+    def __init__(self, source_nodes=None,
+                        target_nodes=None,
+                        starting_times=None,
+                        relabel_nodes=True,
+                        reset_event_table_index=True,
+                        node_to_label_dict=None,
+                        events_table=None):
 
 
+        if starting_times is not None:
             utimes = np.unique(starting_times)
-            end_times_map = {utimes[k] : utimes[k+1]
-                             for k in range(utimes.size-1)}
+            end_times_map = {utimes[k] : utimes[k+1] for k in range(utimes.size-1)}
             end_times_map[utimes[-1]] = utimes[-1]+1
 
             ending_times = [end_times_map[t] for t in starting_times]
+        else:
+            ending_times = None
 
-            super().__init__(source_nodes=source_nodes,
-                             target_nodes=target_nodes,
-                             starting_times=starting_times,
-                             ending_times=ending_times,
-                             merge_overlapping_events=False,
-                             events_table=events_table)
+        super().__init__(source_nodes=source_nodes,
+                         target_nodes=target_nodes,
+                         starting_times=starting_times,
+                         ending_times=ending_times,
+                         merge_overlapping_events=False,
+                         events_table=events_table)
 
 
-        self._events_table[self._DURATIONS] = [self._DEFAULT_DURATION] * \
-                self._events_table.shape[0]
+        self._use_as_is=False
+        self._events_table["durations"] = [1.0]*self._events_table.shape[0]
         self.instantaneous_events = True
 
 
@@ -2226,6 +2212,7 @@ class ContTempInstNetwork(ContTempNetwork):
         The laplacian at step k, is the random walk laplacian
         between times[k] and times[k+1]
         """
+
         if verbose:
             print("PID ", os.getpid(), " : ","Computing Laplacians")
 
@@ -2272,19 +2259,16 @@ class ContTempInstNetwork(ContTempNetwork):
 
 
         # time grid for this time range
-        time_grid_range = self.time_grid.loc[
-            (self.time_grid.index.get_level_values("times") >= \
-                self._t_start_laplacians) & \
-            (self.time_grid.index.get_level_values("times") < \
-                self._t_stop_laplacians)
-        ]
+        time_grid_range = self.time_grid.loc[\
+                  (self.time_grid.index.get_level_values("times") >= \
+                       self._t_start_laplacians) & \
+                  (self.time_grid.index.get_level_values("times") < \
+                       self._t_stop_laplacians)]
 
-        for k, (tk, time_ev) in enumerate(
-            time_grid_range.groupby(level="times")
-        ):
+        for k, (tk, time_ev) in enumerate(time_grid_range.groupby(level="times")):
             if verbose and not k%1000:
-                print(f"PID {os.getpid()}: {k} over "
-                      f"{self._k_stop_laplacians - self._k_start_laplacians}")
+                print("PID ", os.getpid(), " : ",k, " over " ,
+                      self._k_stop_laplacians - self._k_start_laplacians)
                 print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
 
             meet_id = time_ev.index.get_level_values("id")
@@ -2296,17 +2280,17 @@ class ContTempInstNetwork(ContTempNetwork):
                 [self._SOURCES, self._TARGETS]
             ].astype(np.int64)
 
-        # all in
-
-            events_k = self._events_table.loc[
-                meet_id,
-                [self._SOURCES, self._TARGETS]
-            ].astype(np.int64)
+            events_k = [
+                self._events_table.loc[
+                    mid, [self._SOURCES, self._TARGETS]
+                ].astype(np.int64)
+                for mid in meet_id.values
+            ]
 
             print(f"{events_k=}")
 
             #update instantaneous matrices
-            for event, is_start in zip(events_k.itertuples(), is_starts):
+            for event, is_start in zip(events_k, is_starts):
                 # unweighted, undirected
                 if is_start:
                     # if they are not already connected (can happen if the
