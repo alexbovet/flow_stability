@@ -280,29 +280,31 @@ class TestTempNetwork:
             )
             temp_network._compute_time_grid()
 
-    def test_laplacian_computation(self):
+    def test_compare_laplacian_computation(self):
         """Check if the instant version is equivalent to the non-instant
         version.
         """
 
-        for network in self.minimals:
-            temp_network = ContTempNetwork(
-                events_table=network.events_table,
-            )
-            if not hasattr(network, temp_network._ENDINGS):
-                # if we are dealing with an instantaneous network
-                print('\n\nis instant!\n\n')
-                inst_temp_network = ContTempInstNetwork(
-                    events_table=network.events_table,
-                )
-                # use the method form the child class
-                inst_temp_network.compute_laplacian_matrices()
-                print(f"{list(map(lambda x: x.toarray(), inst_temp_network.laplacians))=}")
-            else:
-                # if not instantaneous, simply compute the laplacian
-                temp_network.compute_laplacian_matrices()
-                print(f"{list(map(lambda x: x.toarray(), temp_network.laplacians))=}")
-
+        temp_network = ContTempNetwork(
+            events_table=self.minimal.events_table
+        )
+        temp_network.compute_laplacian_matrices()
+        assert not temp_network.instantaneous_events
+        print(f"{list(map(lambda x: x.toarray(), temp_network.laplacians))=}")
+        inst_temp_network = ContTempInstNetwork(
+            events_table=self.minimal_instant.events_table
+        )
+        assert inst_temp_network.instantaneous_events
+        # use the method form the child class
+        inst_temp_network.compute_laplacian_matrices()
+        print(f"{list(map(lambda x: x.toarray(), inst_temp_network.laplacians))=}")
+        # check if the internal dfs are the same
+        pd.testing.assert_frame_equal(temp_network._events_table,
+                                      inst_temp_network._events_table)
+        # check if the laplacians are the same
+        for i, laplacian in enumerate(temp_network.laplacians):
+            np.testing.assert_equal(laplacian.toarray(),
+                                    inst_temp_network.laplacians[i].toarray())
 
 def test_ContTempNetworkErrors():
     with pytest.raises(AssertionError):
