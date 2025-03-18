@@ -147,9 +147,6 @@ class ContTempNetwork:
             If the lengths of `source_nodes`, `target_nodes`, `starting_times`,
             and `ending_times` do not match when `events_table` is `None`.
         """ 
-        # TODO: this should be enought to separate the cases
-        #       instantaneous / duration
-        self.instantaneous_events = False
         self._use_as_is = use_as_is
 
         if events_table is not None:
@@ -161,11 +158,13 @@ class ContTempNetwork:
                     f"column `{column}`. Make sure the column is present " \
                     "and correctly named."
             if self._use_as_is:
-                # in this case the column ending_times needs to be present
-                assert self._ENDINGS in provided_columns, \
-                    "The events_table can only be used as is " \
-                    "(`use_as_is=True`) if it also contains the column " \
-                    f"'{self._ENDINGS}'."
+                # # TODO: we want to remove this: missing endings column should
+                # #       be accepted
+                # # in this case the column ending_times needs to be present
+                # assert self._ENDINGS in provided_columns, \
+                #     "The events_table can only be used as is " \
+                #     "(`use_as_is=True`) if it also contains the column " \
+                #     f"'{self._ENDINGS}'."
                 # we simply trust the provided events table
                 self._events_table = events_table
             else:
@@ -177,7 +176,6 @@ class ContTempNetwork:
                 _ending_times = events_table.get(self._ENDINGS)
                 if _ending_times is not None:
                     _ending_times = _ending_times.tolist()
-
 
                 # Get the non-essential columns
                 _extra_attrs = {col : events_table[col]
@@ -221,12 +219,13 @@ class ContTempNetwork:
             self.nodes = sorted(self.nodes)
 
             # check if we have instantaneous events
-            if _ending_times is None:
-                self.instantaneous_events = True
-                # # create a list of endings
-                _ending_times = [start + self._DEFAULT_DURATION
-                                 for start in _starting_times]
-            else:
+            # if _ending_times is None:
+            #     # TODO: We do not want to set ending times for inst. events
+            #     # # create a list of endings
+            #     _ending_times = [start + self._DEFAULT_DURATION
+            #                      for start in _starting_times]
+            # else:
+            if _ending_times is not None:
                 # make sure we have a matching number of starts and stops
                 assert len(_ending_times) == len(_starting_times), \
                     "Incomplete events: Not all events have a start and " \
@@ -241,8 +240,9 @@ class ContTempNetwork:
             data={self._SOURCES : [self.node_id(n) for n in _source_nodes],
                   self._TARGETS : [self.node_id(n) for n in _target_nodes],
                   # TODO: Potentially we want to reset the timeline as well
-                  self._STARTS : _starting_times,
-                  self._ENDINGS : _ending_times}
+                  self._STARTS : _starting_times}
+            if _ending_times is not None:
+                data[self._ENDINGS] = _ending_times
             columns=[self._SOURCES, self._TARGETS, self._STARTS, self._ENDINGS]
 
             # include extra attributes
@@ -284,9 +284,15 @@ class ContTempNetwork:
         self.columns = self._events_table.columns
         self.num_events = self._events_table.shape[0]
         self.start_time = self._events_table[self._STARTS].min()
-        self.end_time = self._events_table[self._ENDINGS].max()
-        self._events_table[self._DURATIONS] = self._events_table[self._ENDINGS] - \
-                            self._events_table[self._STARTS]
+
+        # check if the events data frame holds instantaneous events
+        if self._ENDINGS not in self.columns:
+            self.instantaneous_events = True
+            self.end_time = self._events_table[self._STARTS].min()
+        else:
+            self._events_table[
+                self._DURATIONS] = self._events_table[self._ENDINGS] - \
+                                   self._events_table[self._STARTS]
 
         # to record compute times
         self._compute_times = {}
@@ -1320,7 +1326,7 @@ class ContTempNetwork:
             Same than `t_start` but for the ending time of computations.
             Default is end of times.
             Computations stop at self.times[self._k_stop_laplacians-1].
-            Similarily to `t_start`, the corresponding times are saved in 
+            Similarly to `t_start`, the corresponding times are saved in 
             `self._k_stop_laplacians` and `self._t_stop_laplacians`.
         verbose : bool, optional
             The default is False.
@@ -1440,6 +1446,7 @@ class ContTempNetwork:
             # starting or ending events
             is_starts = time_ev.is_start.values
 
+        # all in
 
             events_k = [
                 self._events_table.loc[
@@ -2157,12 +2164,12 @@ class ContTempInstNetwork(ContTempNetwork):
     """
 
     def __init__(self, source_nodes=None,
-                        target_nodes=None,
-                        starting_times=None,
-                        relabel_nodes=True,
-                        reset_event_table_index=True,
-                        node_to_label_dict=None,
-                        events_table=None):
+                       target_nodes=None,
+                       starting_times=None,
+                       relabel_nodes=True,
+                       reset_event_table_index=True,
+                       node_to_label_dict=None,
+                       events_table=None):
 
 
         if starting_times is not None:
