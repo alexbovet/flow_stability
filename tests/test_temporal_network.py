@@ -26,10 +26,10 @@ class TestTempNetwork:
         # Test data
         # create a minimmal network
         self.minimal = SimpleNamespace()
-        self.minimal.source_nodes = [1, 2]
-        self.minimal.target_nodes = [2, 3]
-        self.minimal.starting_times = [0.5, 1.0]
-        self.minimal.ending_times = [1.5, 2.0]
+        self.minimal.source_nodes = [1, 2, 3, 4, 5]
+        self.minimal.target_nodes = [2, 3, 4, 5, 1]
+        self.minimal.starting_times = [0.5, 1.0, 2.0, 2.0, 3.0]
+        self.minimal.ending_times = [1.5, 1.5, 2.5, 4.0, 4.0]
         self.minimal.extra_attrs = {"attr1": [True, False]}
         self.minimal.events_table = self._to_df(self.minimal)
         self.minimal.nodes = self._get_nodes(self.minimal)
@@ -297,6 +297,7 @@ class TestTempNetwork:
         assert inst_temp_network.instantaneous_events
         # use the method form the child class
         inst_temp_network.compute_laplacian_matrices()
+        import ipdb; ipdb.set_trace()
         print(f"{list(map(lambda x: x.toarray(), inst_temp_network.laplacians))=}")
         # check if the internal dfs are the same
         pd.testing.assert_frame_equal(temp_network._events_table,
