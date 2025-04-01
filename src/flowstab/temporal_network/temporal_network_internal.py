@@ -1,55 +1,7 @@
-"""#
-# flow stability
-#
-# Copyright (C) 2021 Alexandre Bovet <alexandre.bovet@maths.ox.ac.uk>
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU Lesser General Public License as published by the Free
-# Software Foundation; either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-
-"""
-from __future__ import annotations
-import gzip
-import os
-import pickle
-import time
-
-from functools import partial
-from copy import copy
-
-from numbers import Number
-
 import numpy as np
 import pandas as pd
-from scipy.sparse import (
-    coo_matrix,
-    csc_matrix,
-    csr_matrix,
-    diags,
-    dok_matrix,
-    eye,
-    isspmatrix,
-    isspmatrix_csr,
-    lil_matrix,
-)
-from scipy.sparse.csgraph import connected_components
-from scipy.sparse.linalg import eigsh, expm
 
-from .parallel_expm import compute_subspace_expm_parallel
-from .sparse_stoch_mat import inplace_csr_row_normalize, SparseStochMat
-
-
-class ContTempNetwork:
+class _TemporalNetwork:
     """Continuous time temporal network
 
     This class represents a continuous time temporal network, where events occur
@@ -94,14 +46,7 @@ class ContTempNetwork:
     _DEFAULT_DURATION = 1
 
     def __init__(self,
-                 source_nodes:list[int|str]|None=None,
-                 target_nodes:list[int|str]|None=None,
-                 starting_times:list[Number]|None=None,
-                 ending_times:list[Number]|None=None,
-                 extra_attrs:dict|None=None,
-                 merge_overlapping_events:bool=False,
                  events_table:pd.DataFrame|pd.Series|None=None,
-                 use_as_is:bool=False,
                  ):
         """
         Initializes the ContTempNetwork with the given event data.
@@ -147,152 +92,28 @@ class ContTempNetwork:
             If the lengths of `source_nodes`, `target_nodes`, `starting_times`,
             and `ending_times` do not match when `events_table` is `None`.
         """ 
-        self._use_as_is = use_as_is
+        self.events_table = events_table
 
-        if events_table is not None:
-            provided_columns = events_table.columns
-            # first check that the mandatory columns are here
-            for column in self._MANDATORY:
-                assert events_table.get(column) is not None, \
-                    "The provided data frame is missing the mandatory " \
-                    f"column `{column}`. Make sure the column is present " \
-                    "and correctly named."
-            if self._use_as_is:
-                # # TODO: we want to remove this: missing endings column should
-                # #       be accepted
-                # # in this case the column ending_times needs to be present
-                # assert self._ENDINGS in provided_columns, \
-                #     "The events_table can only be used as is " \
-                #     "(`use_as_is=True`) if it also contains the column " \
-                #     f"'{self._ENDINGS}'."
-                # we simply trust the provided events table
-                self._events_table = events_table
-            else:
-                # we extract the data from the provided events table so that
-                # it can be processed 
-                _source_nodes = events_table.get(self._SOURCES).tolist()
-                _target_nodes = events_table.get(self._TARGETS).tolist()
-                _starting_times = events_table.get(self._STARTS).tolist()
-                _ending_times = events_table.get(self._ENDINGS)
-                if _ending_times is not None:
-                    _ending_times = _ending_times.tolist()
-
-                # Get the non-essential columns
-                _extra_attrs = {col : events_table[col]
-                                for col in provided_columns
-                                if col not in self._ESSENTIAL}
-        else:
-            # in this we cannot use the internal events_table as is
-            self._use_as_is = False
-            # make sure the mandatory lists are here
-            assert all(
-                input_list is not None
-                for input_list in [source_nodes, target_nodes, starting_times]
-            ), f"{', '.join(self._MANDATORY)} are required arguments."
-
-            # make sure we have a matching number of event elements
-            assert len(source_nodes) == len(target_nodes) == \
-                    len(starting_times), \
-                "Incomplete events: Not all input lists have the same " \
-                f"length:\n{len(source_nodes)=}\n{len(target_nodes)=}\n" \
-                f"{len(starting_times)=}"
-
-            # copy the lists as we do not want to mess with immutable objects
-            _source_nodes = copy(source_nodes)
-            _target_nodes = copy(target_nodes)
-            _starting_times = copy(starting_times)
-            _ending_times = copy(ending_times)
-            # and prepare a dict for the extra attrs
-            _extra_attrs = dict()
-        
-        if not self._use_as_is:
-            # we now have temporary lists for our data and can construct
-            # the internal events_table
-
-            # compute internal IDs for nodes
-            self.nodes = set(_source_nodes)
-            self.nodes.update(_target_nodes)
-            # this holds a mapping from list index to provided node label
-            # we use the index as internal node IDs
-            # The inverted relation is not stored in memory but computed on
-            # demand, see self.node_id.
-            self.nodes = sorted(self.nodes)
-
-            # check if we have instantaneous events
-            # if _ending_times is None:
-            #     # TODO: We do not want to set ending times for inst. events
-            #     # # create a list of endings
-            #     _ending_times = [start + self._DEFAULT_DURATION
-            #                      for start in _starting_times]
-            # else:
-            if _ending_times is not None:
-                # make sure we have a matching number of starts and stops
-                assert len(_ending_times) == len(_starting_times), \
-                    "Incomplete events: Not all events have a start and " \
-                    "ending time:\n" \
-                    f"# starting_times: {len(_starting_times)}\n" \
-                    f"# ending_times: {len(_ending_times)}"
-
-            # include the extra_attrs, if provided
-            if extra_attrs is not None:
-                _extra_attrs.update(extra_attrs)
-            
-            data={self._SOURCES : [self.node_id(n) for n in _source_nodes],
-                  self._TARGETS : [self.node_id(n) for n in _target_nodes],
-                  # TODO: Potentially we want to reset the timeline as well
-                  self._STARTS : _starting_times}
-            if _ending_times is not None:
-                data[self._ENDINGS] = _ending_times
-            columns=[self._SOURCES, self._TARGETS, self._STARTS, self._ENDINGS]
-
-            # include extra attributes
-            if _extra_attrs:
-                for attr_name, val_list in _extra_attrs.items():
-                    assert len(val_list) == len(_source_nodes)
-                    data[attr_name] = val_list
-                    columns.append(attr_name)
-
-            # create the internal event table
-            # Note: see property `self.events_table` for details on how to
-            #       get a version of this data frame using the original node
-            #       labels
-            self._events_table = pd.DataFrame(data=data, columns=columns)
-
-            # sorting according to start times
-            self._events_table.sort_values(
-                by=[self._STARTS, self._ENDINGS],
-                inplace=True
-            )
-
-            # define callables that return the provided node labels and times
-            # if internal values are provided
-            self._mappings = {
-                self._SOURCES : self._get_node,
-                self._TARGETS : self._get_node,
-                self._STARTS : self._get_value,
-                self._ENDINGS : self._get_value
-            }
-        else:
-            # events table is used as is, we still need to extract attributes
-            self.nodes = np.sort(pd.unique(self._events_table[
-                [self._SOURCES, self._TARGETS]
-            ].values.ravel("K"))).tolist()
+        # events table is used as is, we still need to extract attributes
+        self.nodes = np.sort(pd.unique(self.events_table[
+            [self._SOURCES, self._TARGETS]
+        ].values.ravel("K"))).tolist()
 
 
         # setting some helpful attributes
         self.num_nodes = len(self.nodes)
-        self.columns = self._events_table.columns
-        self.num_events = self._events_table.shape[0]
-        self.start_time = self._events_table[self._STARTS].min()
+        self.columns = self.events_table.columns
+        self.num_events = self.events_table.shape[0]
+        self.start_time = self.events_table[self._STARTS].min()
 
         # check if the events data frame holds instantaneous events
         if self._ENDINGS not in self.columns:
             self.instantaneous_events = True
-            self.end_time = self._events_table[self._STARTS].min()
+            self.end_time = self.events_table[self._STARTS].min()
         else:
-            self._events_table[
-                self._DURATIONS] = self._events_table[self._ENDINGS] - \
-                                   self._events_table[self._STARTS]
+            self.events_table[
+                self._DURATIONS] = self.events_table[self._ENDINGS] - \
+                                   self.events_table[self._STARTS]
 
         # to record compute times
         self._compute_times = {}
@@ -306,23 +127,6 @@ class ContTempNetwork:
 
 
         self.is_directed = False
-
-
-    def __repr__(self):
-        return str(self.__class__) + \
-              f" with {self.num_nodes} nodes and {self.num_events} events"
-
-
-    def node_id(self, node:str|int)->int:
-        """Returns the internal ID for a node label.
-        """
-        try:
-            return self.nodes.index(node)
-        except ValueError as e:
-            # the provided node label does not exist.
-            raise ValueError(
-                f"The provided node label does not exist. {str(e)}"
-            ) from e
 
     def _get_node(self, node_id):
         """Callable to map internal node IDs back to the provided labels
@@ -345,12 +149,12 @@ class ContTempNetwork:
 
         """
         if self._use_as_is:
-            return self._events_table
+            return self.events_table
         else:
             # we use self._mappings to retrieve the initially provided values
             # and fall back to just returning the columns as is
             return pd.DataFrame({
-                col: self._events_table[col].map(
+                col: self.events_table[col].map(
                     self._mappings.get(col, lambda x: x)
                 ) for col in self.columns
             })
@@ -381,7 +185,7 @@ class ContTempNetwork:
         attributes_list: list of strings
             List of attribute names to save.
             The default list is:
-                `attributes_list = ['_events_table',
+                `attributes_list = ['events_table',
                                     '_use_as_is'
                                     'times',
                                     'time_grid',
@@ -411,7 +215,7 @@ class ContTempNetwork:
             matrices_list = matrices
 
         attributes = ["nodes",
-                      "_events_table",
+                      "events_table",
                       "_use_as_is",
                       "times",
                       "time_grid",
@@ -491,7 +295,7 @@ class ContTempNetwork:
         if matrices_list is None:
             matrices_list = matrices
 
-        attributes = ["_events_table",
+        attributes = ["events_table",
                       "_use_as_is",
                       "times",
                       "time_grid",
@@ -511,7 +315,7 @@ class ContTempNetwork:
 
         graph_dict = pd.read_pickle(os.path.splitext(filename)[0] +".pickle")
 
-        events_table = graph_dict.pop("_events_table")
+        events_table = graph_dict.pop("events_table")
 
         # we load an exported instance, so it should be save to import the
         # data frame as is (note: below we will overwrite the use as it with
@@ -1228,14 +1032,14 @@ class ContTempNetwork:
         if end_time is None:
             end_time = self.end_time
 
-        mask = np.logical_and(self._events_table.starting_times < end_time,
-                              self._events_table.ending_times > start_time)
+        mask = np.logical_and(self.events_table.starting_times < end_time,
+                              self.events_table.ending_times > start_time)
 
         # loop on events
         data = []
         cols = []
         rows = []
-        for ev in self._events_table.loc[mask].itertuples():
+        for ev in self.events_table.loc[mask].itertuples():
             data.append(min(ev.ending_times, end_time) - max(ev.starting_times,
                                                              start_time))
             rows.append(ev.source_nodes)
@@ -1250,22 +1054,22 @@ class ContTempNetwork:
     def _compute_time_grid(self):
         """Create `self.time_grid`, a dataframe with ('times', 'id') as index,
         were `id` is the index of the corresponding event in
-        `self._events_table`, and column 'is_start' which is True is the
+        `self.events_table`, and column 'is_start' which is True is the
         ('times', 'id') corresponds to a starting event.
         Also creates `self.times`, an array with all the times values.
             
         """
         self.time_grid = pd.DataFrame(
             columns=["times", "id", "is_start"],
-            index=range(self._events_table.shape[0]*2)
+            index=range(self.events_table.shape[0]*2)
         )
-        self.time_grid.iloc[:self._events_table.shape[0], [0, 1]] = \
-            self._events_table.reset_index()[[self._STARTS, "index"]]
+        self.time_grid.iloc[:self.events_table.shape[0], [0, 1]] = \
+            self.events_table.reset_index()[[self._STARTS, "index"]]
         self.time_grid["is_start"] = False
-        self.time_grid.loc[0:self._events_table.shape[0] - 1,"is_start"] = True
+        self.time_grid.loc[0:self.events_table.shape[0] - 1,"is_start"] = True
 
-        self.time_grid.iloc[self._events_table.shape[0]:, [0, 1]] = \
-            self._events_table.reset_index()[[self._ENDINGS, "index"]]
+        self.time_grid.iloc[self.events_table.shape[0]:, [0, 1]] = \
+            self.events_table.reset_index()[[self._ENDINGS, "index"]]
 
         self.time_grid.times = pd.to_numeric(self.time_grid.times)
 
@@ -1397,10 +1201,10 @@ class ContTempNetwork:
 
             # find events that have started before or at t_k-1
             # and were still occuring at t_k-1
-            mask_ini = (self._events_table[self._STARTS] <= t_km1) & \
-                       (self._events_table[self._ENDINGS] > t_km1)
+            mask_ini = (self.events_table[self._STARTS] <= t_km1) & \
+                       (self.events_table[self._ENDINGS] > t_km1)
 
-            for event in self._events_table.loc[mask_ini][[
+            for event in self.events_table.loc[mask_ini][[
                 self._SOURCES,
                 self._TARGETS
             ]].itertuples():
@@ -1449,14 +1253,14 @@ class ContTempNetwork:
         # all in
 
             events_k = [
-                self._events_table.loc[
+                self.events_table.loc[
                     mid, [self._SOURCES, self._TARGETS]
                 ].astype(np.int64)
                 for mid in meet_id.values
             ]
 
             print(f"{events_k=}")
-            # print(f"{self._events_table}")
+            # print(f"{self.events_table}")
             # print(f"{A=}")
 
             #update instantaneous matrices
@@ -2019,7 +1823,7 @@ class ContTempNetwork:
         nodes.
             
         """
-        events_to_keep = np.ones(self._events_table.shape[0],dtype=bool)
+        events_to_keep = np.ones(self.events_table.shape[0],dtype=bool)
 
         A = self.compute_static_adjacency_matrix()
 
@@ -2029,16 +1833,16 @@ class ContTempNetwork:
             for n2 in (A[n1,:] > 0).nonzero()[1]:
 
                 mask_12 = np.logical_and(
-                    self._events_table.source_nodes.values == n1,
-                    self._events_table.target_nodes.values == n2
+                    self.events_table.source_nodes.values == n1,
+                    self.events_table.target_nodes.values == n2
                 )
                 mask_21 = np.logical_and(
-                    self._events_table.source_nodes.values == n2,
-                    self._events_table.target_nodes.values == n1
+                    self.events_table.source_nodes.values == n2,
+                    self.events_table.target_nodes.values == n1
                 )
 
                 #sort by starting times
-                evs = self._events_table.loc[np.logical_or(
+                evs = self.events_table.loc[np.logical_or(
                     mask_12,
                     mask_21
                 )].sort_values(by=[self._STARTS, self._ENDINGS])
@@ -2055,7 +1859,7 @@ class ContTempNetwork:
                     if ev2.starting_times < ev1.ending_times:
                         #merge
                         events_to_keep[ev2.Index] = False
-                        self._events_table.loc[
+                        self.events_table.loc[
                             ev1.Index,
                             self._ENDINGS,
                         ] = ev2.ending_times
@@ -2070,15 +1874,15 @@ class ContTempNetwork:
         print("PID ", os.getpid(), " : ","merged ",
               num_merged, " events")
 
-        self._events_table = self._events_table.loc[events_to_keep]
+        self.events_table = self.events_table.loc[events_to_keep]
 
-        self._events_table.reset_index(inplace=True, drop=True)
+        self.events_table.reset_index(inplace=True, drop=True)
 
-        self.num_events = self._events_table.shape[0]
+        self.num_events = self.events_table.shape[0]
 
-        self.start_time = self._events_table[self._STARTS].min()
+        self.start_time = self.events_table[self._STARTS].min()
 
-        self.end_time = self._events_table[self._ENDINGS].max()
+        self.end_time = self.events_table[self._ENDINGS].max()
 
         self._compute_time_grid()
 
@@ -2146,721 +1950,3 @@ class ContTempNetwork:
         else:
             print(f"PID {os.getpid()}: delta_inter_T_lin has not been computed")
 
-
-class ContTempInstNetwork(ContTempNetwork):
-    """
-    Continuous Time Temporal Network with Instantaneous Events.
-
-    This subclass of ContTempNetwork is designed for continuous time temporal
-    networks where events do not have a duration.
-    In this implementation, each event's ending time is defined as one unit
-    after its starting time, effectively making the duration of all events
-    given by `tau_k=1`.
-
-    Attributes
-    ----------
-    instantaneous_events : bool
-        A flag indicating that all events in this network are instantaneous.
-    """
-
-    def __init__(self, source_nodes=None,
-                       target_nodes=None,
-                       starting_times=None,
-                       relabel_nodes=True,
-                       reset_event_table_index=True,
-                       node_to_label_dict=None,
-                       events_table=None):
-
-
-        if starting_times is not None:
-            utimes = np.unique(starting_times)
-            end_times_map = {utimes[k] : utimes[k+1] for k in range(utimes.size-1)}
-            end_times_map[utimes[-1]] = utimes[-1]+1
-
-            ending_times = [end_times_map[t] for t in starting_times]
-        else:
-            ending_times = None
-
-        super().__init__(source_nodes=source_nodes,
-                         target_nodes=target_nodes,
-                         starting_times=starting_times,
-                         ending_times=ending_times,
-                         merge_overlapping_events=False,
-                         events_table=events_table)
-
-
-        self._use_as_is=False
-        self._events_table["durations"] = [1.0]*self._events_table.shape[0]
-        self.instantaneous_events = True
-
-
-    def compute_laplacian_matrices(self,
-                                   t_start=None,
-                                   t_stop=None,
-                                   verbose=False,
-                                   save_adjacencies=False):
-        """Compute all laplacian matrices and saves them in self.laplacians
-        
-        Computes from the first time index before or equal to t_start until
-        the time index before t_stop.
-            
-        laplacians are computed from self.times[self._k_start_laplacians]
-        until self.times[self._k_stop_laplacians-1]
-            
-        The laplacian at step k, is the random walk laplacian
-        between times[k] and times[k+1]
-        """
-
-        if verbose:
-            print("PID ", os.getpid(), " : ","Computing Laplacians")
-
-        if not hasattr(self, "time_grid"):
-            self._compute_time_grid()
-
-        # instantaneous adjacency matrix
-        A = dok_matrix((self.num_nodes, self.num_nodes),
-                       dtype=np.float64)
-
-        #identity
-        I = eye(self.num_nodes,
-                dtype=np.float64).tocsc()
-
-        #degree array
-        degrees = np.zeros(self.num_nodes, dtype=np.float64)
-        # inverse degrees diagonal matrix
-        Dm1 = I.copy()
-        # self loop matrix
-        S = I.copy()
-
-
-        self.laplacians = []
-        if save_adjacencies:
-            self.adjacencies = []
-
-        # set boundary conditions : L_k is the laplacian during t_k and t_k+1
-        if t_start is None:
-            self._t_start_laplacians = self.times[0]
-            self._k_start_laplacians = 0
-        else:
-            t, k = self._get_closest_time(t_start)
-            self._t_start_laplacians = t
-            self._k_start_laplacians = k
-        if t_stop is None:
-            self._t_stop_laplacians = self.times[-1]
-            self._k_stop_laplacians = len(self.times)-1
-        else:
-            t, k = self._get_closest_time(t_stop)
-            self._t_stop_laplacians = t
-            self._k_stop_laplacians = k
-
-        t0 = time.time()
-
-
-        # time grid for this time range
-        time_grid_range = self.time_grid.loc[\
-                  (self.time_grid.index.get_level_values("times") >= \
-                       self._t_start_laplacians) & \
-                  (self.time_grid.index.get_level_values("times") < \
-                       self._t_stop_laplacians)]
-
-        for k, (tk, time_ev) in enumerate(time_grid_range.groupby(level="times")):
-            if verbose and not k%1000:
-                print("PID ", os.getpid(), " : ",k, " over " ,
-                      self._k_stop_laplacians - self._k_start_laplacians)
-                print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
-
-            meet_id = time_ev.index.get_level_values("id")
-            # starting or ending events
-            is_starts = time_ev.is_start.values
-
-            events_k = self._events_table.loc[
-                meet_id,
-                [self._SOURCES, self._TARGETS]
-            ].astype(np.int64)
-
-            events_k = [
-                self._events_table.loc[
-                    mid, [self._SOURCES, self._TARGETS]
-                ].astype(np.int64)
-                for mid in meet_id.values
-            ]
-
-            print(f"{events_k=}")
-
-            #update instantaneous matrices
-            for event, is_start in zip(events_k, is_starts):
-                # unweighted, undirected
-                if is_start:
-                    # if they are not already connected (can happen if the
-                    # opposite event overlap)
-                    if A[event.source_nodes, event.target_nodes] != 1:
-                        A[event.source_nodes, event.target_nodes] = 1
-                        A[event.target_nodes, event.source_nodes] = 1
-
-                        degrees[event.source_nodes] += 1
-                        degrees[event.target_nodes] += 1
-
-                        S.data[event.source_nodes] = 0
-                        Dm1.data[
-                            event.source_nodes
-                        ] = 1 / degrees[event.source_nodes]
-
-                        S.data[event.target_nodes] = 0
-                        Dm1.data[
-                            event.target_nodes
-                        ] = 1 / degrees[event.target_nodes]
-
-                else:
-                    #end of meeting
-                    # no need for instantaneous events
-                    pass
-
-
-            # Laplacian L(tk)
-            Acsc = A.tocsc()
-            # T_D = Dm1 @ (Acsc + S)
-            # L = I - T_D
-
-            self.laplacians.append(I - Dm1 @ (Acsc + S))
-            if save_adjacencies:
-                self.adjacencies.append(A.copy())
-
-            # reset matrices
-            A.clear()
-            S.data.fill(1.0)
-            Dm1.data.fill(1.0)
-            degrees.fill(0.0)
-
-        t_end = time.time()-t0
-        self._compute_times["laplacians"] = t_end
-        if verbose:
-            print("PID ", os.getpid(), " : ","finished in ", t_end)
-
-
-def lin_approx_trans_matrix(T, t, Pi=None,t_s=10):
-    r"""Linear approximation of a continuous time transition matrix
-
-    :math:`T(t) = e^{-tL}` based on an interpolation between
-    :math:`I` and :math:`T` and a second interpolation between
-    :math:`T` and :math:`\Pi`, the transition matrix at stationarity.
-        
-    For each connected component of the graph, :math:`T(t)` is approximated as
-        
-    .. math::
-        \tilde{T}(t) & = & (1-t) I + tT \text{ for } 0\leq t \leq 1 \\
-            \tilde{T}(t) & = & \frac{1}{1-t_s}[T(t-t_s) + \Pi(1-t)] \text{ for } 1 < t \leq t_s \\
-            \tilde{T}(t) & = & \Pi \text{ for } t > t_s
-            
-    where  :math:`t_s` is the mixing time of the random walk (default is `t_s=10`).
-            
-            
-    Parameters
-    ----------
-        T : scipy.sparse csr matrix
-        Transition matrix of the discrete time random walk
-    t : float
-        Time, greater or equal to zero.
-    Pi : scipy.sparse matrix
-        Transition matrix of the discrete time random walk at stationarity.
-        If None, it will be computed from T.
-    t_s : float
-        Stationarity time at which the interpolation reaches Pi.
-            
-    Returns
-    -------
-        Tapprox : scipy.sparse.csr matrix
-        Linear approximation of expmL at time t.
-            
-    """
-    assert isspmatrix_csr(T)
-
-    num_nodes = T.shape[0]
-    I = eye(num_nodes,
-                dtype=np.float64, format="csr")
-
-    if t < 0:
-        raise ValueError("t must be >= 0")
-
-    elif t <= 1:
-        return (1-t)*I + t*T.tocsr()
-    else:
-
-        if Pi is None:
-            Pi = compute_stationary_transition(T)
-
-        if t < t_s:
-
-            return (1/(1-t_s))*(T*(t-t_s)+Pi*(1-t))
-        else:
-            return Pi
-
-
-def compute_stationary_transition(T):
-    """Compute the transition matrix at stationarity for matrix `T`
-
-    Parameters
-    ----------
-        T : scipy.sparse matrix or numpy.ndarray
-        Transition matrix of the discrete time random walk.
-        Can be a CSC or CSR matrix.
-
-    Returns
-    -------
-        Pi : scipy.sparse.csr matrix
-        Stationary transition matrix.
-            
-    """
-    num_nodes = T.shape[0]
-
-    # otherwise 0 values may count as an edge
-    T.eliminate_zeros()
-    T.sort_indices()
-
-    n_comp, comp_labels = connected_components(T,directed=False)
-    comp_sizes = np.bincount(comp_labels)
-    cmp_to_indices = {cmp : (comp_labels == cmp).nonzero()[0]
-                      for cmp in range(n_comp)}
-
-    # constructors for sparse array
-    data = np.zeros((comp_sizes**2).sum(), dtype=np.float64)
-    indices = np.zeros((comp_sizes**2).sum(), dtype=np.int32)
-    indptr = np.zeros(num_nodes+1, dtype=np.int32)
-
-    # vector of degrees (number of nonzero elements of each row)
-    if isspmatrix(T):
-        degs = np.diff(T.indptr)
-    else:
-        degs = (T > 0).sum(1)
-
-    data_ind = 0
-    for row in range(num_nodes):
-        cmp = comp_labels[row]
-        cmp_degs = degs[cmp_to_indices[cmp]]
-        data[data_ind:data_ind+comp_sizes[cmp]] = \
-            cmp_degs / cmp_degs.sum()
-        indices[data_ind:data_ind+comp_sizes[cmp]] = \
-            cmp_to_indices[cmp]
-        indptr[row] = data_ind
-        data_ind += comp_sizes[cmp]
-    indptr[num_nodes] = data_ind
-
-    # Stationary transition matrix
-
-    return csr_matrix(
-        (data, indices, indptr),
-        shape=(num_nodes,num_nodes),
-        dtype=np.float64
-    )
-
-def compute_subspace_expm(A,
-                          n_comp=None,
-                          comp_labels=None,
-                          verbose=False,
-                          thresh_ratio=None,
-                          normalize_rows=True):
-    """Compute the exponential matrix of `A` by applying expm on each connected
-    subgraphs defined by A and recomposing it to return expm(A).
-
-    Parameters
-    ----------
-        A : scipy.sparse.csc_matrix
-        
-    thresh_ratio: float, optional.
-        Threshold ratio used to trim negligible values in the resulting matrix.
-        Values smaller than `max(expm(A))/thresh_ratio` are set to 
-        zero. Default is None.
-    normalize_rows: bool, optional.
-        Whether rows of the resulting matrix are normalized to sum to 1.
-        
-
-    Returns
-    -------
-        expm(A) : scipy.sparse.csr_matrix
-        matrix exponential of A
-            
-    """
-    num_nodes = A.shape[0]
-
-    # otherwise 0 values may count as an edge
-    A.eliminate_zeros()
-    A.sort_indices()
-
-    if (n_comp is None) or (comp_labels is None):
-        n_comp, comp_labels = connected_components(A,directed=False)
-    comp_sizes = np.bincount(comp_labels)
-    cmp_indices = [(comp_labels == cmp).nonzero()[0] for \
-                          cmp in range(n_comp)]
-
-    if verbose:
-        print(f"PID {os.getpid()}: subspace_expm with {n_comp} components")
-
-    # constructors for sparse array
-    data = np.zeros((comp_sizes**2).sum(), dtype=np.float64)
-    indices = np.zeros((comp_sizes**2).sum(), dtype=np.int32)
-    indptr = np.zeros(num_nodes+1, dtype=np.int32)
-
-    # if nproc == 1:
-    #     expm_func = lambda M: expm(M)
-    # else:
-    #     expm_func = lambda M: compute_parallel_expm(M, nproc=nproc,
-    #                                                 thresh_ratio=None,
-    #                                                 normalize_rows=False,
-    #                                                 verbose=verbose)
-    subnets_expms = []
-    for i, cmp_ind in enumerate(cmp_indices):
-        if verbose:
-            print(f"PID {os.getpid()}: computing component {i} over {n_comp}, "
-                  f"with size {cmp_ind.size}")
-
-        subnets_expms.append(expm(A[cmp_ind,:][:,cmp_ind]).toarray())
-
-    # reconstruct csr sparse matrix
-    if verbose:
-            print("PID ", os.getpid(), " : reconstructing expm mat")
-    data_ind = 0
-    for row in range(num_nodes):
-        cmp = comp_labels[row]
-        cmp_expm = subnets_expms[cmp]
-        sub_expm_row, = np.where(cmp_indices[cmp] == row)
-
-        data[data_ind:data_ind+comp_sizes[cmp]] = cmp_expm[sub_expm_row,:]
-
-        indices[data_ind:data_ind+comp_sizes[cmp]] = cmp_indices[cmp]
-
-        indptr[row] = data_ind
-
-        data_ind += comp_sizes[cmp]
-
-    indptr[num_nodes] = data_ind
-
-    expmA = csr_matrix((data, indices, indptr), shape=(num_nodes,num_nodes),
-                    dtype=np.float64)
-
-    if thresh_ratio is not None:
-        expmA.data[expmA.data<expmA.data.max()/thresh_ratio] = 0.0
-        expmA.eliminate_zeros()
-    if normalize_rows:
-        inplace_csr_row_normalize(expmA)
-
-    return expmA
-
-
-def csc_row_normalize(X):
-    """Row normalize scipy sparse csc matrices.
-    returns a copy of X row-normalized and in CSC format.
-    """
-    X = X.tocsr()
-
-    for i in range(X.shape[0]):
-        row_sum = X.data[X.indptr[i]:X.indptr[i+1]].sum()
-        if row_sum != 0:
-            X.data[X.indptr[i]:X.indptr[i+1]] /= row_sum
-
-    return X.tocsc()
-
-def find_spectral_gap(L):
-    """L is assummed to be connected"""
-    Lcsr = L.tocsr()
-
-    I = eye(L.shape[0],
-            dtype=np.float64,
-            format="csr")
-
-    degs = np.diff((I-Lcsr).indptr)
-
-    D12 = diags(np.sqrt(degs),
-                format="csr")
-    Dm12 = diags(1/np.sqrt(degs),
-                format="csr")
-
-    Lsym = D12 @ Lcsr @ Dm12
-
-    # stationary solution
-    Pi = np.vstack([degs/degs.sum()]*L.shape[0])
-
-
-    gap = eigsh(Lsym.toarray()-Pi,1,sigma=0,
-                return_eigenvectors=False)
-
-    return gap
-
-
-def remove_nnz_rowcol(L):
-    """Returns a CSC or CSR matrix where the indices with zero row and column
-    cols have been removed, also return an array of the indices of rows/columns
-    with non-zero values and the (linear) size of L.
-        
-        
-    Returns
-    -------
-    L_small, nonzero_indices, size
-        
-    """
-    # indicies with zero sum row AND col
-    nonzerosum_rowcols = ~np.logical_and(L.getnnz(1)==0,
-                                        L.getnnz(0)==0)
-
-    nonzero_indices, = (nonzerosum_rowcols).nonzero()
-
-    return (
-        L[nonzerosum_rowcols][:,nonzerosum_rowcols],
-        nonzero_indices,
-        L.shape[0]
-    )
-
-
-def numpy_rebuild_nnz_rowcol(T_data,
-                             T_indices,
-                             T_indptr,
-                             zero_indices):
-    """Returns a CSR matrix (data,indices,rownnz, shape) built from the CSR
-    matrix T_small but with
-    added row-colums at zero_indicies (with 1 on the diagonal)
-        
-     
-    """
-    n_rows = T_indptr.size-1 + zero_indices.size
-
-    data = np.zeros(T_data.size+zero_indices.size,
-                                   dtype=np.float64)
-    indices = np.zeros(T_data.size+zero_indices.size,
-                                   dtype=np.int32)
-    indptr = np.zeros(n_rows+1,
-                                   dtype=np.int32)
-    new_col_inds = np.zeros(T_indptr.size-1,
-                                   dtype=np.int32)
-    Ts_indices = np.zeros(T_indices.size,
-                                   dtype=np.int32)
-    zero_set = set(zero_indices)
-
-
-    # map col indices to new positions
-    k = 0
-    for i in range(n_rows):
-        if i not in zero_set:
-            new_col_inds[k] = i
-            k +=1
-
-
-
-    for k,i in enumerate(T_indices):
-        Ts_indices[k] = new_col_inds[i]
-
-    row_id_small_t = -1
-    data_ind = 0
-    for row_id in range(n_rows):
-        row_id_small_t +=1
-        if row_id in zero_set:
-            # add a row with just 1 on the diagonal
-            data[data_ind] = 1.0
-            indices[data_ind] = row_id
-            indptr[row_id+1] = indptr[row_id]+1
-
-            row_id_small_t -= 1
-            data_ind += 1
-
-        else:
-            row_start = T_indptr[row_id_small_t]
-            row_end = T_indptr[row_id_small_t+1]
-
-            num_data_row = row_end - row_start
-
-            data[data_ind:data_ind+num_data_row] = T_data[row_start:row_end]
-            indices[data_ind:data_ind+num_data_row] = \
-                Ts_indices[row_start:row_end]
-            indptr[row_id+1] = indptr[row_id]+num_data_row
-
-            data_ind += num_data_row
-
-
-    return (data, indices, indptr, n_rows)
-
-
-def sparse_lapl_expm(L,
-                     fact,
-                     dense_expm=True,
-                     nproc=1,
-                     thresh_ratio=None,
-                     normalize_rows=True,
-                     verbose=False):
-    """ 
-    computes the matrix exponential of a laplacian L, expm(-fact*L),
-    considering only the non-zeros rows/cols of L
-
-
-    Parameters
-    ----------
-    L : scipy sparse csc matrix
-        Laplacian matrix with large proportion of zero rows/cols.
-    fact : float
-        factor in front of the laplacian
-    dense_expm : boolean
-        Whether to compute the expm on the small Laplacian as a dense
-        or sparse array. Default is True.
-    nproc : int, optional
-        number of parallel processes for dense_expm=False. The default is 1.
-    thresh_ratio: float, optional.
-        Threshold ratio used to trim negligible values in the resulting matrix.
-        Values smaller than `max(expm(A))/thresh_ratio` are set to 
-        zero. For dense_expm=False. Default is None.
-    normalize_rows: bool, optional.
-        Whether rows of the resulting matrix are normalized to sum to 1.
-        For dense_expm=False
-        
-    Returns
-    -------
-    expm(-fact*L) : `SparseStochMat` object
-        Transition matrix 
-
-    """
-    if L.getnnz() == 0: #zero matrix
-        # return identity
-        return SparseStochMat.create_diag(L.shape[0])
-
-    L_small, nz_inds, size = remove_nnz_rowcol(L)
-
-
-    if nproc == 1:
-        expm_func = partial(compute_subspace_expm,
-                            A=-fact*L_small,
-                            verbose=verbose,
-                            thresh_ratio=thresh_ratio,
-                            normalize_rows=normalize_rows)
-
-    else:
-        expm_func = partial(compute_subspace_expm_parallel,
-                            A=-fact*L_small,
-                            verbose=verbose,
-                            nproc=nproc,
-                            thresh_ratio=thresh_ratio,
-                            normalize_rows=normalize_rows)
-
-
-    if dense_expm:
-        T_small = csr_matrix(expm(-fact*L_small.toarray()))
-    else:
-
-        # for large networks, try subspace expm
-        L_small.eliminate_zeros()
-        if L_small.shape[0] >= 1000:
-            n_comp, comp_labels = connected_components(L_small,directed=False)
-            if n_comp > 1 :
-                T_small = expm_func(n_comp=n_comp,
-                                    comp_labels=comp_labels)
-            else:
-                T_small = expm(-fact*L_small).tocsr()
-        else:
-            T_small = expm(-fact*L_small).tocsr()
-
-    return SparseStochMat(size, T_small.data, T_small.indices,
-                            T_small.indptr, nz_inds)
-
-
-def sparse_lin_approx(T, t, Pi=None, t_s=10, nz_rowcols=None):
-    """Linear approximation of a continuous time transition matrix
-        for sparse transition matrices.
-        
-        Performs computation using `lin_approx_trans_matrix` 
-        on a smallest L matrices with no zeros 
-        row/cols and returns a SparseStochMat 
-    
-
-    Parameters
-    ----------
-    T : scipy sparse csr matrix
-        Original full size laplacian matrix.
-    t : float
-        Interpolation time.
-    Pi : scipcy sparse csr matrix, optional
-        Transition matrix at stationarity. Same shape that T. 
-        The default is None, i.e. computed from T.
-    t_s : float, optional
-        Stationarity time at which the interpolation reaches Pi.
-        The default is 10.
-    nz_rowcols : ndarray of int32
-        indices of T of nonzero offdiagonal rows/cols to build a SparseStochMat 
-
-    Returns
-    -------
-    Tapprox : SparseStochMat object
-            Linear approximation at time t.
-
-    """
-    T_ss = SparseStochMat.from_full_csr_matrix(T, nz_rowcols=nz_rowcols)
-
-    if Pi is None:
-        Pi_small = compute_stationary_transition(T_ss.T_small)
-    elif isinstance(Pi, SparseStochMat):
-        Pi_small = Pi.T_small
-    elif isinstance(Pi, csr_matrix):
-        Pi_small = SparseStochMat.from_full_csr_matrix(
-            Pi,
-            nz_rowcols=nz_rowcols
-        ).T_small
-    else:
-        raise TypeError("Pi must be a csr or SparseStochMat.")
-
-    Tapprox_small = lin_approx_trans_matrix(T_ss.T_small,
-                                        t=t,
-                                        Pi=Pi_small,
-                                        t_s=t_s)
-
-    return SparseStochMat(T_ss.size, Tapprox_small.data, Tapprox_small.indices,
-                          Tapprox_small.indptr, T_ss.nz_rowcols)
-
-
-
-def sparse_stationary_trans(T):
-    """Parameters
-    ----------
-    T : scipy sparse csr matrix
-        Discrete time transition matrix.
-
-    Returns
-    -------
-    Pi : scipy sparse csr matrix
-        Transition matrix at stationarity
-
-    """
-    T_ss = SparseStochMat.from_full_csr_matrix(T.tocsr())
-
-    Pi_small = compute_stationary_transition(T_ss.T_small)
-
-    return SparseStochMat(T_ss.size, Pi_small.data, Pi_small.indices,
-                          Pi_small.indptr, T_ss.nz_rowcols)
-
-
-def set_to_ones(Tcsr, tol=1e-8):
-    """In place replaces ones in sparse matrix that are, within the tolerence,
-    close to ones with actual ones
-    """
-    Tcsr.data[np.abs(Tcsr.data - 1) <= tol] = 1
-
-
-def set_to_zeroes(Tcsr,
-                  tol=1e-8,
-                  relative=True,
-                  use_absolute_value=False):
-    """In place replaces zeroes in sparse matrix that are, within the tolerence,
-    close to zero with actual zeroes.
-    If `tol` is `None`, does nothing
-    """
-    if tol is not None:
-        if isinstance(Tcsr, SparseStochMat):
-            Tcsr.set_to_zeroes(tol, relative=relative)
-        elif isinstance(Tcsr, (csr_matrix,csc_matrix)):
-            if Tcsr.data.size > 0:
-                if relative:
-                    # tol = tol*np.abs(Tcsr.data).max()
-                    # finding the max of the absolute value without making a
-                    # copy of the whole array
-                    tol = tol*np.abs([Tcsr.data.min(),Tcsr.data.max()]).max()
-
-                if use_absolute_value:
-                    Tcsr.data[np.abs(Tcsr.data) <= tol] = 0
-                else:
-                    Tcsr.data[Tcsr.data <= tol] = 0
-
-                Tcsr.eliminate_zeros()
-        else:
-            raise TypeError("Tcsr must be csc,csr or SparseStochMat")
