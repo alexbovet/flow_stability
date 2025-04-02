@@ -19,19 +19,25 @@
 
 """
 from __future__ import annotations
-from typing import Collection
+from typing import Collection, Any
 
 import importlib.util
 import os
 import time
+
 from array import array
 from copy import deepcopy
 from itertools import combinations
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
+
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse import csc_matrix, csr_matrix, diags, eye, isspmatrix_csr
 from scipy.sparse.linalg import eigs
+
+from .logger import get_logger
 
 from .sparse_stoch_mat import (
     USE_SPARSE_DOT_MKL,
@@ -41,9 +47,10 @@ from .sparse_stoch_mat import (
     sparse_gram_matrix,
     sparse_matmul,
     SparseStochMat,
+    inplace_csr_row_normalize,
 )
 from .temporal_network import (
-    inplace_csr_row_normalize,
+    ContTempNetwork,
     set_to_zeroes,
     sparse_lapl_expm
 )
@@ -61,19 +68,9 @@ else:
     print("Could not load cython functions")
     USE_CYTHON = False
 
+# get the logger
+logger = get_logger()
 
-class FlowStability:
-    """Class to instantiate a flow stability analysis
-
-    Attributes
-    ----------
-    """
-    def __init__(self,):
-        """
-        Parameters
-        ----------
-        """
-        pass
 
 class Partition:
     """A node partition that can be described as a list of node sets
@@ -2493,3 +2490,189 @@ def sort_clusters(cluster_list_to_sort, cluster_list_model, thresh_ratio=0.3):
 
     return [cluster_list_to_sort[i] for i in new_clust_order + zero_clusts]
 
+
+# ### 
+# New Part
+# ###
+def include_doc_from(cls):
+    """Decorator to include the docstring from a specified class."""
+    def decorator(func):
+        func.__doc__ += "\n\n" + cls.__doc__
+        return func
+    return decorator
+
+class FlowStability:
+    """
+    Conducts flow stability analysis using a contact sequence.
+
+    This class loads a contact sequence into a Pandas DataFrame and 
+    provides methods for analyzing the stability of the flow.
+
+    Parameters
+    ----------
+    data : Union[pd.DataFrame, str, Path]
+        A Pandas DataFrame containing the contact sequence, a string 
+        representing the path to a CSV file, or a Path object pointing 
+        to the CSV file.
+    **kwargs : Any
+        Optional keyword arguments to pass to `pandas.read_csv()` when 
+        loading from a file.
+
+    Attributes
+    ----------
+    contact_sequence : pd.DataFrame
+        The loaded contact sequence DataFrame.
+
+    Raises
+    ------
+    ValueError
+        If the input is neither a DataFrame nor a valid CSV file path.
+    """
+
+    def __init__(self, data: pd.DataFrame|str|Path|None=None, **kwargs: Any):
+        # this variable track the progress of the analysis - enum would be good
+        self.progress = 0
+        self._temporal_network = None
+        self._lamda = None
+        self._states = self._init_states()
+        if isinstance(data, pd.DataFrame):
+            # Create a ContTempNetwork instance directly from the DataFrame
+            self.set_temporal_network(events_table=data)
+            logger.debug("Pandas data frame provided and used as events table.")
+        elif isinstance(data, (str, Path)):
+            try:
+                # Convert Path to string if it's a Path object
+                events_table = pd.read_csv(str(data), **kwargs)
+                # Create a ContTempNetwork instance using the loaded DataFrame
+                self.set_temporal_network(events_table=events_table)
+                logger.debug("Loading events from csv file.")
+            except FileNotFoundError:
+                raise ValueError(f"The file at {data} was not found.")
+            except pd.errors.EmptyDataError:
+                raise ValueError(f"The file at {data} is empty.")
+            except pd.errors.ParserError:
+                raise ValueError(f"The file at {data} could not be parsed.")
+        else:
+            self.set_temporal_network()
+
+    def changed(obj, arg, value):
+        print(obj)
+        print(arg)
+        print(value)
+
+    def _init_states(self):
+        """
+        """
+        _states = []
+        return _states
+
+    def _ready_for(self, step):
+        """Internal method to make sure the step in the analysis is doable
+        """
+        if self.progress >= step:
+            return True
+        else:
+            logger.warning(
+                "The flow stability analysis is not ready for this step."
+            )
+            return False
+
+
+    @include_doc_from(ContTempNetwork)
+    def set_temporal_network(self, *args, **kwargs):
+        """
+        Setting the temporal network for the flos stability analysis
+        """
+        if not args and not kwargs:
+            self._temporal_network = None
+            self.progress = 0
+            logger.info(
+                "Setting the temporal network with no data -> "
+                "RESETTING ANALYSIS.")
+        else:
+            # set self.temporal_network
+            self.temporal_network = ContTempNetwork(*args,
+                                                    **kwargs)
+            # reset the progress to first stage
+            self.progress = 1
+        return self
+
+    @include_doc_from(ContTempNetwork.compute_laplacian_matrices)
+    def compute_laplacian_matrices(self, *args, **kwargs):
+        """
+        """
+        if self._ready_for(step=1):
+            self._temporal_network.compute_laplacian_matrices(*args,
+                                                             **kwargs)
+            self.progress = 1.1
+        return self
+
+    @include_doc_from(ContTempNetwork.compute_inter_transition_matrices)
+    def compute_inter_transition_matrices(self, *args, **kwargs):
+        """
+        """
+        _lamda = None
+        if 'lamda' in kwargs:
+            _lamda = kwargs['lamda']
+        elif args:
+            _lamda = args[0]
+        if self.lamda != _lamda:
+            # Parameter update make sure to 
+            self.lamda = _lamda
+        if self._ready_for(step=1.0):
+            # make sure lamda is set
+            assert self.lamda is not None
+            self._temporal_network.compute_inter_transition_matrices(*args,
+                                                                    **kwargs)
+            self.progress = 1.2
+        return self
+
+    @property
+    def temporal_network(self):
+        return self._temporal_network
+
+    @temporal_network.setter
+    def temporal_network(self, temporal_network:ContTempNetwork):
+        # TODO: do so sanity checks
+        self._temporal_network = temporal_network
+        self.progress = 1
+        return None
+
+    @property
+    def lamda(self):
+        return self._lamda
+
+    @lamda.setter
+    def lamda(self, value):
+        if self._lamda != value:
+            # set pack to pre inter transition matrices
+            self.progress = 1
+            self._lamda = value
+
+    # Facade for FlowIntegralClustering
+    @include_doc_from(FlowIntegralClustering)
+    def set_flow_clustering(self, integral_time_grid, *args, **kwargs):
+        """
+        """
+        # NOTE: we could set this up so that one could directly provide
+        #       arguments for the integral clustering without providing
+        #       a temporal network
+        if self._ready_for(step=1.2):
+            kwargs.update(dict(
+                T_inter_list=[T.toarray()
+                              for T in self.temporal_network.inter_T[self._lamda]],
+                time_list=self.temporal_network.times,
+            ))
+            
+        try:
+            self.flow_clustering = FlowIntegralClustering(
+                    *args,
+                    integral_time_grid=integral_time_grid,
+                    **kwargs)
+        except ValueError as e:
+            logger.warning(
+                f"Falied to initiate the FlowIntegralClustering: {e}"
+            )
+        else:
+            self.progress = 2
+        return self
