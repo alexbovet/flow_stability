@@ -64,6 +64,23 @@ class TestTempNetwork:
         self.simple_instant.events_table = self.simple.events_table.drop(
             ContTempNetwork._ENDINGS, axis=1
         )
+
+        # Load real data
+        self.real = SimpleNamespace()
+        self.real.url = 'https://zenodo.org/record/4725155/files/'\
+                        'mice_contact_sequence.csv.gz'
+        self.real.raw_df = pd.read_csv(self.real.url,
+                                       compression='gzip')
+        self.real.cut_after = 3600 # only use first hour
+        self.real.events_table = self.real.raw_df[
+            self.real.raw_df['ending_times'] < 3600
+        ]
+        # self.real.source_nodes = self.real.raw_df['source_nodes'].tolist()
+        # self.real.target_nodes = self.real.raw_df['target_nodes'].tolist()
+        # self.real.starting_times = self.real.raw_df['starting_times'].tolist()
+        # self.real.ending_times = self.real.raw_df['ending_times'].tolist()
+
+
         # ###
         # gather all networks
         self.networks = [self.minimal, self.minimal_instant,
@@ -255,6 +272,15 @@ class TestTempNetwork:
                                            ln_et.starting_times)
             pd.testing.assert_series_equal(sn_et.ending_times,
                                            ln_et.ending_times)
+
+    def test_import_data(self):
+        """Make sure we can work with data with incomplete node lists
+        """
+        network = ContTempNetwork(
+            events_table=self.real.events_table,
+            merge_overlapping_events=False
+        )
+        network.compute_laplacian_matrices()
 
     def test_merge_overlapping_events(self):
         # create a network with overlapping events
