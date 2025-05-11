@@ -44,6 +44,10 @@ from scipy.sparse.linalg import eigsh, expm
 from .parallel_expm import compute_subspace_expm_parallel
 from .sparse_stoch_mat import inplace_csr_row_normalize, SparseStochMat
 
+from .logger import get_logger
+
+# get the logger
+logger = get_logger()
 
 class ContTempNetwork:
     """Continuous time temporal network
@@ -88,6 +92,17 @@ class ContTempNetwork:
     
     
     """
+    # parametrize the column names > single place to change them:
+    _SOURCES = "source_nodes"
+    _TARGETS = "target_nodes"
+    _STARTS = "starting_times"
+    _ENDINGS = "ending_times"
+    _MANDATORY = [_SOURCES, _TARGETS, _STARTS]
+    _ESSENTIAL = [_SOURCES, _TARGETS, _STARTS, _ENDINGS]
+    # to hold endings - starts
+    _DURATIONS = "durations"
+    # for instantaneous event this is the duration to use
+    _DEFAULT_DURATION = 1
 
     def __init__(self, source_nodes=[],
                        target_nodes=[],
@@ -1051,14 +1066,16 @@ class ContTempNetwork:
 
     def _compute_time_grid(self):
         """Create `self.time_grid`, a dataframe with ('times', 'id') as index,
-        were `id` is the index of the corresponding event in `events_table`,
+        wre `id` is the index of the corresponding event in `events_table`,
         and column 'is_start' which is True is the ('times', 'id') 
         corresponds to a starting event.
         Also creates `self.times`, an array with all the times values.
             
         """
-        self.time_grid = pd.DataFrame(columns=["times","id","is_start"],
-                                 index=range(self.events_table.shape[0]*2))
+        self.time_grid = pd.DataFrame(
+            columns=["times", "id", "is_start"],
+            index=range(self.events_table.shape[0]*2)
+        )
         self.time_grid.iloc[:self.events_table.shape[0],[0,1]] = \
                      self.events_table.reset_index()[["starting_times","index"]]
         self.time_grid["is_start"] = False
@@ -1096,13 +1113,12 @@ class ContTempNetwork:
         return t, k
 
 
-    def compute_laplacian_matrices(self, t_start=None,
-                                       t_stop=None, verbose=False,
-                                       save_adjacencies=False):
+    def compute_laplacian_matrices(self, t_start=None, t_stop=None,
+                                   save_adjacencies=False):
         """Computes the laplacian matrices and saves them in `self.laplacians`
             
-            Computes from the first event time (in `self.times`) before or equal to `t_start` until
-            the event time index before `t_stop`.
+            Computes from the first event time (in `self.times`) before or
+            equal to `t_start` until the event time index before `t_stop`.
             
             Laplacians are computed from `self.times[self._k_start_laplacians]`
             until `self.times[self._k_stop_laplacians-1]`.
@@ -1123,8 +1139,6 @@ class ContTempNetwork:
             Computations stop at self.times[self._k_stop_laplacians-1].
             Similarily to `t_start`, the corresponding times are saved in 
             `self._k_stop_laplacians` and `self._t_stop_laplacians`.
-        verbose : bool, optional
-            The default is False.
         save_adjacencies : bool, optional
             Default is False. Use to save adjacency matrices in `self.adjacencies`.
 
@@ -1133,8 +1147,7 @@ class ContTempNetwork:
         None.            
 
         """
-        if verbose:
-            print("PID ", os.getpid(), " : ","Computing Laplacians")
+        logger.info(f"PID {os.getpid()}: Computing Laplacians")
 
         if not hasattr(self, "time_grid"):
             self._compute_time_grid()
@@ -1223,10 +1236,12 @@ class ContTempNetwork:
                        self._t_stop_laplacians)]
 
         for k, (tk, time_ev) in enumerate(time_grid_range.groupby(level="times")):
-            if verbose and not k%1000:
-                print("PID ", os.getpid(), " : ",k, " over " ,
-                      self._k_stop_laplacians - self._k_start_laplacians)
-                print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+            if not k%1000:
+                logger.info(
+                    f"PID {os.getpid()}: {k} over "
+                    f"{self._k_stop_laplacians - self._k_start_laplacians}"
+                )
+                logger.info( f"PID {os.getpid()}: {time.time()-t0:.2f}s")
 
             meet_id = time_ev.index.get_level_values("id")
             # starting or ending events
@@ -1282,8 +1297,7 @@ class ContTempNetwork:
 
         t_end = time.time()-t0
         self._compute_times["laplacians"] = t_end
-        if verbose:
-            print("PID ", os.getpid(), " : ","finished in ", t_end)
+        logger.info(f"PID {os.getpid()}: finished in {t_end}")
 
     def compute_inter_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
                                     verbose=False,
