@@ -17,7 +17,7 @@ def test_FlowStability_initiation(caplog, get_temporal_network_df_minimal):
     caplog.clear()
     minimal_events_table = get_temporal_network_df_minimal
     with caplog.at_level('DEBUG'):
-        fs_minimal = FlowStability(data=minimal_events_table)
+        fs_minimal = FlowStability(temporal_network=minimal_events_table)
     assert 'data frame' in  caplog.text.lower()
     assert fs_minimal.progress == 1
 
@@ -28,7 +28,7 @@ def test_FlowStability_buildup(caplog, get_temporal_network_df_minimal):
     set_log_level("DEBUG")
     # print info for empty network
     with caplog.at_level('INFO'):
-        fs_empty = FlowStability(data=1)
+        fs_empty = FlowStability(temporal_network=1)
     assert 'no data' in  caplog.text.lower()
     caplog.clear()
     assert fs_empty.progress == 0
@@ -41,8 +41,7 @@ def test_FlowStability_buildup(caplog, get_temporal_network_df_minimal):
     assert fs_empty.progress == 1.2
     integral_time_grid = np.linspace(0, 7, 8, endpoint=True)
     fs_empty.set_flow_clustering(integral_time_grid=integral_time_grid)
-    assert fs_empty.
-
+    # assert fs_empty.
 
 
 def test_Partition():
