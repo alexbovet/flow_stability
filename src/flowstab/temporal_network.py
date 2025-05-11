@@ -1238,10 +1238,10 @@ class ContTempNetwork:
         for k, (tk, time_ev) in enumerate(time_grid_range.groupby(level="times")):
             if not k%1000:
                 logger.info(
-                    f"PID {os.getpid()}: {k} over "
+                    f"{k} over "
                     f"{self._k_stop_laplacians - self._k_start_laplacians}"
                 )
-                logger.info( f"PID {os.getpid()}: {time.time()-t0:.2f}s")
+                logger.info( f"{time.time()-t0:.2f}s")
 
             meet_id = time_ev.index.get_level_values("id")
             # starting or ending events
@@ -1299,11 +1299,10 @@ class ContTempNetwork:
         self._compute_times["laplacians"] = t_end
         logger.info(f"PID {os.getpid()}: finished in {t_end}")
 
-    def compute_inter_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False,
-                                    fix_tau_k=False,
-                                    use_sparse_stoch=False,
-                                    dense_expm=True):
+    def compute_inter_transition_matrices(self, lamda=None, t_start=None,
+                                          t_stop=None, fix_tau_k=False,
+                                          use_sparse_stoch=False,
+                                          dense_expm=True):
         """Computes interevent transition matrices as T_k(lamda) = expm(-tau_k*lamda*L_k).
         
         The transition matrix T_k is saved in `self.inter_T[lamda][k]`, where 
@@ -1331,8 +1330,6 @@ class ContTempNetwork:
             Same than `t_start` but for the ending time of computations.
             Computations stop at self.times[self._k_stop_laplacians-1].
             Default is end of times.
-        verbose : bool, optional
-            The default is False.
         fix_tau_k : bool, optional
             If true, all interevent times (tau_k) in the formula above are set to 1. 
             This decouples the dynamic scale from the length of event which
@@ -1355,33 +1352,36 @@ class ContTempNetwork:
         None.
 
         """
+        # NOTE: We might drop such tests if we check for process consistency
+        #       on a higher leverl (i.e. FlowStability)
         if not hasattr(self, "laplacians"):
-            self.compute_laplacian_matrices(t_start=t_start, t_stop=t_stop,
-                                            verbose=verbose)
+            self.compute_laplacian_matrices(t_start=t_start, t_stop=t_stop)
         if not hasattr(self, "inter_T"):
             self.inter_T = dict()
 
 
         if lamda is None:
-            if verbose:
-                print("PID ", os.getpid(), " : ","taking lamda as 1/tau_w with tau_w = median interevent time")
+            logger.info("Taking lamda as 1/tau_w with tau_w = median "
+                        "interevent time")
             lamda = 1/np.median(np.diff(self.times))
 
         # new value of lamda, we need to recompute
         if lamda not in self.inter_T.keys():
 
-            if verbose:
-                print("PID ", os.getpid(), " : ",f"Computing interevent transition matrices for lamda={lamda}")
-
+            logger.info(
+                f"Computing interevent transition matrices for lamda={lamda}"
+            )
             self.inter_T[lamda] = []
 
             t0 = time.time()
             for k, tk in enumerate(self.times[self._k_start_laplacians:
                                               self._k_stop_laplacians]):
-                if verbose and not k%1000:
-                    print("PID ", os.getpid(), " : ",k, " over " ,
-                          self._k_stop_laplacians-1-self._k_start_laplacians)
-                    print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+                if not k%1000:
+                    logger.info(
+                        f"{k} over "
+                        f"{self._k_stop_laplacians-1-self._k_start_laplacians}"
+                    )
+                    logger.info(f"{time.time()-t0:.2f}s")
 
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1401,8 +1401,7 @@ class ContTempNetwork:
                     self.inter_T[lamda].append(expm(-tau_k*lamda*self.laplacians[k]).tocsr())
 
             if len(self.inter_T[lamda]) == 0:
-                if verbose:
-                    print("PID ", os.getpid(), " no events, trans. matrix = identity")
+                logger.info("no events, trans. matrix = identity")
                 # is there was no event, the transition is identity
                 if use_sparse_stoch:
                     self.inter_T[lamda].append(SparseStochMat.create_diag(size=self.num_nodes))
@@ -1415,15 +1414,17 @@ class ContTempNetwork:
 
             self._compute_times["inter_T_" + str(lamda)]  = t_end
 
-            if verbose:
-                print("PID ", os.getpid(), " : ","Finished computing interevent transition matrices in ", t_end)
-        elif verbose:
-            print("PID ", os.getpid(), " : ",f"Interevent transition matrices already computed for lamda={lamda}")
+            logger.info(
+                f"Finished computing interevent transition matrices in {t_end}"
+            )
+        logger.info(
+            f"Interevent transition matrices already computed for lamda={lamda}"
+        )
 
-    def compute_lin_inter_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False, t_s=10,
-                                    fix_tau_k=False,
-                                    use_sparse_stoch=False):
+    def compute_lin_inter_transition_matrices(self, lamda=None, t_start=None,
+                                              t_stop=None,
+                                              t_s=10, fix_tau_k=False,
+                                              use_sparse_stoch=False):
         """Compute interevent transition matrices as a linear approximation of
         expm(-tau_k*lamda*L_k) based on the discrete time transition matrix.
             
@@ -1446,16 +1447,18 @@ class ContTempNetwork:
                 dtype=np.float64, format="csr")
 
         if not hasattr(self, "_stationary_trans"):
-            self._compute_stationary_transition(t_start=t_start, t_stop=t_stop,
-                                            verbose=verbose,
-                                            use_sparse_stoch=use_sparse_stoch)
+            self._compute_stationary_transition(
+                t_start=t_start, t_stop=t_stop,
+                use_sparse_stoch=use_sparse_stoch
+            )
 
         if not hasattr(self, "inter_T_lin"):
             self.inter_T_lin = dict()
 
         if lamda is None:
-            if verbose:
-                print("PID ", os.getpid(), " : ","taking lamda as 1/tau_w with tau_w = median interevent time")
+            logger.info(
+                "taking lamda as 1/tau_w with tau_w = median interevent time"
+            )
             lamda = 1/np.median(np.diff(self.times))
 
         compute = True
@@ -1463,9 +1466,10 @@ class ContTempNetwork:
         if lamda in self.inter_T_lin.keys():
             if t_s in self.inter_T_lin[lamda].keys():
                 compute = False
-                if verbose:
-                    print("PID ", os.getpid(), " : ","Interevent transition matrices already computed " +\
-                          f"for lamda={lamda}, t_s={t_s}")
+                logger.info(
+                    "Interevent transition matrices already computed "
+                    f"for lamda={lamda}, t_s={t_s}"
+                )
 
         if compute:
             if lamda not in self.inter_T_lin.keys():
@@ -1474,17 +1478,20 @@ class ContTempNetwork:
             else:
                 self.inter_T_lin[lamda][t_s] = []
 
-            if verbose:
-                print("PID ", os.getpid(), " : ","Computing interevent linear transition matrices for " +\
-                      f"lamda={lamda}, t_s={t_s}")
+            logger.info(
+                "Computing interevent linear transition matrices for "
+                f"lamda={lamda}, t_s={t_s}"
+            )
 
             t0 = time.time()
             for k, tk in enumerate(self.times[self._k_start_laplacians:
                                               self._k_stop_laplacians]):
-                if verbose and not k%1000:
-                    print("PID ", os.getpid(), " : ",k, " over " ,
-                          self._k_stop_laplacians-1-self._k_start_laplacians)
-                    print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+                if not k%1000:
+                    logger.info(
+                        f"{k} over "
+                        f"{self._k_stop_laplacians-1-self._k_start_laplacians}"
+                    )
+                    logger.info(f"{time.time()-t0:.2f}s")
 
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1516,8 +1523,7 @@ class ContTempNetwork:
                                                    t_s=t_s))
 
             if len(self.inter_T_lin[lamda][t_s]) == 0:
-                if verbose:
-                    print("PID ", os.getpid(), " no events, lin. trans. matrix = identity")
+                logger.info("no events, lin. trans. matrix = identity")
                 # is there was no event, the transition is identity
                 if use_sparse_stoch:
                     self.inter_T_lin[lamda].append(SparseStochMat.create_diag(size=self.num_nodes))
@@ -1529,13 +1535,12 @@ class ContTempNetwork:
             t_end = time.time()-t0
             self._compute_times[f"tran_matrices_lin_{lamda}_{t_s}"] = t_end
 
-            if verbose:
-                print("PID ", os.getpid(), " : ","Finished computing linear interevent transition matrices in ", t_end)
+            logger.info("Finished computing linear interevent transition "
+                        f"matrices in {t_end}")
 
 
 
     def compute_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False,
                                     save_intermediate=True,
                                     reverse_time=False,
                                     force_csr=False,
@@ -1555,8 +1560,7 @@ class ContTempNetwork:
         if reverse_time:
             k_init = len(self.inter_T[lamda])-1
             k_range = reversed(range(k_init))
-            if verbose:
-                print("PID ", os.getpid(), " : reversed time computation.")
+            logger.info("Reversed time computation.")
         else:
             k_init = 0
             k_range = range(1,len(self.inter_T[lamda]))
@@ -1588,15 +1592,14 @@ class ContTempNetwork:
 
 
 
-            if verbose:
-                print("PID ", os.getpid(), " : ","Computing transition matrix")
+            logger.info("Computing transition matrix")
 
             t0 = time.time()
 
             for k in k_range:
-                if verbose and not k%1000:
-                    print("PID ", os.getpid(), " : ",k, " over " , len(self.inter_T[lamda]))
-                    print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+                if not k%1000:
+                    logger.info(f"{k} over {len(self.inter_T[lamda])}")
+                    logger.info(f"{time.time()-t0:.2f}s")
 
                 Tk = self.inter_T[lamda][k]
                 if tol is not None:
@@ -1624,15 +1627,15 @@ class ContTempNetwork:
 
             self._compute_times[f"trans_matrix_{lamda}_rev{reverse_time}"] = t_end
 
-            if verbose:
-                print("PID ", os.getpid(), " : ", f"finished in {t_end:.2f}s")
-        elif verbose:
-            print("PID ", os.getpid(), " : ",f"Transition matrices already computed for lamda={lamda}")
+            logger.info(f"Finished in {t_end:.2f}s")
+        logger.info(
+            f"Transition matrices already computed for lamda={lamda}"
+        )
 
-    def compute_lin_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False, t_s=10,
-                                    save_intermediate=True,
-                                    reverse_time=False):
+    def compute_lin_transition_matrices(self, lamda=None,
+                                        t_start=None, t_stop=None,
+                                        t_s=10, save_intermediate=True,
+                                        reverse_time=False):
         """Compute transition matrices and saves them in a dict of lists `self.T_lin[lamda][t_s]`
         where `self.T_lin[lamda][t_s][k]` is the product of all interevent transition 
         matrices from t_0 to t_k computed with lamda and t_s.
@@ -1650,17 +1653,15 @@ class ContTempNetwork:
         if lamda in self.T_lin.keys():
             if t_s in self.T_lin[lamda].keys():
                 compute = False
-                if verbose:
-                    print("PID ", os.getpid(), " : ","Transition matrices already computed " +\
-                          f"for lamda={lamda}, t_s={t_s}")
+                logger.info("Transition matrices already computed "
+                            f"for lamda={lamda}, t_s={t_s}")
 
         if compute:
 
             if reverse_time:
                 k_init = len(self.inter_T_lin[lamda][t_s])-1
                 k_range = reversed(range(k_init))
-                if verbose:
-                    print("PID ", os.getpid(), " : reversed time computation.")
+                logger.info("Reversed time computation.")
             else:
                 k_init = 0
                 k_range = range(1,len(self.inter_T_lin[lamda][t_s]))
@@ -1680,15 +1681,16 @@ class ContTempNetwork:
                 else:
                     self.T_lin[lamda][t_s] = self.inter_T_lin[lamda][t_s][k_init]
 
-            if verbose:
-                print("PID ", os.getpid(), " : ",f"Computing transition matrix for lamda={lamda}, t_s={t_s}")
+            logger.info(
+                f"Computing transition matrix for lamda={lamda}, t_s={t_s}"
+            )
 
             t0 = time.time()
 
             for k in k_range:
-                if verbose and not k%1000:
-                    print("PID ", os.getpid(), " : ",k, " over " , len(self.inter_T_lin[lamda][t_s]))
-                    print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+                if not k%1000:
+                    logger.info(f"{k} over {len(self.inter_T_lin[lamda][t_s])}")
+                    logger.info(f"{time.time()-t0:.2f}s")
                 if save_intermediate:
                     self.T_lin[lamda][t_s].append(self.T_lin[lamda][t_s][-1] @ \
                                       self.inter_T_lin[lamda][t_s][k])
@@ -1706,22 +1708,19 @@ class ContTempNetwork:
 
             self._compute_times[f"trans_matrix_lin_{lamda}_{t_s}_rev{reverse_time}"] = t_end
 
-            if verbose:
-                print("PID ", os.getpid(), " : ","finished in ", t_end)
-        elif verbose:
-            print("PID ", os.getpid(), " : ",f"Transition matrices already computed for lamda={lamda}")
+            logger.info(f"Finished in {t_end}s")
+        logger.info(
+            f"Transition matrices already computed for lamda={lamda}"
+        )
 
     def _compute_stationary_transition(self, t_start=None,
                                                t_stop=None,
-                                               verbose=False,
                                                use_sparse_stoch=True):
 
         if not hasattr(self, "laplacians"):
             self.compute_laplacian_matrices(t_start=t_start,
-                                            t_stop=t_stop,
-                                            verbose=verbose)
-        if verbose:
-            print("PID ", os.getpid(), " : ","Computing stationary transition matrices")
+                                            t_stop=t_stop)
+        logger.info("Computing stationary transition matrices")
 
         self._stationary_trans = []
 
@@ -1732,9 +1731,9 @@ class ContTempNetwork:
 
         t0 = time.time()
         for k in range(len(self.laplacians)):
-            if verbose and not k%1000:
-                print("PID ", os.getpid(), " : ",k, " over " , len(self.laplacians))
-                print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
+            if not k%1000:
+                logger.info(f"{k} over {len(self.laplacians)}")
+                logger.info(f"{time.time()-t0:.2f}s")
 
             if use_sparse_stoch:
                 self._stationary_trans.append(\
@@ -1749,13 +1748,12 @@ class ContTempNetwork:
 
         self._compute_times["_stationary_trans"] = t_end
 
-        if verbose:
-            print("PID ", os.getpid(), " : ",f"Stationary transition matrices computation took {t_end}s")
+        logger.info(f"Stationary transition matrices computation took {t_end}s")
 
 
 
 
-    def _merge_overlapping_events(self, verbose=False):
+    def _merge_overlapping_events(self):
         """Merge temporally overlapping undirected event between each pair of nodes.
             
         """
@@ -1764,7 +1762,7 @@ class ContTempNetwork:
         A = self.compute_static_adjacency_matrix()
 
         # loop over nodes
-        for i,n1 in enumerate(self.node_array):
+        for i, n1 in enumerate(self.node_array):
 
             for n2 in (A[n1,:] > 0).nonzero()[1]:
 
@@ -1796,12 +1794,10 @@ class ContTempNetwork:
                         merged += 1
                     else:
                         ev1 = ev2
-                if verbose:
-                    print(f"n1,n2 ({n1},{n2}): {merged} merged")
+                logger.info(f"n1,n2 ({n1},{n2}): {merged} merged")
 
         num_merged = (events_to_keep == False).sum()
-        print("PID ", os.getpid(), " : ","merged ",
-              num_merged, " events")
+        logger.info(f"Merged {num_merged} events.")
 
         self.events_table = self.events_table.loc[events_to_keep]
 
@@ -1818,11 +1814,6 @@ class ContTempNetwork:
         self._compute_time_grid()
 
         return num_merged
-
-
-
-
-
 
     def _compute_delta_trans_mat(self, lamda, round_zeros=True, tol=1e-8):
         """Comptes and put in a attribute `delta_inter_T` the matrix differences
@@ -1960,8 +1951,7 @@ class ContTempInstNetwork(ContTempNetwork):
 
 
     def compute_laplacian_matrices(self, t_start=None,
-                                       t_stop=None, verbose=False,
-                                       save_adjacencies=False):
+                                   t_stop=None, save_adjacencies=False):
         """Compute all laplacian matrices and saves them in self.laplacians
         
         Computes from the first time index before or equal to t_start until
@@ -1973,8 +1963,7 @@ class ContTempInstNetwork(ContTempNetwork):
         The laplacian at step k, is the random walk laplacian
         between times[k] and times[k+1]
         """
-        if verbose:
-            print("PID ", os.getpid(), " : ","Computing Laplacians")
+        logger.info("Computing Laplacians")
 
         if not hasattr(self, "time_grid"):
             self._compute_time_grid()
@@ -2026,9 +2015,11 @@ class ContTempInstNetwork(ContTempNetwork):
                        self._t_stop_laplacians)]
 
         for k, (tk, time_ev) in enumerate(time_grid_range.groupby(level="times")):
-            if verbose and not k%1000:
-                print("PID ", os.getpid(), " : ",k, " over " ,
-                      self._k_stop_laplacians - self._k_start_laplacians)
+            if not k%1000:
+                logger.info(
+                    f"{k} over "
+                    f"{self._k_stop_laplacians - self._k_start_laplacians}"
+                )
                 print(f"PID {os.getpid()} : {time.time()-t0:.2f}s")
 
             meet_id = time_ev.index.get_level_values("id")
@@ -2080,14 +2071,12 @@ class ContTempInstNetwork(ContTempNetwork):
 
         t_end = time.time()-t0
         self._compute_times["laplacians"] = t_end
-        if verbose:
-            print("PID ", os.getpid(), " : ","finished in ", t_end)
+        logger.info(f"Finished in {t_end}")
 
 
 
 
     def compute_inter_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False,
                                     use_sparse_stoch=False,
                                     dense_expm=True):
         """Compute interevent transition matrices as T_k(lamda) = expm(-lamda*L_k).
@@ -2108,14 +2097,13 @@ class ContTempInstNetwork(ContTempNetwork):
         super().compute_inter_transition_matrices(lamda=lamda,
                                                   t_start=t_start,
                                                   t_stop=t_stop,
-                                                  verbose=verbose,
                                                   fix_tau_k=True,
                                                   use_sparse_stoch=use_sparse_stoch,
                                                   dense_expm=dense_expm)
 
 
     def compute_lin_inter_transition_matrices(self, lamda=None, t_start=None, t_stop=None,
-                                    verbose=False, t_s=10,
+                                    t_s=10,
                                     use_sparse_stoch=False):
         """Compute interevent transition matrices as a linear approximation of
         expm(-lamda*L_k) based on the discrete time transition matrix.
@@ -2142,7 +2130,6 @@ class ContTempInstNetwork(ContTempNetwork):
                                                 lamda=lamda,
                                                 t_start=t_start,
                                                 t_stop=t_stop,
-                                                verbose=verbose,
                                                 t_s=t_s,
                                                 fix_tau_k=True,
                                                 use_sparse_stoch=use_sparse_stoch)
@@ -2259,7 +2246,7 @@ def compute_stationary_transition(T):
     return csr_matrix((data, indices, indptr), shape=(num_nodes,num_nodes),
                     dtype=np.float64)
 
-def compute_subspace_expm(A, n_comp=None, comp_labels=None, verbose=False,
+def compute_subspace_expm(A, n_comp=None, comp_labels=None,
                            thresh_ratio=None,
                            normalize_rows=True):
     """Compute the exponential matrix of `A` by applying expm on each connected
@@ -2295,8 +2282,7 @@ def compute_subspace_expm(A, n_comp=None, comp_labels=None, verbose=False,
     cmp_indices = [(comp_labels == cmp).nonzero()[0] for \
                           cmp in range(n_comp)]
 
-    if verbose:
-        print("PID ", os.getpid(), f" : subspace_expm with {n_comp} components")
+    logger.info(f"subspace_expm with {n_comp} components")
 
     # constructors for sparse array
     data = np.zeros((comp_sizes**2).sum(), dtype=np.float64)
@@ -2308,18 +2294,17 @@ def compute_subspace_expm(A, n_comp=None, comp_labels=None, verbose=False,
     # else:
     #     expm_func = lambda M: compute_parallel_expm(M, nproc=nproc,
     #                                                 thresh_ratio=None,
-    #                                                 normalize_rows=False,
-    #                                                 verbose=verbose)
+    #                                                 normalize_rows=False)
     subnets_expms = []
     for i, cmp_ind in enumerate(cmp_indices):
-        if verbose:
-            print("PID ", os.getpid(), f" : computing component {i} over {n_comp}, with size {cmp_ind.size}")
+        logger.info(
+            f"Computing component {i} over {n_comp}, with size {cmp_ind.size}"
+        )
 
         subnets_expms.append(expm(A[cmp_ind,:][:,cmp_ind]).toarray())
 
     # reconstruct csr sparse matrix
-    if verbose:
-            print("PID ", os.getpid(), " : reconstructing expm mat")
+    logger.info("Reconstructing expm mat")
     data_ind = 0
     for row in range(num_nodes):
         cmp = comp_labels[row]
@@ -2483,8 +2468,7 @@ def numpy_rebuild_nnz_rowcol(T_data,
 
 def sparse_lapl_expm(L, fact, dense_expm=True, nproc=1,
                      thresh_ratio=None,
-                     normalize_rows=True,
-                     verbose=False):
+                     normalize_rows=True):
     """ 
     computes the matrix exponential of a laplacian L, expm(-fact*L), 
     considering only the non-zeros rows/cols of L
@@ -2525,14 +2509,12 @@ def sparse_lapl_expm(L, fact, dense_expm=True, nproc=1,
     if nproc == 1:
         expm_func = partial(compute_subspace_expm,
                             A=-fact*L_small,
-                            verbose=verbose,
                             thresh_ratio=thresh_ratio,
                             normalize_rows=normalize_rows)
 
     else:
         expm_func = partial(compute_subspace_expm_parallel,
                             A=-fact*L_small,
-                            verbose=verbose,
                             nproc=nproc,
                             thresh_ratio=thresh_ratio,
                             normalize_rows=normalize_rows)
@@ -2658,8 +2640,3 @@ def set_to_zeroes(Tcsr, tol=1e-8, relative=True, use_absolute_value=False):
                 Tcsr.eliminate_zeros()
         else:
             raise TypeError("Tcsr must be csc,csr or SparseStochMat")
-
-
-
-
-
