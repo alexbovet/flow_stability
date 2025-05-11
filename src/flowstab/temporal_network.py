@@ -1297,9 +1297,9 @@ class ContTempNetwork:
 
         t_end = time.time()-t0
         self._compute_times["laplacians"] = t_end
-        logger.info(f"PID {os.getpid()}: finished in {t_end}")
+        logger.info(f"Finished in {t_end}")
 
-    def compute_inter_transition_matrices(self, lamda=None, t_start=None,
+    def compute_inter_transition_matrices(self, *, lamda=None, t_start=None,
                                           t_stop=None, fix_tau_k=False,
                                           use_sparse_stoch=False,
                                           dense_expm=True):
