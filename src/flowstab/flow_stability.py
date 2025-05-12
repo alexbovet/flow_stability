@@ -2852,3 +2852,38 @@ class FlowStability:
                 f"Falied to initiate the FlowIntegralClustering: {e}"
             )
         return self
+
+    def run(self, direction:int=1, restart:bool=False):
+        """Perform a flow stability analysis.
+
+        Parameters
+        ----------
+        direction:
+           Set the temporal direction to perform the flow analysis for.
+           Options are:
+
+           - 1: Forward in time
+           - -1: Backwards in time
+           - 0: Copute both directions
+        restart:
+           Indicate if the computation should be restarted from the very
+           beginning or to only re-run the parts that need to be computed again.
+
+           ..note::
+
+             With `restart=False`:
+
+             - If you call `run` multiple times, only the first call will
+               perform the computations.
+             - If you adapt a parameter in-between two `run` calls, then only
+               the parts of the analysis that are affected by this parameter
+               will be re-run agian.
+               Example: If you change the `time_scale` parameter, then the
+               computation of the analysis will be re-run form the computation
+               of the inter transition matrices onwards, but the laplacian
+               matrices will not be re-run, as they do not depend on the
+               `time_scale` parameter.
+               it 
+        """
+        pass
+
