@@ -43,4 +43,13 @@ autoapi_dirs = ["../src/", ]
 autoapi_file_patterns = ['*.py', ]
 autoapi_member_order = "groupwise"
 autoapi_python_class_content = "both"
+autoapi_options = [
+    'members',
+    # 'undoc-members',
+    # 'private-members',
+    'show-inheritance',
+    'show-module-summary',
+    'special-members',
+    'imported-members',
+]
 # autoapi_ignore = ["*conf.py", "*setup.py" , "*_cython*.pyx", ]
