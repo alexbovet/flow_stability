@@ -2554,8 +2554,23 @@ class FlowStability:
         If the input is neither a DataFrame nor a valid CSV file path.
     """
 
-    def __init__(self, temporal_network: pd.DataFrame|str|Path|None=None,
+    def __init__(self, *,
+                 temporal_network: pd.DataFrame|str|Path|None=None,
+                 time_scale: int|float|None=None,
+                 t_start: int|float|None=None,
+                 t_stop: int|float|None=None,
                  **kwargs: Any):
+        """
+        Initiate a flow stability analysis.
+
+
+        Parameters
+        ----------
+        temporal_network: Union[pd.DataFrame, str, Path]
+            A Pandas DataFrame containing the contact sequence, a string 
+            representing the path to a CSV file, or a Path object pointing 
+            to the CSV file.
+        """
         # this variable track the progress of the analysis - enum would be good
         self._state = 0
         self._temporal_network = None
@@ -2869,21 +2884,20 @@ class FlowStability:
            Indicate if the computation should be restarted from the very
            beginning or to only re-run the parts that need to be computed again.
 
-           ..note::
+           .. note::
+               With `restart=False`:
 
-             With `restart=False`:
-
-             - If you call `run` multiple times, only the first call will
-               perform the computations.
-             - If you adapt a parameter in-between two `run` calls, then only
-               the parts of the analysis that are affected by this parameter
-               will be re-run agian.
-               Example: If you change the `time_scale` parameter, then the
-               computation of the analysis will be re-run form the computation
-               of the inter transition matrices onwards, but the laplacian
-               matrices will not be re-run, as they do not depend on the
-               `time_scale` parameter.
-               it 
+               - If you call `run` multiple times, only the first call will
+                 perform the computations.
+               - If you adapt a parameter in-between two `run` calls, then only
+                 the parts of the analysis that are affected by this parameter
+                 will be re-run agian.
+                 Example: If you change the `time_scale` parameter, then the
+                 computation of the analysis will be re-run form the computation
+                 of the inter transition matrices onwards, but the laplacian
+                 matrices will not be re-run, as they do not depend on the
+                 `time_scale` parameter.
+                 it 
         """
         pass
 
