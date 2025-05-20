@@ -7,6 +7,7 @@ from typing import Collection, Any
 import os
 import time
 import importlib.util
+import logging
 
 
 import numpy as np
@@ -18,6 +19,8 @@ from itertools import combinations
 from scipy.sparse import csc_matrix, csr_matrix, isspmatrix_csr, diags, eye
 from scipy.sparse.linalg import eigs
 from scipy.optimize import linear_sum_assignment
+
+from .logger import get_logger
 
 from .sparse_stoch_mat import (
     USE_SPARSE_DOT_MKL,
@@ -49,9 +52,16 @@ else:
     print("Could not load cython functions")
     USE_CYTHON = False
 
+# get the logger
+logger = get_logger()
+
+
 class Partition:
-    """A node partition that can be described as a list of node sets
-    and a node to cluster dict.
+    """Node partition as a list of node sets and a node to cluster dict.
+
+    A Partition object represents a node partition that can be described as
+    a list of node sets and a node to cluster dict. It provides methods to
+    manipulate and analyze the partition.
     """
 
     def __init__(self,
@@ -60,17 +70,25 @@ class Partition:
                  node_to_cluster_dict:dict|None=None,
                  check_integrity:bool=False):
         """
-        TODO: complete dosctring (scipy style) respect conventions and line width)
+        Initialize a Partition object.
 
         Parameters
         ----------
-        num_nodes:
-          The number of nodes in the partition
-        cluster_list:
-          A list of clusters with each cluster being a set of nodes
-        node_to_custer_dict:
-          A mapping that maps each node to the index of the corresponding
-          cluster in `cluster_list`
+        num_nodes : int
+            Number of nodes in the partition.
+        cluster_list : Collection | None, optional
+            List of clusters with each cluster being a set of nodes.
+        node_to_cluster_dict : dict | None, optional
+            Mapping that maps each node to the index of the corresponding
+            cluster in `cluster_list`.
+        check_integrity : bool, optional
+            If True, check that all nodes are in only one cluster.
+
+        .. note::
+            If both `cluster_list` and `node_to_cluster_dict` are provided,
+            a ValueError is raised. If neither is provided, the default
+            clustering is one node per cluster.
+
         """
 
         self.num_nodes = num_nodes
@@ -103,12 +121,28 @@ class Partition:
             self.check_integrity()
 
     def __repr__(self):
+        """
+        Return a string representation of the Partition object.
 
+        Returns
+        -------
+        str
+            A string representation of the Partition object.
+        """
         return f"Partition with {self.num_nodes} nodes and {self.get_num_clusters()} clusters."
 
 
     def move_node(self,node, c_f):
-        """Moves a node to cluster `c_f`"""
+        """
+        Move a node to cluster `c_f`.
+
+        Parameters
+        ----------
+        node : int
+            The node to move.
+        c_f : int
+            The index of the cluster to move the node to.
+        """
         # initial cluster
         c_i = self.node_to_cluster_dict[node]
 
@@ -121,8 +155,13 @@ class Partition:
 
 
     def remove_empty_clusters(self):
-        """Removes empty clusters from `cluster_list` and  `node_to_cluster_dict`
-        and reindexes clusters.
+        """
+        Remove empty clusters from `cluster_list` and  `node_to_cluster_dict`
+        and reindex clusters.
+
+        This method removes any empty clusters from the `cluster_list` and
+        updates the `node_to_cluster_dict` accordingly. It also reindexes the
+        clusters to ensure that the indices are consecutive.
         """
         self.cluster_list = [c for c in self.cluster_list if len(c) > 0 ]
         self.node_to_cluster_dict = {}
@@ -131,21 +170,37 @@ class Partition:
                 self.node_to_cluster_dict[node] = i
 
     def get_num_clusters(self, non_empty=False):
+        """
+        Get the number of clusters in the partition.
 
+        Parameters
+        ----------
+        non_empty : bool, optional
+            If True, only count non-empty clusters. Default is False.
+
+        Returns
+        -------
+        int
+            The number of clusters in the partition.
+        """
         if non_empty:
             return len([c for c in self.cluster_list if len(c)>0])
         else:
             return len(self.cluster_list)
 
     def get_indicator(self, sparse=True):
-        """Returns an `N x c` indicator matrix `H` such that each row of `H`
-        correspond to one node and is all zeros except for a one 
-        indicating the cluster to which it belongs:
-                
-            `h_ik = 1` iff node i is in cluster k, and zero otherwise.
-                
-        if sparse=True, returns a csc sparse matrix
-            
+        """
+        Get the indicator matrix for the partition.
+
+        Parameters
+        ----------
+        sparse : bool, optional
+            If True, return a sparse indicator matrix. Default is True.
+
+        Returns
+        -------
+        ndarray or sparse matrix
+            The indicator matrix for the partition.
         """
         if sparse:
             # each column correspond to a cluster
@@ -174,7 +229,14 @@ class Partition:
             return H
 
     def iter_cluster_node_index(self):
-        """Returns an iterator giving a list of node indices for each cluster"""
+        """
+        Iterate over the node indices for each cluster.
+
+        Yields
+        ------
+        list
+            The node indices for each cluster.
+        """
         for c in self.cluster_list:
             yield list(c)
 
@@ -183,8 +245,16 @@ class Partition:
         return str(self.cluster_list)
 
     def check_integrity(self):
-        """Check that all nodes are in only one cluster,
-        i.e. non-overlapping clusters whose union is the full set of nodes.
+        """
+        Check the integrity of the partition.
+
+        This method checks that all nodes are in only one cluster, i.e.
+        non-overlapping clusters whose union is the full set of nodes.
+
+        Raises
+        ------
+        ValueError
+            If the partition is not valid.
         """
         inter = set()
         total_len = 0
@@ -203,57 +273,42 @@ class Partition:
 
 
 class BaseClustering:
-    """BaseClustering.
+    """
+    Base class for autocovariance matrix clustering with the Louvain algorithm.
 
-    TODO: fix formatting, complete (scipy style)
-        
-    Base Class for autocovariance matrix clustering with the Louvain algorithm.
-        
-    At least `T` or `S` must be given to initialize the clustering.
-    
-    Clusters can either be initilized with a cluster_list or a node_to_cluster_dict.
-
+    This class provides a base implementation for clustering autocovariance matrices
+    using the Louvain algorithm. It can be used to cluster nodes in a network based
+    on their autocovariance matrices.
 
     Parameters
-    ---------- 
-    T: numpy.ndarrays
+    ----------
+    T : numpy.ndarray
         NxN transition matrix, T[i,j] is the probability of going from node i to
         node j between t1 and t2.
-        
-    p1: numpy.ndarrays
+    p1 : numpy.ndarray
         Nx1 probability density at t1. Default is the uniform probability.
-        
-    p2: numpy.ndarrays
+    p2 : numpy.ndarray
         Nx1 probability density at t2. Default is p1 @ T.
-        
-    S: numpy.ndarrays
+    S : numpy.ndarray
         NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
-        
-    source_cluster_list: list
-        list of set of nodes describing the source partition. Default is singleton
+    source_cluster_list : list
+        List of sets of nodes describing the source partition. Default is singleton
         clusters.
-        
-    source_node_to_cluster_dict: dict
-        dictionary with mapping between nodes and source cluster number. Default is singleton
+    source_node_to_cluster_dict : dict
+        Dictionary with mapping between nodes and source cluster number. Default is
+        singleton clusters.
+    target_cluster_list : list
+        List of sets of nodes describing the target partition. Default is singleton
         clusters.
-        
-    target_cluster_list: list
-        list of set of nodes describing the target partition. Default is singleton
-        clusters.
-        
-    target_node_to_cluster_dict: dict
-        dictionary with mapping between nodes and target cluster number. Default is singleton
-        clusters.
-            
-    rnd_state: np.random.RandomState
+    target_node_to_cluster_dict : dict
+        Dictionary with mapping between nodes and target cluster number. Default is
+        singleton clusters.
+    rnd_state : np.random.RandomState
         Random state object. Default creates a new one.
-        
-    rnd_seed: int
+    rnd_seed : int
         Seed for the random object. Default is a random seed.
-        
-    S_threshold: float
+    S_threshold : float
         Smallest values of S. Used to trim insignificantly small values.
-    
     """
 
     def __init__(self, T=None, p1=None, p2=None, S=None,
@@ -264,7 +319,40 @@ class BaseClustering:
                        rnd_state=None, rnd_seed=None,
                        S_threshold=None):
         """
-        TODO: add docstring
+        Initialize a BaseClustering object.
+
+        Parameters
+        ----------
+        T : numpy.ndarray
+            NxN transition matrix.
+        p1 : numpy.ndarray
+            Nx1 probability density at t1.
+        p2 : numpy.ndarray
+            Nx1 probability density at t2.
+        S : numpy.ndarray
+            NxN covariance matrix.
+        source_cluster_list : list
+            List of sets of nodes describing the source partition.
+        source_node_to_cluster_dict : dict
+            Dictionary with mapping between nodes and source cluster number.
+        target_cluster_list : list
+            List of sets of nodes describing the target partition.
+        target_node_to_cluster_dict : dict
+            Dictionary with mapping between nodes and target cluster number.
+        rnd_state : np.random.RandomState
+            Random state object.
+        rnd_seed : int
+            Seed for the random object.
+        S_threshold : float
+            Smallest values of S.
+
+        .. note::
+            At least `T` or `S` must be provided to initialize the clustering.
+
+        .. note::
+            Clusters can either be initialized with a cluster_list or a
+            node_to_cluster_dict.
+
         """
 
         if T is None and S is None:
@@ -361,9 +449,20 @@ class BaseClustering:
 
 
     def _compute_S(self, S_threshold=None):
-        """Computes the internal matrix comparing probabilities for each
-        node
+        """
+        Compute the internal matrix comparing probabilities for each node.
+
                 S[i,j] = p1[i]*T[i,j] - p1[i]*p2[j]
+
+        Parameters
+        ----------
+        S_threshold : float
+            Smallest values of S.
+
+        Returns
+        -------
+        S : numpy.ndarray
+            The internal matrix comparing probabilities for each node.
                 
         Saves the matrix in `self._S`.
         """
@@ -379,13 +478,16 @@ class BaseClustering:
 
 
 
-    def _compute_clustered_autocov(self, partition=None):
+    def _compute_clustered_autocov(self, partition:tuple|None=None):
         """Compute the clustered autocovariance matrix based on `source_part`
         and `target_part`.
             
-        `partition` is a tuple with `(source_part, target_part)`.
-            
-        Default partitions are `self.source_part` and `self.target_part`.
+
+        Parameters
+        ----------
+        partition : tuple
+            Tuple containing the source and target partitions.
+            If not provided, `self.source_part` and `self.target_part` are used.
         """
         if partition is None:
             source_part = self.source_part
@@ -417,14 +519,22 @@ class BaseClustering:
 
     @staticmethod
     def _find_optimal_flow(R):
-        """For a given clustered autocovariance matrix `R`, returns the optimal
-        flow, i.e. the perfect matching between clusters that give the maximum
-        stability
-            
+        """
+        Find the optimal flow for a given clustered autocovariance matrix `R`.
+
+        Parameters
+        ----------
+        R : numpy.ndarray
+            The clustered autocovariance matrix.
+
         Returns
         -------
-            flow_stab, flow_map, flow_map_inv
-            
+        flow_stab : float
+            The stability of the optimal flow.
+        flow_map : dict
+            The mapping between source and target clusters.
+        flow_map_inv : dict
+            The inverse mapping between target and source clusters.
         """
         row_ind, col_ind = linear_sum_assignment(1-R)
 
@@ -434,8 +544,18 @@ class BaseClustering:
 
 
     def compute_stability(self, R=None):
-        """Returns the stability
-            
+        """
+        Compute the stability of the clustering.
+
+        Parameters
+        ----------
+        R : numpy.ndarray
+            The clustered autocovariance matrix.
+
+        Returns
+        -------
+        stability : float
+            The stability of the clustering.
         """
         raise NotImplementedError
 
@@ -444,17 +564,32 @@ class BaseClustering:
                                        c_f,
                                        Rold,
                                        partition=None):
-        """Return the new clustered autocov matrix obtained from `Rold`
-        by moving node `k` from `c_i = (c_i_s,c_i_t)` into bi-cluster 
-        `c_f = (c_f_s,c_f_t)`.
-            
-        If given, the list of original clusters is given by 
-        `partition = (source_part, target_part)`.
-        Otherwise is taken from `self.source_part` and `self.target_part`.
-            
-        `Rold` should be the output of `_compute_delta_R_moveout`.
-            
-        `c_f` may be an empty cluster
+        """
+        Compute the new clustered autocovariance matrix after moving node `k`
+        to cluster `c_f`.
+
+        Parameters
+        ----------
+        k : int
+            The node to move.
+        c_i : tuple
+            The current cluster of node `k`.
+        c_f : tuple
+            The new cluster of node `k`.
+
+            .. note::
+                This can also be empty.
+        Rold : numpy.ndarray
+            The old clustered autocovariance matrix.
+            This should be an ouptut of `_compute_delta_R_moveout`.
+        partition : tuple, optional
+            The partition of the nodes. If not provided, the default partition
+            `(self.soruce_part, self.target_part)` is used
+
+        Returns
+        -------
+        Rnew : numpy.ndarray
+            The new clustered autocovariance matrix.
         """
         c_i_s, c_i_t = c_i
         c_f_s, c_f_t = c_f
@@ -495,17 +630,30 @@ class BaseClustering:
     def _compute_new_R_moveout(self, k, c_i,
                                  partition=None,
                                  Rold=None):
-        """Return the  new clustered autocov matrix obtained from `Rold`
-        by moving node k out of the bi-cluster `c_i = (c_i_s, c_i_t)`.
-            
-        If given, the list of original clusters is given by 
-        `partition = (source_part, target_part)`.
-        Otherwise is taken from `self.source_part` and `self.target_part`.
-            
-        If `Rold` is not given, it will be recomputed.
-            
-        c_i is assumed to be non-empty!
-            
+        """
+        Compute the new clustered autocovariance matrix after moving node `k`
+        out of cluster `c_i`.
+
+        Parameters
+        ----------
+        k : int
+            The node to move.
+        c_i : tuple
+            The current cluster of node `k`.
+
+            .. warning::
+                This is assumed to be non-empty!
+
+        partition : tuple, optional
+            The partition of the nodes. If not provided, the default partition
+            `(self.soruce_part, self.target_part)` is used
+        Rold : numpy.ndarray, optional
+            The old clustered autocovariance matrix. If not provided, it is recomputed.
+
+        Returns
+        -------
+        Rnew : numpy.ndarray
+            The new clustered autocovariance matrix.
         """
         c_i_s, c_i_t = c_i
 
@@ -577,7 +725,6 @@ class BaseClustering:
     def _louvain_move_nodes(self,
                            delta_r_threshold=np.finfo(float).eps,
                            n_sub_iter_max=1000,
-                           verbose=False,
                            print_num_loops=False):
         """Return delta_r_tot, n_loop
         
@@ -595,9 +742,9 @@ class BaseClustering:
 
             delta_r_loop = 0
 
-            if verbose:
-                print("\n-------------")
-                print("Louvain sub loop number " + str(n_loop))
+            logger.info(
+                f"\n-------------\nLouvain sub loop number {n_loop}"
+            )
 
             if print_num_loops:
                 if not n_loop%100:
@@ -614,8 +761,7 @@ class BaseClustering:
                 # initial cluster of node
                 c_i = self._get_node_cluster(node)
 
-                if verbose >1:
-                    print(f"++ treating node {node} from cluster {c_i}")
+                logger.info(f"++ treating node {node} from cluster {c_i}")
 
                 # new R if we move node out of (c_i_s,c_i_t)
                 R_out = self._compute_new_R_moveout(node, c_i,
@@ -636,9 +782,9 @@ class BaseClustering:
                         # total gain of moving node
                         delta_r = self.compute_stability(Rnew) - stability
 
-                        if verbose >= 10:
-                            print(" -- checking cluster: ", c_f)
-                            print(" -- delta_r: ", delta_r)
+                        logger.debug(
+                            f" -- checking cluster: {c_f}\n -- {delta_r=}"
+                        )
                         # we use `>=` to allow for more mixing (can be useful)
                         if delta_r >= delta_r_best:
                             delta_r_best = delta_r
@@ -654,28 +800,27 @@ class BaseClustering:
                     stability += delta_r_best
                     R = Rnew_best
 
-                    if verbose > 1:
-                        print(f"moved node {node} from cluster {c_i} to cluster {c_f_best}")
+                    logger.info(
+                        f"moved node {node} from cluster {c_i} to "
+                        f"cluster {c_f_best}"
+                    )
 
                 # else do nothing
-                elif verbose > 1:
-                        print(f"node {node} in clusters ({c_i}) has not moved")
+                logger.info(
+                    f"node {node} in clusters ({c_i}) has not moved"
+                )
 
-
-
-
-            if verbose:
-                print("\ndelta r loop : " + str(delta_r_loop))
-                print("delta r total : " + str(delta_r_tot))
-                print("number of clusters : " + \
-                      str(self._get_num_clusters()))
-                if verbose>1:
-                    print("** clusters : ")
-                    for cl in self._get_cluster_list().items():
-                        print("** ", cl)
-
+            logger.info(
+                f"\ndelta r loop : {delta_r_loop}\n"
+                f"delta r total : {delta_r_tot}\n"
+                f"number of clusters : {self._get_num_clusters()}\n"
+            )
+            logger.debug("** clusters : ")
+            if logger.level == logging.DEBUG:
+                for cl in self._get_cluster_list().items():
+                    logger.debug(f"** {cl}")
                 if delta_r_loop == 0:
-                    print("No changes, exiting.")
+                    logger.debug("No changes, exiting.")
 
             delta_r_tot += delta_r_loop
 
@@ -819,7 +964,6 @@ class BaseClustering:
             # sub loop
             delta_r_meta_loop, n_sub_loops = meta_clustering._louvain_move_nodes(delta_r_threshold,
                                                 n_sub_iter_max,
-                                                verbose,
                                                 print_num_loops)
 
             if print_num_loops:
