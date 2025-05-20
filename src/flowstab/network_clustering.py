@@ -279,39 +279,11 @@ class BaseClustering:
     """
     Base class for autocovariance matrix clustering with the Louvain algorithm.
 
-    This class provides a base implementation for clustering autocovariance matrices
-    using the Louvain algorithm. It can be used to cluster nodes in a network based
-    on their autocovariance matrices.
+    This class provides a base implementation for clustering autocovariance
+    matrices using the Louvain algorithm.
+    It can be used to cluster nodes in a network based on their autocovariance
+    matrices.
 
-    Parameters
-    ----------
-    T : numpy.ndarray
-        NxN transition matrix, T[i,j] is the probability of going from node i to
-        node j between t1 and t2.
-    p1 : numpy.ndarray
-        Nx1 probability density at t1. Default is the uniform probability.
-    p2 : numpy.ndarray
-        Nx1 probability density at t2. Default is p1 @ T.
-    S : numpy.ndarray
-        NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
-    source_cluster_list : list
-        List of sets of nodes describing the source partition. Default is singleton
-        clusters.
-    source_node_to_cluster_dict : dict
-        Dictionary with mapping between nodes and source cluster number. Default is
-        singleton clusters.
-    target_cluster_list : list
-        List of sets of nodes describing the target partition. Default is singleton
-        clusters.
-    target_node_to_cluster_dict : dict
-        Dictionary with mapping between nodes and target cluster number. Default is
-        singleton clusters.
-    rnd_state : np.random.RandomState
-        Random state object. Default creates a new one.
-    rnd_seed : int
-        Seed for the random object. Default is a random seed.
-    S_threshold : float
-        Smallest values of S. Used to trim insignificantly small values.
     """
 
     def __init__(self, T=None, p1=None, p2=None, S=None,
@@ -327,27 +299,32 @@ class BaseClustering:
         Parameters
         ----------
         T : numpy.ndarray
-            NxN transition matrix.
+            NxN transition matrix, T[i,j] is the probability of going from
+            node i to node j between t1 and t2.
         p1 : numpy.ndarray
-            Nx1 probability density at t1.
+            Nx1 probability density at t1. Default is the uniform probability.
         p2 : numpy.ndarray
-            Nx1 probability density at t2.
+            Nx1 probability density at t2. Default is p1 @ T.
         S : numpy.ndarray
-            NxN covariance matrix.
+            NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
         source_cluster_list : list
-            List of sets of nodes describing the source partition.
+            List of sets of nodes describing the source partition. Default is
+            singleton clusters.
         source_node_to_cluster_dict : dict
             Dictionary with mapping between nodes and source cluster number.
+            Default is singleton clusters.
         target_cluster_list : list
             List of sets of nodes describing the target partition.
+            Default is singleton clusters.
         target_node_to_cluster_dict : dict
             Dictionary with mapping between nodes and target cluster number.
+            Default is singleton clusters.
         rnd_state : np.random.RandomState
-            Random state object.
+            Random state object. Default creates a new one.
         rnd_seed : int
-            Seed for the random object.
+            Seed for the random object. Default is a random seed.
         S_threshold : float
-            Smallest values of S.
+            Smallest values of S. Used to trim insignificantly small values.
 
         .. note::
             At least `T` or `S` must be provided to initialize the clustering.
@@ -1074,49 +1051,12 @@ class BaseClustering:
 class Clustering(BaseClustering):
     """Symmetric Clustering.
 
-    TODO: fix formatting; complete docstring
-    
     Finds the best partition that optimizes the stability between two times 
     defined as the trace of the clustered autocovariance matrix.
         
-    
     At least `T` must be given to initialize the clustering.
     
     Clusters can either be initilized with a cluster_list or a node_to_cluster_dict.
-
-
-    Parameters
-    ---------- 
-    T: numpy.ndarrays
-        NxN transition matrix, T[i,j] is the probability of going from node i to
-        node j between t1 and t2.
-        
-    p1: numpy.ndarrays
-        Nx1 probability density at t1. Default is the uniform probability.
-        
-    p2: numpy.ndarrays
-        Nx1 probability density at t2. Default is p1 @ T.
-        
-    S: numpy.ndarrays
-        NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
-        
-    cluster_list: list
-        list of set of nodes describing the partition. Default is singleton
-        clusters.
-        
-    node_to_cluster_dict: dict
-        dictionary with mapping between nodes and cluster number. Default is singleton
-        clusters.
-        
-    rnd_state: np.random.RandomState
-        Random state object. Default creates a new one.
-        
-    rnd_seed: int
-        Seed for the random object. Default is a random seed.
-    
-    S_threshold: float
-        Smallest values of S. Used to trim insignificantly small values.
-        
     """
 
     def __init__(self, p1=None, p2=None,T=None, S=None,
@@ -1124,6 +1064,41 @@ class Clustering(BaseClustering):
                        node_to_cluster_dict=None,
                        rnd_state=None, rnd_seed=None,
                        S_threshold=None):
+        """
+
+        Parameters
+        ---------- 
+        T: numpy.ndarrays
+            NxN transition matrix, T[i,j] is the probability of going from node i to
+            node j between t1 and t2.
+            
+        p1: numpy.ndarrays
+            Nx1 probability density at t1. Default is the uniform probability.
+            
+        p2: numpy.ndarrays
+            Nx1 probability density at t2. Default is p1 @ T.
+            
+        S: numpy.ndarrays
+            NxN covariance matrix. Default is diag(p1) @ T - outer(p1,p2).
+            
+        cluster_list: list
+            list of set of nodes describing the partition. Default is singleton
+            clusters.
+            
+        node_to_cluster_dict: dict
+            dictionary with mapping between nodes and cluster number. Default is singleton
+            clusters.
+            
+        rnd_state: np.random.RandomState
+            Random state object. Default creates a new one.
+            
+        rnd_seed: int
+            Seed for the random object. Default is a random seed.
+        
+        S_threshold: float
+            Smallest values of S. Used to trim insignificantly small values.
+
+        """
 
         super().__init__(p1=p1, p2=p2,T=T, S=S,
                        source_cluster_list=cluster_list,
