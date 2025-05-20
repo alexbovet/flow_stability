@@ -27,7 +27,7 @@ from multiprocessing import Pool, RawArray
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from .flow_stability import Clustering, SparseClustering, norm_var_information
+from .network_clustering import Clustering, SparseClustering, norm_var_information
 from .sparse_stoch_mat import SparseAutocovMat
 
 # A global dictionary storing the variables passed from the initializer.

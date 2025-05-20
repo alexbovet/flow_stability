@@ -39,7 +39,7 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
-from ..flow_stability import FlowIntegralClustering
+from ..network_clustering import FlowIntegralClustering
 from ..temporal_network import ContTempNetwork as NetClass
 
 # raise Exception
