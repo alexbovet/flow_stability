@@ -1,5 +1,8 @@
 """
-TODO: Write docstirng in scipy style (respect line width!)
+Module for network clustering and related operations
+
+Copyright (C) 2021 Alexandre Bovet <alexandre.bovet@maths.ox.ac.uk>
+
 """
 from __future__ import annotations
 from typing import Collection, Any
