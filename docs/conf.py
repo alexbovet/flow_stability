@@ -45,7 +45,7 @@ autoapi_member_order = "groupwise"
 autoapi_python_class_content = "both"
 autoapi_options = [
     'members',
-    # 'undoc-members',
+    'undoc-members',
     # 'private-members',
     'show-inheritance',
     'show-module-summary',
