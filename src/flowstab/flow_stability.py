@@ -1,4 +1,4 @@
-"""#
+"""
 # flow stability
 #
 # Copyright (C) 2021 Alexandre Bovet <alexandre.bovet@maths.ox.ac.uk>
@@ -19,14 +19,17 @@
 
 """
 from __future__ import annotations
-from typing import Any
+from typing import Any, Iterator
 
 import warnings
 import textwrap
-import functools
+import inspect
 
+from functools import wraps, total_ordering
 from pathlib import Path
+from enum import Enum
 
+import numpy as np
 import pandas as pd
 
 from .logger import get_logger
@@ -52,11 +55,41 @@ def include_doc_from(cls):
 class ProcessException(Exception):
     pass
 
+@total_ordering
+class States(Enum):
+    """Defines the stages of a flow stability analysis"""
+    INITIAL = 0
+    """Initiated an flow stability analysis with no, or incomplete data"""
+    TEMP_NW = 1
+    """Ready to calculate the Laplacian matrices"""
+    LAPLAC = 2
+    """Ready to calculate the inter transition matrices"""
+    INTERT = 3
+    """Ready to ..."""
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+def update_state(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        # Get the name of the method being called
+        property_name = method.__name__
+        # Call the original method
+        is_unset = method(self, *args, **kwargs)
+        self._set_state(property=property_name, is_unset=is_unset)
+        return None
+    return wrapper
+
 def ok_state(method):
-    @functools.wraps(method)
+    @wraps(method)
     def wrapper(self, *args, **kwargs):
         # Get the name of the method being called
         method_name = method.__name__
+        print(f"{method_name=}")
         required_state = self._run_at.get(method_name)
         if self._state < required_state:
             raise ProcessException(
@@ -78,16 +111,6 @@ class FlowStability:
     This class loads a contact sequence into a Pandas DataFrame and 
     provides methods for analyzing the stability of the flow.
 
-    Parameters
-    ----------
-    temporal_network: Union[pd.DataFrame, str, Path]
-        A Pandas DataFrame containing the contact sequence, a string 
-        representing the path to a CSV file, or a Path object pointing 
-        to the CSV file.
-    **kwargs : Any
-        Optional keyword arguments to pass to `pandas.read_csv()` when 
-        loading from a file.
-
     Attributes
     ----------
     contact_sequence : pd.DataFrame
@@ -98,7 +121,6 @@ class FlowStability:
     ValueError
         If the input is neither a DataFrame nor a valid CSV file path.
     """
-
     def __init__(self, *,
                  temporal_network: pd.DataFrame|str|Path|None=None,
                  time_scale: int|float|None=None,
@@ -121,42 +143,114 @@ class FlowStability:
             ...
         t_stop:
             ...
+        **kwargs : Any
+            Optional keyword arguments to pass to `pandas.read_csv()` when 
+            loading from a file.
         """
         # this variable track the progress of the analysis - enum would be good
-        self._state = 0
-        self._temporal_network = None
-        self._time_scale = None
-        # TODO: deprecate with lamda parameter
-        self._lamda = None
+        self._init_state_map()
         # Prepare all property relate information
         self._init_info()
         # Set what attributes are required when
         self._init_required_next()
-        if isinstance(temporal_network, pd.DataFrame):
-            # Create a ContTempNetwork instance directly from the DataFrame
-            self.set_temporal_network(events_table=temporal_network)
-            logger.debug("Pandas dataframe provided and used as events table.")
-        elif isinstance(temporal_network, (str, Path)):
-            try:
-                # Convert Path to string if it's a Path object
-                events_table = pd.read_csv(str(temporal_network), **kwargs)
-                # Create a ContTempNetwork instance using the loaded DataFrame
-                self.set_temporal_network(events_table=events_table)
-                logger.debug("Loading events from csv file.")
-            except FileNotFoundError:
-                raise ValueError(
-                    f"The file at {temporal_network} was not found."
-                )
-            except pd.errors.EmptyDataError:
-                raise ValueError(
-                    f"The file at {temporal_network} is empty."
-                )
-            except pd.errors.ParserError:
-                raise ValueError(
-                    f"The file at {temporal_network} could not be parsed."
-                )
+        # ###
+        # Init internal objects
+        # - temporal_network data
+        self.temporal_network = temporal_network
+        self.time_scale = time_scale
+
+        self.set_temporal_network(temporal_network=temporal_network)
+
+    @include_doc_from(ContTempNetwork)
+    @property
+    def temporal_network(self):
+        """
+        """
+        return self._temporal_network
+
+    @temporal_network.setter
+    @update_state
+    def temporal_network(self, temporal_network:ContTempNetwork|None):
+        """Set the temporal network data
+        """
+        _unset = 0
+        if isinstance(temporal_network, ContTempNetwork):
+            self._temporal_network = temporal_network
         else:
-            self.set_temporal_network()
+            logger.warning(
+                f"Object of type {type(temporal_network)} cannot be "
+                "used as temporal network. Setting `temporal_network` "
+                "attribute to `None` and resetting the state of the analysis."
+            )
+            self._temporal_network = None
+            _unset = 1
+        return _unset
+
+    @include_doc_from(ContTempNetwork)
+    def set_temporal_network(self, **kwargs):
+        """Setting the temporal network for the flow stability analysis.
+        """
+        if not kwargs:
+            self.temporal_network = None
+        else:
+            # set self.temporal_network
+            self.temporal_network = ContTempNetwork(**kwargs)
+        return self
+
+    @property
+    def time_scale(self):
+        """Inter event time scale of the random walk.
+        """
+        return self._time_scale
+
+    @time_scale.setter
+    @update_state
+    def time_scale(self, time_scale:None|Iterator|int|float):
+        """Set the time scale determining the random walks transition rate.
+
+        """
+        _unset = 0
+        if time_scale is None:
+            self._time_scale = iter([])
+        elif isinstance(time_scale, (int, float)):
+            self._time_scale = iter([time_scale])
+        elif isinstance(time_scale, Iterator):
+            self._time_scale = iter(time_scale)
+        else:
+            raise TypeError(f"Invalid type '{type(time_scale)}'.")
+        # INFO: lamda is going to be removed in future releases
+        self._set_lamda()
+        # TODO: set state
+        print(inspect.currentframe().f_code.co_name)
+        return _unset
+
+    @include_doc_from(np.linspace)
+    def set_time_scale(self, value:int|float|None=None, **kwargs):
+        """Set the time scale determining the random walks transition rate.
+
+        Parameter
+        ---------
+        value:
+            Characteristic random walk inter event time. If set to `None` the
+            median inter event time will be used.
+        """
+        if value is not None:
+            self.time_scale = value
+        elif kwargs:
+            self.time_scale = np.nditer(np.linspace(**kwargs))
+        else:
+            # TODO: Use the median of the inter event times
+            self.time_scale = None
+        return None
+
+    def _set_lamda(self):
+        """
+        """
+        def inverted_time_scale(ts):
+            for val in ts:
+                yield 1. / val
+        self._lamda = inverted_time_scale(self.time_scale)
+
 
     def _init_info(self):
         self._properties = []
@@ -276,25 +370,6 @@ class FlowStability:
                           for attr in attrs if step < next_step]
         return required_attrs
 
-    @include_doc_from(ContTempNetwork)
-    def set_temporal_network(self, *args, **kwargs):
-        """
-        Setting the temporal network for the flos stability analysis
-        """
-        if not args and not kwargs:
-            self._temporal_network = None
-            self._state = 0
-            logger.info(
-                "Setting the temporal network with no data -> "
-                "RESETTING ANALYSIS.")
-        else:
-            # set self.temporal_network
-            self.temporal_network = ContTempNetwork(*args,
-                                                    **kwargs)
-            # reset the progress to first stage
-            self._state = 1
-        return self
-
     @include_doc_from(ContTempNetwork.compute_laplacian_matrices)
     @ok_state
     def compute_laplacian_matrices(self, *args, **kwargs):
@@ -331,20 +406,6 @@ class FlowStability:
     #       should be set back. Otherwise the property might get ignored and
     #       we end up in an inconsistent state.
 
-    @property
-    def temporal_network(self):
-        """
-        """
-        return self._temporal_network
-
-    @temporal_network.setter
-    @include_doc_from(ContTempNetwork)
-    def temporal_network(self, temporal_network:ContTempNetwork):
-        """Set the temporal network data.
-        """
-        # TODO: do so sanity checks
-        self._temporal_network = temporal_network
-        return None
 
     @property
     def lamda(self):
@@ -366,31 +427,6 @@ class FlowStability:
         if value is not None:
             self._time_scale = 1 / value
 
-    @property
-    def time_scale(self):
-        """Inter event time scale of the random walk.
-        """
-        return self._time_scale
-
-    @time_scale.setter
-    def time_scale(self, value:int|float|None):
-        """Set the time scale determining the random walks transition rate.
-
-        Parameter
-        ---------
-        value:
-          Characteristic random walk inter event time. If set to `None` the
-          median inter event time will be used.
-        """
-        if self._time_scale != value:
-            self._time_scale = value
-            # ###
-            # TODO: This should be removed
-            if self._time_scale is not None:
-                self._lamda = 1 / self._time_scale
-            else:
-                self._lamda = None
-            # ###
 
     # Facade for FlowIntegralClustering
     @ok_state
@@ -418,6 +454,32 @@ class FlowStability:
                 f"Falied to initiate the FlowIntegralClustering: {e}"
             )
         return self
+
+    def _init_state_map(self,):
+        self._state = States.INITIAL
+        self._affect_after = dict(
+            temporal_network=States.TEMP_NW,
+            t_start=States.TEMP_NW,
+            t_stop=States.TEMP_NW,
+            time_scale=States.LAPLAC,
+        )
+        self._params_set= dict(
+            temporal_network=False,
+            t_start=False,
+            t_stop=False,
+            time_scale=False,
+        )
+    def _set_state(self, property:str, is_unset:bool):
+        """
+        """
+        logger.debug(
+            f"Setting property `{property}` when in state ")
+        if is_unset:
+            self._params_set[property] = False
+        else:
+            self._params_set[property] = True
+            self._state = min(self._state,
+                              self._affect_after[property])
 
     def run(self, direction:int=1, restart:bool=False):
         """Perform a flow stability analysis.
