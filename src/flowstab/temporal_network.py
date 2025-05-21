@@ -27,6 +27,7 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from scipy.sparse import (
     coo_matrix,
     csc_matrix,
@@ -103,17 +104,18 @@ class ContTempNetwork:
     _DURATIONS = "durations"
     # for instantaneous event this is the duration to use
     _DEFAULT_DURATION = 1
-
-    def __init__(self, source_nodes=[],
-                       target_nodes=[],
-                       starting_times=[],
-                       ending_times=[],
-                       extra_attrs=None,
-                       relabel_nodes=True,
-                       reset_event_table_index=True,
-                       node_to_label_dict=None,
-                       merge_overlapping_events=False,
-                       events_table=None):
+    def __init__(self, *,
+                 source_nodes=[],
+                 target_nodes=[],
+                 starting_times=[],
+                 ending_times=[],
+                 extra_attrs=None,
+                 relabel_nodes=True,
+                 reset_event_table_index=True,
+                 node_to_label_dict=None,
+                 merge_overlapping_events=False,
+                 events_table=None,
+                 **kwargs):
 
         if events_table is None:
             assert len(source_nodes) == len(target_nodes) == \
@@ -155,9 +157,33 @@ class ContTempNetwork:
                                           inplace=True)
 
         else:
-            self.events_table = events_table
-            reset_event_table_index = False
-            if relabel_nodes:
+            if isinstance(events_table, (str, Path)):
+                try:
+                    # Convert Path to string if it's a Path object
+                    self.events_table = pd.read_csv(str(events_table), **kwargs)
+                    logger.debug("Loading events from csv file.")
+                except FileNotFoundError:
+                    raise ValueError(
+                        f"The file at {events_table} was not found."
+                    )
+                except pd.errors.EmptyDataError:
+                    raise ValueError(
+                        f"The file at {events_table} is empty."
+                    )
+                except pd.errors.ParserError:
+                    raise ValueError(
+                        f"The file at {events_table} could not be parsed."
+                    )
+            elif isinstance(events_table, pd.DataFrame):
+                self.events_table = events_table
+            else:
+                raise ValueError(
+                    "`events_table` must be a pandas DataFrame or the"
+                    "path to a CSV file. "
+                    f"'{type(events_table)} is not acceptable."
+                )                               
+            reset_event_table_index = False     
+            if relabel_nodes:                   
                 all_nodes = set()
                 all_nodes.update(events_table.source_nodes.tolist())
                 all_nodes.update(events_table.target_nodes.tolist())
