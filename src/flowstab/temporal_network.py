@@ -1173,7 +1173,7 @@ class ContTempNetwork:
         None.            
 
         """
-        logger.info(f"PID {os.getpid()}: Computing Laplacians")
+        logger.info("Computing Laplacians")
 
         if not hasattr(self, "time_grid"):
             self._compute_time_grid()
