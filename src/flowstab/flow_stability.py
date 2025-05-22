@@ -73,17 +73,6 @@ class States(Enum):
     def __eq__(self, other):
         return self.value == other.value
 
-def update_state(method):
-    @wraps(method)
-    def wrapper(self, *args, **kwargs):
-        # Get the name of the method being called
-        property_name = method.__name__
-        # Call the original method
-        is_unset = method(self, *args, **kwargs)
-        self._set_state(property=property_name, is_unset=is_unset)
-        return None
-    return wrapper
-
 def ok_state(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -104,7 +93,36 @@ def ok_state(method):
         return _return 
     return wrapper
 
-class FlowStability:
+class AutoTrackMeta(type):
+    def __new__(cls, name, bases, dct):
+        def prop_change(func, prop_name):
+            def inner(self, value):
+                func(self, value)
+                self._property_update(property_name=prop_name)
+            return inner
+        def method_wrapper(func, method_name):
+            def inner(self, *args, **kwargs):
+                # check if the analysis is ready
+                if self._ready_for(method_name=method_name):
+                    _result = func(self, *args, **kwargs)
+                else:
+                    # provide info about what it missing
+                    _return = None
+                return _result
+            return inner
+        for key, value in dct.items():
+            if isinstance(value, property):
+                setter = value.fset
+                if setter:
+                    value = property(value.fget, prop_change(setter, key))
+                dct[key] = value
+            elif callable(value):
+                process_methods = getattr(cls, 'process_methods', [])
+                if key in process_methods:
+                    dct[key] = method_wrapper(value, False, is_special=True)
+        return super().__new__(cls, name, bases, dct)
+
+class FlowStability(metaclass=AutoTrackMeta):
     """
     Conducts flow stability analysis using a contact sequence.
 
@@ -121,6 +139,11 @@ class FlowStability:
     ValueError
         If the input is neither a DataFrame nor a valid CSV file path.
     """
+    # This holds a list of all methods relevant to the flow stability analysis
+    process_methods = [
+        'special_method1',
+        'special_method2'
+    ]
     def __init__(self, *,
                  temporal_network: pd.DataFrame|str|Path|None=None,
                  time_scale: int|float|None=None,
@@ -157,9 +180,9 @@ class FlowStability:
         # Init internal objects
         # - temporal_network data
         self.temporal_network = temporal_network
+        self.t_start = t_start
+        self.t_stop = t_stop
         self.time_scale = time_scale
-
-        self.set_temporal_network(temporal_network=temporal_network)
 
     @include_doc_from(ContTempNetwork)
     @property
@@ -169,7 +192,6 @@ class FlowStability:
         return self._temporal_network
 
     @temporal_network.setter
-    @update_state
     def temporal_network(self, temporal_network:ContTempNetwork|None):
         """Set the temporal network data
         """
@@ -204,7 +226,6 @@ class FlowStability:
         return self._time_scale
 
     @time_scale.setter
-    @update_state
     def time_scale(self, time_scale:None|Iterator|int|float):
         """Set the time scale determining the random walks transition rate.
 
@@ -251,6 +272,45 @@ class FlowStability:
                 yield 1. / val
         self._lamda = inverted_time_scale(self.time_scale)
 
+    @property
+    def t_start(self):
+        """Start time to calculate the Lapalcian matrices from.
+
+        The laplacian matrices will be calculated form the first event time
+        before or equal to this timepoint.
+        """
+        return self.t_start
+
+    @t_start.setter
+    def t_start(self, value:int|float|None):
+        """Set the starting time for the temporal network data.
+
+        The laplacian matrices will be computed from this time onward.
+
+        .. note::
+            When setting this value, the Laplaican matrices will be calculated
+            anew.
+        """
+        self._t_start = value
+
+    @property
+    def t_stop(self):
+        """Stop time until when the Laplacian matrices will be calculated.
+
+        The laplacian matrices will be calculated up to the first event time
+        after or equal to this timepoint.
+        """
+        return self.t_start
+
+    @t_stop.setter
+    def t_stop(self, value:int|float|None):
+        """Set the stop time for the temporal network data to include.
+
+        .. note::
+            When setting this value, the Laplaican matrices will be calculated
+            anew.
+        """
+        self._t_stop = value
 
     def _init_info(self):
         self._properties = []
@@ -344,10 +404,11 @@ class FlowStability:
         # TODO
         return _next_steps
 
-    def _ready_for(self, step):
-        """Internal method to make sure the step in the analysis is doable
+    def _ready_for(self, method_name:str):
+        """Check if the analysis is all set for running this method.
         """
-        # TODO: This should be a method rather than a step
+        #TODO: switch for using the method name
+        # WIP: YOU ARE HERE!
         required_for = self._required_attributes(next_step=step)
         required_values = {attr: getattr(self, attr) for attr in required_for}
         for attr, value in required_values.items():
@@ -456,30 +517,30 @@ class FlowStability:
         return self
 
     def _init_state_map(self,):
+        """Initialize the mapping between properties and states of the analysis
+        """
+        # Set the analysis to the initial state
         self._state = States.INITIAL
+        # Define a mapping from property to the state at which it is relevant
         self._affect_after = dict(
             temporal_network=States.TEMP_NW,
             t_start=States.TEMP_NW,
             t_stop=States.TEMP_NW,
             time_scale=States.LAPLAC,
         )
-        self._params_set= dict(
-            temporal_network=False,
-            t_start=False,
-            t_stop=False,
-            time_scale=False,
-        )
-    def _set_state(self, property:str, is_unset:bool):
-        """
+
+    def _property_update(self, property_name:str):
+        """Synchronising the state of the analysis with the changed parameter
+
+        This method makes sure that any change in a parameter leads the analysis
+        to be set back to the earliest state at which the changed parameter is
+        of relevance.
         """
         logger.debug(
-            f"Setting property `{property}` when in state ")
-        if is_unset:
-            self._params_set[property] = False
-        else:
-            self._params_set[property] = True
-            self._state = min(self._state,
-                              self._affect_after[property])
+            f"Setting property `{property_name}`"
+        )
+        self._state = min(self._state,
+                            self._affect_after[property_name])
 
     def run(self, direction:int=1, restart:bool=False):
         """Perform a flow stability analysis.
