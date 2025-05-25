@@ -52,6 +52,12 @@ def include_doc_from(cls):
         return func
     return decorator
 
+def inverted_iterator(iterator):
+    """Create an inverted iterator
+    """
+    for val in iterator:
+        yield 1. / val
+
 class ProcessException(Exception):
     pass
 
@@ -64,7 +70,7 @@ class States(Enum):
     """Ready to calculate the Laplacian matrices"""
     LAPLAC = 2
     """Ready to calculate the inter transition matrices"""
-    INTERT = 3
+    INTER_T = 3
     """Ready to ..."""
 
     def __lt__(self, other):
@@ -72,6 +78,30 @@ class States(Enum):
 
     def __eq__(self, other):
         return self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)
+
+def state(next_state:Enum, state:Enum|None=None):
+    def decorator(method):
+        if isinstance(method, property):
+            method.fset.state = state
+            method.fset.next_state = next_state
+        else:
+            method.state = state
+            method.next_state = next_state
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            if state is not None and self._state < state:
+                # we're not ready to run this step
+                print(
+                    f"Analysis is in state '{self._state}' but a method of state '{state}' is called"
+                )
+            else:
+                _return = method(self, *args, **kwargs)
+                self._state = next_state
+        return wrapper
+    return decorator
 
 def ok_state(method):
     @wraps(method)
@@ -95,6 +125,8 @@ def ok_state(method):
 
 class AutoTrackMeta(type):
     def __new__(cls, name, bases, dct):
+        cls._method_stage = {}
+        cls._method_next_stage = {}
         def prop_change(func, prop_name):
             def inner(self, value):
                 func(self, value)
@@ -103,23 +135,36 @@ class AutoTrackMeta(type):
         def method_wrapper(func, method_name):
             def inner(self, *args, **kwargs):
                 # check if the analysis is ready
-                if self._ready_for(method_name=method_name):
-                    _result = func(self, *args, **kwargs)
+                missing_params, steps_to_run = self._missing(
+                    method_name=method_name
+                )
+                if not missing_params and not steps_to_run:
+                    _return= func(self, *args, **kwargs)
                 else:
+                    print(f"{missing_params=}")
+                    print(f"{steps_to_run=}")
                     # provide info about what it missing
                     _return = None
-                return _result
+                return _return
             return inner
         for key, value in dct.items():
+            print(f"{key=} - {value=}")
             if isinstance(value, property):
                 setter = value.fset
                 if setter:
+                    cls._method_stage[setter] = getattr(setter, 'state', None)
+                    cls._method_next_stage[setter] = getattr(setter, 'next_state', None)
                     value = property(value.fget, prop_change(setter, key))
                 dct[key] = value
             elif callable(value):
                 process_methods = getattr(cls, 'process_methods', [])
                 if key in process_methods:
+                    cls._method_stage[value] = getattr(value, 'state', None)
+                    cls._method_next_stage[value] = getattr(value, 'next_state', None)
                     dct[key] = method_wrapper(value, False, is_special=True)
+        # TODO: YOU ARE HERE! THIS SHOULD NOT RETURN ONE FOR t_start!
+        print(cls._method_stage)
+        print(cls._method_next_stage)
         return super().__new__(cls, name, bases, dct)
 
 class FlowStability(metaclass=AutoTrackMeta):
@@ -141,9 +186,13 @@ class FlowStability(metaclass=AutoTrackMeta):
     """
     # This holds a list of all methods relevant to the flow stability analysis
     process_methods = [
-        'special_method1',
-        'special_method2'
+        'compute_laplacian_matrices',
+        'compute_inter_transition_matrices',
     ]
+    state_parameters = {
+        States.INITIAL: [],
+        States.TEMP_NW: [],
+    }
     def __init__(self, *,
                  temporal_network: pd.DataFrame|str|Path|None=None,
                  time_scale: int|float|None=None,
@@ -230,7 +279,6 @@ class FlowStability(metaclass=AutoTrackMeta):
         """Set the time scale determining the random walks transition rate.
 
         """
-        _unset = 0
         if time_scale is None:
             self._time_scale = iter([])
         elif isinstance(time_scale, (int, float)):
@@ -243,7 +291,6 @@ class FlowStability(metaclass=AutoTrackMeta):
         self._set_lamda()
         # TODO: set state
         print(inspect.currentframe().f_code.co_name)
-        return _unset
 
     @include_doc_from(np.linspace)
     def set_time_scale(self, value:int|float|None=None, **kwargs):
@@ -267,10 +314,36 @@ class FlowStability(metaclass=AutoTrackMeta):
     def _set_lamda(self):
         """
         """
-        def inverted_time_scale(ts):
-            for val in ts:
-                yield 1. / val
-        self._lamda = inverted_time_scale(self.time_scale)
+        self._lamda = inverted_iterator(iterator=self.time_scale)
+
+
+    @property
+    def lamda(self):
+        """
+        """
+        return self._lamda
+
+    @lamda.setter
+    def lamda(self, value:int|float|Iterator|None=None):
+        """Setting the random walk rate.
+
+        This method will be removed in favor of `time_scale`.
+        """
+        warnings.warn(
+            "The parameter `lamda` is deprecated and will removed in "
+            "future releases!\nTo set the random walk rate use the "
+            "`time_scale` variable instead, which is the inverse of `lamda`."
+        )
+        if value is None:
+            _lamda_iter = iter([])
+        elif isinstance(value, (int, float)):
+            _lamda_iter = iter([value,])
+        elif isinstance(value, Iterator):
+            _lamda_iter = iter(value)
+        else:
+            raise TypeError(f"Invalid type '{type(value)}'")
+
+        self._time_scale = inverted_iterator(iterator=_lamda_iter)
 
     @property
     def t_start(self):
@@ -281,6 +354,7 @@ class FlowStability(metaclass=AutoTrackMeta):
         """
         return self.t_start
 
+    @state(next_state=States.TEMP_NW)
     @t_start.setter
     def t_start(self, value:int|float|None):
         """Set the starting time for the temporal network data.
@@ -311,6 +385,13 @@ class FlowStability(metaclass=AutoTrackMeta):
             anew.
         """
         self._t_stop = value
+
+    def _get_needed_params(method_name:str)->list:
+        """Provide a list of required parameters for running a method
+        """
+        compute_laplacian_matrices = []
+
+        
 
     def _init_info(self):
         self._properties = []
@@ -404,11 +485,24 @@ class FlowStability(metaclass=AutoTrackMeta):
         # TODO
         return _next_steps
 
+    def _missing(self, method_name:str)->tuple[list,list]:
+        """Compute a list of parameters and methods to set/run beforehand
+        """
+        # What parameters are required to run this method
+        needed_params = self._get_needed_params(method_name=method_name)
+        # Which one of these parameters are not yet set?
+        missing_params = self._get_missing_params(params=needed_params)
+
+        # Are we in the state in which this method can be run?
+        required_state = self._get_needed_state(method_name=method_name)
+        
+        return missing_params, steps_to_run
+
     def _ready_for(self, method_name:str):
         """Check if the analysis is all set for running this method.
         """
+
         #TODO: switch for using the method name
-        # WIP: YOU ARE HERE!
         required_for = self._required_attributes(next_step=step)
         required_values = {attr: getattr(self, attr) for attr in required_for}
         for attr, value in required_values.items():
@@ -432,7 +526,7 @@ class FlowStability(metaclass=AutoTrackMeta):
         return required_attrs
 
     @include_doc_from(ContTempNetwork.compute_laplacian_matrices)
-    @ok_state
+    @state(state=States.TEMP_NW, next_state=States.LAPLAC)
     def compute_laplacian_matrices(self, *args, **kwargs):
         """
         """
@@ -441,7 +535,8 @@ class FlowStability(metaclass=AutoTrackMeta):
         return self
 
     @include_doc_from(ContTempNetwork.compute_inter_transition_matrices)
-    @ok_state
+    @state(state=States.LAPLAC, next_state=States.INTER_T)
+    # @ok_state
     def compute_inter_transition_matrices(self, **kwargs):
         """
         """
@@ -466,27 +561,6 @@ class FlowStability(metaclass=AutoTrackMeta):
     # NOTE: if a property from a previous stage was changed then the _state
     #       should be set back. Otherwise the property might get ignored and
     #       we end up in an inconsistent state.
-
-
-    @property
-    def lamda(self):
-        """
-        """
-        return self._time_scale
-
-    @lamda.setter
-    def lamda(self, value):
-        """Setting the random walk rate.
-
-        This method will be removed in favor of `time_scale`.
-        """
-        warnings.warn(
-            "The parameter `lamda` is deprecated and will removed in "
-            "future releases!\nTo set the random walk rate use the "
-            "`time_scale` variable instead, which is the inverse of `lamda`."
-        )
-        if value is not None:
-            self._time_scale = 1 / value
 
 
     # Facade for FlowIntegralClustering
