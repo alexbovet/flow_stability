@@ -1394,7 +1394,7 @@ class ContTempNetwork:
         # new value of lamda, we need to recompute
         if lamda not in self.inter_T.keys():
 
-            logger.info(
+            logger.debug(
                 f"Computing interevent transition matrices for lamda={lamda}"
             )
             self.inter_T[lamda] = []
@@ -1403,11 +1403,11 @@ class ContTempNetwork:
             for k, tk in enumerate(self.times[self._k_start_laplacians:
                                               self._k_stop_laplacians]):
                 if not k%1000:
-                    logger.info(
+                    logger.debug(
                         f"{k} over "
                         f"{self._k_stop_laplacians-1-self._k_start_laplacians}"
                     )
-                    logger.info(f"{time.time()-t0:.2f}s")
+                    logger.debug(f"{time.time()-t0:.2f}s")
 
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1440,10 +1440,10 @@ class ContTempNetwork:
 
             self._compute_times["inter_T_" + str(lamda)]  = t_end
 
-            logger.info(
+            logger.debug(
                 f"Finished computing interevent transition matrices in {t_end}"
             )
-        logger.info(
+        logger.debug(
             f"Interevent transition matrices already computed for lamda={lamda}"
         )
 
@@ -1492,7 +1492,7 @@ class ContTempNetwork:
         if lamda in self.inter_T_lin.keys():
             if t_s in self.inter_T_lin[lamda].keys():
                 compute = False
-                logger.info(
+                logger.debug(
                     "Interevent transition matrices already computed "
                     f"for lamda={lamda}, t_s={t_s}"
                 )
@@ -1504,7 +1504,7 @@ class ContTempNetwork:
             else:
                 self.inter_T_lin[lamda][t_s] = []
 
-            logger.info(
+            logger.debug(
                 "Computing interevent linear transition matrices for "
                 f"lamda={lamda}, t_s={t_s}"
             )
@@ -1513,11 +1513,11 @@ class ContTempNetwork:
             for k, tk in enumerate(self.times[self._k_start_laplacians:
                                               self._k_stop_laplacians]):
                 if not k%1000:
-                    logger.info(
+                    logger.debug(
                         f"{k} over "
                         f"{self._k_stop_laplacians-1-self._k_start_laplacians}"
                     )
-                    logger.info(f"{time.time()-t0:.2f}s")
+                    logger.debug(f"{time.time()-t0:.2f}s")
 
                 if fix_tau_k:
                     tau_k = 1.0
@@ -1549,7 +1549,7 @@ class ContTempNetwork:
                                                    t_s=t_s))
 
             if len(self.inter_T_lin[lamda][t_s]) == 0:
-                logger.info("no events, lin. trans. matrix = identity")
+                logger.debug("no events, lin. trans. matrix = identity")
                 # is there was no event, the transition is identity
                 if use_sparse_stoch:
                     self.inter_T_lin[lamda].append(SparseStochMat.create_diag(size=self.num_nodes))
@@ -1561,7 +1561,7 @@ class ContTempNetwork:
             t_end = time.time()-t0
             self._compute_times[f"tran_matrices_lin_{lamda}_{t_s}"] = t_end
 
-            logger.info("Finished computing linear interevent transition "
+            logger.debug("Finished computing linear interevent transition "
                         f"matrices in {t_end}")
 
 
