@@ -1806,6 +1806,7 @@ class FlowIntegralClustering:
                        reverse_time=False,
                        rtol=1e-8,
                        verbose=False):
+        self.reversed_time = reverse_time
 
         if T_list is None and T_inter_list is None:
             raise ValueError("T_list or T_inter_list must be provided")

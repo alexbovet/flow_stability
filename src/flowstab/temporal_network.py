@@ -1139,7 +1139,7 @@ class ContTempNetwork:
         return t, k
 
 
-    def compute_laplacian_matrices(self, t_start=None, t_stop=None,
+    def compute_laplacian_matrices(self, *, t_start=None, t_stop=None,
                                    save_adjacencies=False):
         """Computes the laplacian matrices and saves them in `self.laplacians`
             
