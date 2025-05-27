@@ -32,6 +32,7 @@ A typical workflow for analyzing a temporal network and extracting clusters:
 >>> fs.set_time_scale(10)
 >>> fs.compute_laplacian_matrices()
 >>> fs.compute_inter_transition_matrices()
+>>> fs.time_direction = 0
 >>> fs.set_flow_clustering()
 >>> fs.find_louvain_clustering()
 >>> print(fs.flow_clustering_forward)
