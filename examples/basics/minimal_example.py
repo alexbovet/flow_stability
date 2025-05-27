@@ -2,7 +2,7 @@ import pandas as pd
 
 from flowstab import FlowStability, set_log_level
 
-set_log_level("INFO")
+set_log_level("WARNING")
 
 duration = 600
 
@@ -45,6 +45,14 @@ fs_mice.compute_inter_transition_matrices()
 print(f"{fs_mice.state.current=}")
 print(f"{fs_mice.state.next=}")
 
+# NOTE: This won't work as a property is missing:
+fs_mice.set_flow_clustering()
+print(f"{fs_mice.state.current=}")
+print(f"{fs_mice.state.next=}")
+# set the missing property
+fs_mice.time_direction = 0  # both directios
+print(f"{fs_mice.state.current=}")
+print(f"{fs_mice.state.next=}")
 fs_mice.set_flow_clustering()
 print(f"{fs_mice.state.current=}")
 print(f"{fs_mice.state.next=}")
