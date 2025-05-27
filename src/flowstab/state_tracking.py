@@ -11,6 +11,7 @@ Usage Example
 -------------
 To use state tracking in a custom analysis class:
 
+.. code-block:: python
     from enum import Enum
     from flowstab.state_tracking import StateMeta, OrderedEnum
 
