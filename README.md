@@ -31,7 +31,7 @@ want to add the following line in your script:
 
 ```python
 
-from flowstab.flow_stability import FlowIntegralClustering
+from flowstab.netowrk_clustering import FlowIntegralClustering
 
 # forw_flow = FlowIntegralClustering(...
 ```
@@ -63,7 +63,7 @@ The main classes are:
 
 Additional interesting classes and functions are:
 - `Clustering` and `SparseClustering` in the `network_clustering` sub-module can be used to directly cluster covariances or integrals of covariances.
-- `static_clustering` in `flow_stability` is an helper function to cluster static networks using Markov Stability.
+- `static_clustering` in `network_clustering` is an helper function to cluster static networks using Markov Stability.
 - `run_multi_louvain` in `network_clustering` helper function to run the Louvain multiple times on the same covariance in order to check the robustness of the partition.
 - `avg_norm_var_information` in `network_clustering` computes the average Normalized Variation of Information of list of cluster lists obtained with `run_multi_louvain`.
 - `compute_parallel_clustering` in `parallel_clustering`, same than `run_multi_louvain` but in parallel.
