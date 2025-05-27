@@ -1,51 +1,23 @@
 from __future__ import annotations
-from typing import Any
 import textwrap
 import warnings
 
 from copy import copy
-from functools import partial
 from types import SimpleNamespace
 from enum import Enum
-from functools import wraps, total_ordering
+from functools import wraps
 
-@total_ordering
-class States(Enum):
-    """Defines the stages of a flow stability analysis"""
-    INITIAL = 0
-    """Initiated an flow stability analysis with no, or incomplete data"""
-    TEMP_NW = 1
-    """Ready to calculate the Laplacian matrices"""
-    LAPLAC = 2
-    """Ready to calculate the inter transition matrices"""
-    INTER_T = 3
-    """Ready to compute the flow integral clustering"""
-    CLUSTERING = 4
-    """Ready to compute the Louvain clusters."""
-    FINAL = 5
-    """Computed all that there is."""
-
-    def __lt__(self, other):
-        return self.value < other.value
-
-    def __eq__(self, other):
-        return self.value == other.value
-
-    def __hash__(self):
-        return hash(self.value)
-
-    def __str__(self):
-        return f"{self.name} ({self.value})"
 
 class State:
     def __init__(self,
+                 states:Enum,
                  properties_required:dict|None=None,
                  properties_set:dict|None=None,
                  methods_required:dict|None=None,
-                 current:States=States.INITIAL,
                  **kwargs
                  ):
-        self.current = current
+        self._states = states
+        self.current = min(self._states, key=lambda state: state.value)
         self.properties_required = copy(properties_required)
         self.methods_required = copy(methods_required)
         self.properties_set = copy(properties_set)
@@ -71,10 +43,9 @@ class State:
         return _to_set, _to_run
         
 
-
 class _StateMeta(type):
-    def __new__(cls, name, bases, namespace):
-        cls.init_state(namespace=namespace)
+    def __new__(cls, name, bases, namespace, states:Enum):
+        cls.init_state(namespace=namespace, states=states)
 
         cls_instance = super().__new__(cls, name, bases, namespace)
 
@@ -83,8 +54,10 @@ class _StateMeta(type):
         return cls_instance
     
     @classmethod
-    def init_state(cls, namespace):
+    def init_state(cls, namespace, states:Enum):
         state = SimpleNamespace()
+        # attach the states
+        state.states = states
         _minimal_state_map = {}
         _state_map = {}
         # What method can be run next

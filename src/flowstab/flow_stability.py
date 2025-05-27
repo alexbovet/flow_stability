@@ -20,19 +20,15 @@
 """
 from __future__ import annotations
 from typing import Any, Iterator
+from functools import total_ordering
+from enum import Enum
 
-import warnings
-
-from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from .logger import get_logger
-
 from .helpers import include_doc_from, inverted_iterator
-from ._state_tracking import _StateMeta, States
-
+from ._state_tracking import _StateMeta
 from .temporal_network import (
     ContTempNetwork,
 )
@@ -47,9 +43,37 @@ logger = get_logger()
 class ProcessException(Exception):
     pass
 
+@total_ordering
+class States(Enum):
+    """Defines the stages of a flow stability analysis"""
+    INITIAL = 0
+    """Initiated an flow stability analysis with no, or incomplete data"""
+    TEMP_NW = 1
+    """Ready to calculate the Laplacian matrices"""
+    LAPLAC = 2
+    """Ready to calculate the inter transition matrices"""
+    INTER_T = 3
+    """Ready to compute the flow integral clustering"""
+    CLUSTERING = 4
+    """Ready to compute the Louvain clusters."""
+    FINAL = 5
+    """Computed all that there is."""
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __str__(self):
+        return f"{self.name} ({self.value})"
+
 register = _StateMeta.register  # make register method available as decorator
 
-class FlowStability(metaclass=_StateMeta):
+class FlowStability(metaclass=_StateMeta, states=States):
     """
     Conducts flow stability analysis using a contact sequence.
 
