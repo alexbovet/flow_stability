@@ -1,6 +1,6 @@
 """
 Flow Stability: Temporal Network Flow-Based Clustering and Analysis
-==================================================================
+==================_================================================
 
 This package provides tools for stability analysis and clustering of temporal networks
 using flow-based methods. The core component is the :class:`FlowStability` class,
@@ -38,6 +38,14 @@ A typical workflow for analyzing a temporal network and extracting clusters:
 
 This workflow ensures that all computational steps are performed in the required order;
 the state machine will warn or prevent you from skipping prerequisites.
+
+If you are unsure what method needs to be run next and/or what parameter needs
+to be set in the current state run `fs.state.next`.
+This will return a `tuple` providing a list of parameters to set, and the name
+of the next method to run:
+
+>>> fs.state.next
+>>> ['t_start', ..], 'set_temporal_network'
 
 Module Contents
 ---------------
