@@ -629,19 +629,3 @@ class FlowStability(metaclass=StateMeta, states=States):
                     _ts].find_louvain_clustering(**kwargs)
             logger.info("-> done.")
         return self
-
-    def run(self, restart: bool = False):
-        """
-        Perform the complete flow stability analysis pipeline.
-
-        Parameters
-        ----------
-        restart : bool, optional
-            If True, restart the computation from the beginning. If False,
-            only recompute parts affected by parameter changes.
-
-        Returns
-        -------
-        None
-        """
-        pass
