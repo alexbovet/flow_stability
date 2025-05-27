@@ -28,7 +28,7 @@ A typical workflow for analyzing a temporal network and extracting clusters:
 
 >>> from flowstab import FlowStability
 >>> fs = FlowStability()
->>> fs.set_temporal_network(filename="my_contacts.csv")
+>>> fs.set_temporal_network(event_table="my_contacts.csv")
 >>> fs.set_time_scale(10)
 >>> fs.compute_laplacian_matrices()
 >>> fs.compute_inter_transition_matrices()
