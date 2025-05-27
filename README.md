@@ -26,7 +26,60 @@ environment. Simply run:
 After installation you can access the relevant classes and methods by importing
 `flowstab` into your python scripts or via command line (see [CLI scripts](#cli-scripts) for details).
 
-If you want to use the `FlowIntegralClustering` class, for example, you would
+The easiest approach to use `flowstab` is with the `FlowStability` class that will provide you with contextual inforamtion, if needed:
+
+```python
+from flowstab.flow_stability import FlowStability
+fs = FlowStability()
+# check what to do next
+fs.state.next
+# Out[3]: ([], 'set_temporal_network')
+# > you need to run `set_temporal_network` - how should this be done:
+fs.state.howto['set_temporal_network']
+# print(fs.state.howto['set_temporal_network'])
+# 
+#         Set the temporal network for the flow stability analysis.
+# 
+#         Parameters
+#         ----------
+#         **kwargs : dict
+#             Arguments to initialize a ContTempNetwork instance.
+#         ...
+fs.set_temporal_network(events_table="my_contacts.csv")
+fs_mice.state.next
+# Out[6]: ([], 'compute_laplacian_matrices')
+fs.compute_laplacian_matrices()
+fs_mice.state.next
+# Out[8]: (['time_scale'], 'compute_inter_transition_matrices')
+# So we need to set `time_scale` next, but how?
+print(fs_mice.state.howto['time_scale'])
+# Set the time scale(s) for the random walk's transition rate.
+# 
+# .. note::
+#     You might also use `set_time_scale` to directly create a range of
+#     time scales.
+# 
+# Parameters
+# ----------
+# time_scale : None, int, float, or iterator of float
+#     If None, a default value is used.
+#     If an int or float, a single time scale is set.
+#     If an iterator, it must yield float or int values.
+# 
+# ...
+fs.set_time_scale(10)
+fs_mice.state.next
+# Out[11]: ([], 'compute_inter_transition_matrices')
+fs.compute_inter_transition_matrices()
+fs.time_direction = 0  # perform both forward and backard
+fs.set_flow_clustering()
+fs.find_louvain_clustering()
+fs.flow_clusetering_backward
+# Out[17]: {10: <flowstab.network_clustering.FlowIntegralClustering at 0x7fef57a7fd00>}
+```
+
+Alternatively, you can use individual elements form the `flowstab` packacke directly.
+For exaple if you want to use the `FlowIntegralClustering` class, for example, you would
 want to add the following line in your script:
 
 ```python
