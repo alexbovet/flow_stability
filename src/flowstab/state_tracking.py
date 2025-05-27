@@ -12,35 +12,35 @@ Usage Example
 To use state tracking in a custom analysis class:
 
 
-    from enum import Enum
-    from flowstab.state_tracking import StateMeta, OrderedEnum
-
-    class MyStates(OrderedEnum):
-        INIT = 0
-        STEP1 = 1
-        STEP2 = 2
-
-    class MyAnalysis(metaclass=StateMeta, states=MyStates):
-        @property
-        def data(self):
-            '''Access the data attribute.'''
-            return self._data
-
-        @register(next_state=MyStates.STEP1)
-        @data.setter
-        def data(self, value):
-            '''Set the data attribute.'''
-            self._data = value
-
-        @register(minimal_state=MyStates.INIT, next_state=MyStates.STEP1)
-        def do_step_1(self):
-            '''Perform analysis step requiring data.'''
-            pass
-
-        @register(minimal_state=MyStates.STEP1, next_state=MyStates.STEP2)
-        def do_step_2(self):
-            '''Perform analysis step requiring data.'''
-            pass
+>>> from enum import Enum
+>>> from flowstab.state_tracking import StateMeta, OrderedEnum
+>>>
+>>> class MyStates(OrderedEnum):
+>>>     INIT = 0
+>>>     STEP1 = 1
+>>>     STEP2 = 2
+>>>
+>>> class MyAnalysis(metaclass=StateMeta, states=MyStates):
+>>>     @property
+>>>     def data(self):
+>>>         '''Access the data attribute.'''
+>>>         return self._data
+>>>
+>>>     @register(next_state=MyStates.STEP1)
+>>>     @data.setter
+>>>     def data(self, value):
+>>>         '''Set the data attribute.'''
+>>>         self._data = value
+>>>
+>>>     @register(minimal_state=MyStates.INIT, next_state=MyStates.STEP1)
+>>>     def do_step_1(self):
+>>>         '''Perform analysis step requiring data.'''
+>>>         pass
+>>>
+>>>     @register(minimal_state=MyStates.STEP1, next_state=MyStates.STEP2)
+>>>     def do_step_2(self):
+>>>         '''Perform analysis step requiring data.'''
+>>>         pass
 
 This setup ensures:
 
