@@ -1,22 +1,46 @@
 """
-# flow stability
-#
-# Copyright (C) 2021 Alexandre Bovet <alexandre.bovet@maths.ox.ac.uk>
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU Lesser General Public License as published by the Free
-# Software Foundation; either version 3 of the License, or (at your option) any
-# later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+Flow Stability Analysis
+======================
 
+This sub-module provides tools to perform flow stability analysis on temporal 
+networks using contact sequences. It enables loading temporal network data, 
+computing Laplacian and inter-transition matrices, and extracting flow-based 
+clusterings. It leverages a state-tracking system to ensure that computations 
+are performed in the correct order and that all required data is available 
+before each analysis step.
 
+Key Features
+------------
+- State-tracked analysis pipeline for reproducibility and robustness.
+- Support for loading and representing temporal (contact sequence) networks.
+- Computation of Laplacian and inter-transition matrices for random walks.
+- Flow integral clustering and community detection (e.g., Louvain clustering).
+- Flexible time scale and direction support for forward/backward dynamics.
+
+Examples
+--------
+A typical usage workflow:
+
+    >>> from flowstab.flow_stability import FlowStability, States
+    >>> fs = FlowStability()
+    >>> fs.set_temporal_network(filename="my_contacts.csv")
+    >>> fs.set_time_scale(10)
+    >>> fs.compute_laplacian_matrices()
+    >>> fs.compute_inter_transition_matrices()
+    >>> fs.set_flow_clustering()
+    >>> fs.find_louvain_clustering()
+    >>> print(fs.flow_clustering_forward)
+
+Classes
+-------
+FlowStability
+    Main class for performing flow stability analysis on a temporal network.
+
+States
+    Enum of analysis states, used for internal state tracking.
+
+ProcessException
+    Exception raised for errors in the flow stability process.
 """
 from __future__ import annotations
 from typing import Any, Iterator
@@ -74,6 +98,8 @@ class FlowStability(metaclass=StateMeta, states=States):
         If provided types are not as expected.
     ProcessException
         For errors during the processing steps.
+
+
     """
     def __init__(self, *,
                  temporal_network: ContTempNetwork|None=None,
