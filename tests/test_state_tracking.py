@@ -1,6 +1,6 @@
 import pytest
 from enum import Enum
-from src.flowstab._state_tracking import _StateMeta
+from src.flowstab.state_tracking import StateMeta
 from functools import total_ordering
 
 @total_ordering
@@ -21,9 +21,9 @@ class MyStates(Enum):
     def __str__(self):
         return f"{self.name} ({self.value})"
 
-register = _StateMeta.register  # make register method available as decorator
+register = StateMeta.register  # make register method available as decorator
 
-class MyClass(metaclass=_StateMeta, states=MyStates):
+class MyClass(metaclass=StateMeta, states=MyStates):
     def __init__(self):
         self._value = None
 

@@ -20,15 +20,13 @@
 """
 from __future__ import annotations
 from typing import Any, Iterator
-from functools import total_ordering
-from enum import Enum
 
 
 import numpy as np
 
 from .logger import get_logger
 from .helpers import include_doc_from, inverted_iterator
-from ._state_tracking import _StateMeta
+from .state_tracking import StateMeta, OrderedEnum
 from .temporal_network import (
     ContTempNetwork,
 )
