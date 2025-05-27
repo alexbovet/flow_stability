@@ -192,7 +192,7 @@ class FlowStability(metaclass=_StateMeta, states=States):
         else:
             raise TypeError(f"Invalid type '{type(time_scale)}'.")
 
-    @include_doc_from(np.linspace)
+    @include_doc_from(np.logspace)
     def set_time_scale(self, value:int|float|None=None, **kwargs):
         """Set the time scale determining the random walks transition rate.
 
@@ -205,7 +205,7 @@ class FlowStability(metaclass=_StateMeta, states=States):
         if value is not None:
             self.time_scale = value
         elif kwargs:
-            self.time_scale = np.linspace(**kwargs)
+            self.time_scale = np.logspace(**kwargs)
         else:
             # TODO: Use the median of the inter event times
             self.time_scale = None
