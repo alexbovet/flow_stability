@@ -23,7 +23,7 @@ A typical usage workflow:
 
 >>> from flowstab.flow_stability import FlowStability
 >>> fs = FlowStability()
->>> fs.set_temporal_network(filename="my_contacts.csv")
+>>> fs.set_temporal_network(events_table="my_contacts.csv")
 >>> fs.set_time_scale(10)
 >>> fs.compute_laplacian_matrices()
 >>> fs.compute_inter_transition_matrices()
@@ -340,6 +340,7 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         return self._t_stop
 
+    @register(next_state=States.TEMP_NW, ignore_none=False)
     @t_stop.setter
     def t_stop(self, value: int | float | None):
         """
@@ -368,6 +369,7 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         return self._time_direction
 
+    @register(next_state=States.INTER_T)
     @time_direction.setter
     def time_direction(self, value: int | None):
         """
@@ -390,6 +392,7 @@ class FlowStability(metaclass=StateMeta, states=States):
             assert value in [-1, 0, 1]
         self._time_direction = value
 
+    @register(minimal_state=States.TEMP_NW, next_state=States.LAPLAC)
     def compute_laplacian_matrices(self, **kwargs):
         """
         Compute Laplacian matrices for the current temporal network.
@@ -412,6 +415,7 @@ class FlowStability(metaclass=StateMeta, states=States):
         self._temporal_network.compute_laplacian_matrices(**kwargs)
         return self
 
+    @register(minimal_state=States.LAPLAC, next_state=States.INTER_T)
     def compute_inter_transition_matrices(self, linear_approx=False, **kwargs):
         """
         Compute inter-transition matrices for the temporal network.
@@ -467,6 +471,7 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         return self._flow_clustering_forward
 
+    @register(next_state=States.CLUSTERING)
     @flow_clustering_forward.setter
     def flow_clustering_forward(
         self,
@@ -506,6 +511,7 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         return self._flow_clustering_backward
 
+    @register(next_state=States.CLUSTERING)
     @flow_clustering_backward.setter
     def flow_clustering_backward(
         self,
@@ -533,6 +539,7 @@ class FlowStability(metaclass=StateMeta, states=States):
             )
             self._flow_clustering_backward[_time_scale] = None
 
+    @register(minimal_state=States.INTER_T, next_state=States.CLUSTERING)
     def set_flow_clustering(self, **kwargs):
         """
         Perform flow integral clustering analysis.
@@ -592,6 +599,7 @@ class FlowStability(metaclass=StateMeta, states=States):
             logger.info("-> done.")
         return self
 
+    @register(minimal_state=States.CLUSTERING, next_state=States.FINAL)
     def find_louvain_clustering(self, **kwargs):
         """
         Find Louvain clusters for the flow integral clustering.
