@@ -41,8 +41,7 @@ logger = get_logger()
 class ProcessException(Exception):
     pass
 
-@total_ordering
-class States(Enum):
+class States(OrderedEnum):
     """Defines the stages of a flow stability analysis"""
     INITIAL = 0
     """Initiated an flow stability analysis with no, or incomplete data"""
@@ -57,21 +56,9 @@ class States(Enum):
     FINAL = 5
     """Computed all that there is."""
 
-    def __lt__(self, other):
-        return self.value < other.value
+register = StateMeta.register  # make register method available as decorator
 
-    def __eq__(self, other):
-        return self.value == other.value
-
-    def __hash__(self):
-        return hash(self.value)
-
-    def __str__(self):
-        return f"{self.name} ({self.value})"
-
-register = _StateMeta.register  # make register method available as decorator
-
-class FlowStability(metaclass=_StateMeta, states=States):
+class FlowStability(metaclass=StateMeta, states=States):
     """
     Conducts flow stability analysis using a temporal network.
 

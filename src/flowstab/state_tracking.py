@@ -1,21 +1,117 @@
+"""
+State tracking utilities for a multi-step analysis
+
+This sub-module implements a state machine system for analysis classes,
+enabling fine-grained tracking of computation progress through method and
+property transitions. It provides a metaclass (`StateMeta`) and decorator
+(`register`) that augment classes with state management, enforcing method
+order and prerequisite satisfaction based on user-defined enumerated states.
+
+Usage Example
+-------------
+To use state tracking in a custom analysis class:
+
+    from enum import Enum
+    from flowstab.state_tracking import StateMeta, OrderedEnum
+
+    class MyStates(OrderedEnum):
+        INIT = 0
+        STEP1 = 1
+        STEP2 = 2
+
+    class MyAnalysis(metaclass=StateMeta, states=MyStates):
+        @property
+        def data(self):
+            '''Access the data attribute.'''
+            return self._data
+
+        @register(next_state=MyStates.STEP1)
+        @data.setter
+        def data(self, value):
+            '''Set the data attribute.'''
+            self._data = value
+
+        @register(minimal_state=MyStates.INIT, next_state=MyStates.STEP1)
+        def do_step_1(self):
+            '''Perform analysis step requiring data.'''
+            pass
+
+        @register(minimal_state=MyStates.STEP1, next_state=MyStates.STEP2)
+        def do_step_2(self):
+            '''Perform analysis step requiring data.'''
+            pass
+
+This setup ensures:
+
+- method `do_step_1` is run first
+- whenever `data` is set, `run_step_2` must be re-run
+- `run_step_2` can only be run after `run_step_1` was run once and after `data`
+  is set.
+"""
 from __future__ import annotations
 import textwrap
 import warnings
 
+from functools import total_ordering
 from copy import copy
 from types import SimpleNamespace
 from enum import Enum
 from functools import wraps
 
+@total_ordering
+class OrderedEnum(Enum):
+    """
+    Enum with total ordering based on values.
+
+    Allows comparison operators (<, <=, >, >=, ==, !=) between enum members,
+    using their assigned values.
+    """
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value == other.value
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __str__(self):
+        return f"{self.name} ({self.value})"
 
 class State:
+    """
+    State machine for managing analysis workflow progress.
+
+    Holds information about the current state, required properties, and
+    required methods. Used internally by classes using StateMeta.
+    """
     def __init__(self,
-                 states:Enum,
+                 states:OrderedEnum,
                  properties_required:dict|None=None,
                  properties_set:dict|None=None,
                  methods_required:dict|None=None,
                  **kwargs
                  ):
+        """
+        Initialize the State object.
+
+        Parameters
+        ----------
+        states : Enum
+            Enumeration of possible states.
+        properties_required : dict or None, optional
+            Mapping of state to required property names.
+        properties_set : dict or None, optional
+            Mapping of property names to their set status.
+        methods_required : dict or None, optional
+            Mapping of state to required method names.
+        **kwargs
+            Additional attributes to set.
+        """
         self._states = states
         self.current = min(self._states, key=lambda state: state.value)
         self.properties_required = copy(properties_required)
@@ -26,6 +122,14 @@ class State:
 
     @property
     def missing(self):
+        """
+        List of required properties not yet set for the current state.
+
+        Returns
+        -------
+        list
+            Property names still required for the current state.
+        """
         _current_state = self.current
         _required_props = self.properties_required.get(
             _current_state, []
@@ -38,13 +142,42 @@ class State:
 
     @property
     def next(self):
+        """
+        Get required properties still missing and the next method for the state.
+
+        Returns
+        -------
+        tuple
+            (list of missing properties, next method name or None)
+        """
         _to_run = self._next_method.get(self.current)
         _to_set = self.missing
         return _to_set, _to_run
         
 
-class _StateMeta(type):
+class StateMeta(type):
+    """
+    Metaclass for state-tracked analysis classes.
+
+    This metaclass augments target classes with state management, attaching
+    state tracking attributes and logic based on user-defined states and
+    decorators.
+    """
     def __new__(cls, name, bases, namespace, states:Enum):
+        """
+        Create a new class with state tracking.
+
+        Parameters
+        ----------
+        name : str
+            Class name.
+        bases : tuple
+            Base classes.
+        namespace : dict
+            Class namespace.
+        states : Enum
+            Enum defining possible states.
+        """
         cls.init_state(namespace=namespace, states=states)
 
         cls_instance = super().__new__(cls, name, bases, namespace)
@@ -55,6 +188,16 @@ class _StateMeta(type):
     
     @classmethod
     def init_state(cls, namespace, states:Enum):
+        """
+        Populate the given namespace with state tracking metadata.
+
+        Parameters
+        ----------
+        namespace : dict
+            The class namespace to mutate.
+        states : Enum
+            Enum of possible states.
+        """
         state = SimpleNamespace()
         # attach the states
         state.states = states
@@ -129,7 +272,12 @@ class _StateMeta(type):
 
     def attach_state(self, namespace):
         """
-        This makes sure to attach the `state` property to the actual class
+        Attach the state property and custom __init__ to the class.
+
+        Parameters
+        ----------
+        namespace : dict
+            The class namespace to mutate.
         """
         # Get the user-defined __init__ method if it exists
         user_init = namespace.get('__init__')
@@ -166,6 +314,23 @@ class _StateMeta(type):
     @staticmethod
     def register(*, next_state: Enum, minimal_state: Enum|None = None,
                  ignore_none:bool=True):
+        """
+        Decorator to register a method or property setter for state management.
+
+        Parameters
+        ----------
+        next_state : Enum
+            State the object will be in after successful call.
+        minimal_state : Enum or None, optional
+            Minimal state required to execute the method/setter.
+        ignore_none : bool, optional
+            If True, value=None will mark the property unset.
+
+        Returns
+        -------
+        function
+            Decorated method or property setter.
+        """
         def decorator(func):
             if isinstance(func, property):
                 # If it's a property, decorate the setter
