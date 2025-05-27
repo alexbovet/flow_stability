@@ -1,6 +1,6 @@
 """
 Flow Stability: Temporal Network Flow-Based Clustering and Analysis
-==================_================================================
+===================================================================
 
 This package provides tools for stability analysis and clustering of temporal networks
 using flow-based methods. The core component is the :class:`FlowStability` class,
@@ -46,6 +46,43 @@ of the next method to run:
 
 >>> fs.state.next
 >>> ['t_start', ..], 'set_temporal_network'
+
+To learn more about a parameter or method you might use `fs.state.info` or
+`fs.state.howto`:
+
+>>> print(fs.state.info['time_scale'])
+>>> Time scales used for random walk transition rates.
+>>> 
+>>> Returns
+>>> -------
+>>> iterator
+>>>     Iterator over the time scales. Each value determines the rate of the
+>>>     random walk's transitions.
+>>> 
+>>> .. note::
+>>>     Single values are alos returned as an iterator.
+
+>>> print(fs.state.howto['time_scale'])
+>>> 
+>>> Set the time scale(s) for the random walk's transition rate.
+>>> 
+>>> .. note::
+>>>     You might also use `set_time_scale` to directly create a range of
+>>>     time scales.
+>>> 
+>>> Parameters
+>>> ----------
+>>> time_scale : None, int, float, or iterator of float
+>>>     If None, a default value is used.
+>>>     If an int or float, a single time scale is set.
+>>>     If an iterator, it must yield float or int values.
+>>> 
+>>> Raises
+>>> ------
+>>> TypeError
+>>>     If the input is not None, int, float, or an iterator of numbers.
+
+
 
 Module Contents
 ---------------
