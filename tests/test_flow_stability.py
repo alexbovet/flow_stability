@@ -1,85 +1,77 @@
 import pytest
+import numpy as np
+from flowstab import FlowStability
 
-def test_Partition():
-    """
-    """
-    from flowstab.flow_stability import Partition
-    pass
+@pytest.fixture
+def minimal_temp_network():
+    # This fixture should return a ContTempNetwork instance as expected by FlowStability.
+    # You may need to adjust this if ContTempNetwork needs specific arguments.
+    from flowstab.temporal_network import ContTempNetwork
+    import pandas as pd
+    df = pd.DataFrame({"source_nodes": [0],
+                       "target_nodes": [1],
+                       "starting_times": [0],
+                       "ending_times": [1]})
+    return ContTempNetwork(events_table=df)
 
-def test_BaseClustering():
-    """
-    """
-    from flowstab.flow_stability import BaseClustering
-    pass
+def test_empty_init_sets_temporal_network_none():
+    fs = FlowStability()
+    assert fs.temporal_network is None
 
-def test_Clustering():
-    """
-    """
-    from flowstab.flow_stability import Clustering
-    pass
+def test_init_with_network(minimal_temp_network):
+    fs = FlowStability(temporal_network=minimal_temp_network)
+    assert fs.temporal_network is minimal_temp_network
 
-def test_SparseClustering():
-    """
-    """
-    from flowstab.flow_stability import SparseClustering
-    pass
+def test_set_temporal_network(minimal_temp_network):
+    fs = FlowStability()
+    fs.temporal_network = minimal_temp_network
+    assert fs.temporal_network is minimal_temp_network
 
-def test_FlowIntegralClustering():
-    """
-    """
-    from flowstab.flow_stability import FlowIntegralClustering
-    pass
+def test_set_temporal_network_wrong_type_logs_warning(caplog):
+    fs = FlowStability()
+    with caplog.at_level("WARNING"):
+        fs.temporal_network = 12345  # Should trigger warning and set None
+    assert fs.temporal_network is None
+    assert "cannot be used as temporal network" in caplog.text
 
-def test_jaccard_distance():
-    """
-    """
-    from flowstab.flow_stability import jaccard_distance
-    pass
+def test_set_time_scale_and_getter():
+    fs = FlowStability()
+    fs.time_scale = 2.0
+    # Should return an iterator with the single value
+    vals = list(fs.time_scale)
+    assert vals == [2.0]
 
-def test_norm_mutual_information():
-    """
-    """
-    from flowstab.flow_stability import norm_mutual_information
-    pass
+def test_set_time_scale_with_list():
+    fs = FlowStability()
+    fs.time_scale = iter([1.0, 2.0])
+    vals = list(fs.time_scale)
+    assert vals == [1.0, 2.0]
 
-def test_norm_var_information():
-    """
-    """
-    from flowstab.flow_stability import norm_var_information
-    pass
+def test_set_time_scale_invalid_type():
+    fs = FlowStability()
+    with pytest.raises(TypeError):
+        fs.time_scale = "invalid"
 
-def test_norm_var_information():
-    """
-    """
-    from flowstab.flow_stability import norm_var_information
-    pass
+def test_set_time_scale_with_set_time_scale_method():
+    fs = FlowStability()
+    fs.set_time_scale(value=4.0)
+    vals = list(fs.time_scale)
+    assert vals == [4.0]
 
-def test_avg_norm_var_information():
-    """
-    """
-    from flowstab.flow_stability import avg_norm_var_information
-    pass
+def test_properties_t_start_t_stop_time_direction():
+    fs = FlowStability()
+    fs.t_start = 1.5
+    assert fs.t_start == 1.5
+    fs.t_stop = 5.0
+    assert fs.t_stop == 5.0
+    fs.time_direction = -1
+    assert fs.time_direction == -1
+    with pytest.raises(AssertionError):
+        fs.time_direction = 2  # invalid, must be -1, 0, or 1
 
-def test_static_clustering():
-    """
-    """
-    from flowstab.flow_stability import static_clustering
-    pass
+def test_set_temporal_network_method(minimal_temp_network):
+    fs = FlowStability()
+    fs.set_temporal_network(events_table=minimal_temp_network.events_table)
+    assert isinstance(fs.temporal_network, type(minimal_temp_network))
 
-def test_n_random_seeds():
-    """
-    """
-    from flowstab.flow_stability import n_random_seeds
-    pass
-
-def test_run_multi_louvain():
-    """
-    """
-    from flowstab.flow_stability import run_multi_louvain
-    pass
-
-def test_sort_clusters():
-    """
-    """
-    from flowstab.flow_stability import sort_clusters
-    pass
+# You may add more advanced integration tests if you have the full dependency chain (e.g., test compute_laplacian_matrices)

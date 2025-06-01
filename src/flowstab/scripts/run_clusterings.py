@@ -56,7 +56,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix, diags
 from scipy.sparse.csgraph import connected_components
 
-from ..flow_stability import SparseClustering, norm_var_information, static_clustering
+from ..network_clustering import SparseClustering, norm_var_information, static_clustering
 from ..sparse_stoch_mat import (
     inplace_csr_matmul_diag,
     inplace_csr_row_normalize,

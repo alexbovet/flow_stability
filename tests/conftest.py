@@ -1,6 +1,9 @@
 import pytest
 
+from types import SimpleNamespace
+
 import numpy as np
+import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 
 @pytest.fixture(scope='function')
@@ -149,3 +152,27 @@ def propa_transproba_creator():
             ptps.append((p1,p2,T))
         return tuple(ptps)
     return _get_p_tp
+
+def temporal_network_to_df(network: SimpleNamespace):
+    """Convert a network from a namespace ot a data frame
+    """
+    as_df = pd.DataFrame({
+        "source_nodes": network.source_nodes,
+        "target_nodes": network.target_nodes,
+        "starting_times": network.starting_times,
+    })
+    ending_times = getattr(network, 'ending_times', None)
+    if ending_times is not None:
+        as_df['ending_times'] = ending_times
+    return as_df
+
+@pytest.fixture(scope='session')
+def get_temporal_network_df_minimal():
+    simple = SimpleNamespace()
+    # we assume 10 nodes, and each starting a connection in order
+    simple.source_nodes = list(range(0, 10))
+    # target nodes are also in order
+    simple.target_nodes = list(range(1,10)) + [1]
+    simple.starting_times = [0, 0.5, 1, 2, 3, 4, 4, 5, 5, 5]
+    simple.ending_times =   [3, 1, 2, 7, 4, 5, 6, 6, 6, 7]
+    return temporal_network_to_df(network=simple)
