@@ -1,4 +1,6 @@
 import pytest
+import os
+import pickle
 import logging
 import numpy as np
 from flowstab import FlowStability, set_log_level
@@ -78,5 +80,24 @@ def test_set_temporal_network_method(minimal_temp_network, caplog):
         fs.set_temporal_network(events_table=minimal_temp_network.events_table)
         print(caplog.text)
     assert isinstance(fs.temporal_network, type(minimal_temp_network))
+    set_log_level("INFO")
+    with caplog.at_level(logging.INFO):
+        fs = FlowStability()
+        fs.set_temporal_network(events_table=minimal_temp_network.events_table)
+        print(caplog.text)
+    assert isinstance(fs.temporal_network, type(minimal_temp_network))
 
-# You may add more advanced integration tests if you have the full dependency chain (e.g., test compute_laplacian_matrices)
+def test_flow_stability_import_export(minimal_temp_network, caplog, tmp_path):
+        fs = FlowStability()
+        fs.set_temporal_network(events_table=minimal_temp_network.events_table)
+        import json
+        json.dumps(fs)
+        # hash the object
+        assert hash(fs)
+        # Export the fs to a pickle
+        with open(os.path.join(tmp_path, 'FS_minimal.p'), 'wb') as fobj:
+            pickle.dump(fs, fobj)
+        # Load it
+        with open(os.path.join(tmp_path, 'FS_minimal.p'), 'rb') as fobj:
+            fs1 = pickle.load(fobj)
+        assert hash(fs1)
