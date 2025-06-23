@@ -44,7 +44,9 @@ ProcessException
     Exception raised for errors in the flow stability process.
 """
 from __future__ import annotations
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
+
+from copy import copy
 
 
 import numpy as np
@@ -234,7 +236,7 @@ class FlowStability(metaclass=StateMeta, states=States):
 
     @register(next_state=States.LAPLAC)
     @time_scale.setter
-    def time_scale(self, time_scale:None|Iterator|int|float):
+    def time_scale(self, time_scale:None|Iterable|int|float):
         """
         Set the time scale(s) for the random walk's transition rate.
 
@@ -258,8 +260,9 @@ class FlowStability(metaclass=StateMeta, states=States):
             self._time_scale = [None, ]
         elif isinstance(time_scale, (int, float)):
             self._time_scale = [time_scale]
-        elif isinstance(time_scale, Iterator):
-            self._time_scale = list(time_scale)
+        elif isinstance(time_scale, Iterable):
+            # we use a shallow copy
+            self._time_scale = copy(time_scale)
         else:
             raise TypeError(f"Invalid type '{type(time_scale)}'.")
 
