@@ -1,6 +1,7 @@
 import pytest
+import logging
 import numpy as np
-from flowstab import FlowStability
+from flowstab import FlowStability, set_log_level
 
 @pytest.fixture
 def minimal_temp_network():
@@ -69,9 +70,13 @@ def test_properties_t_start_t_stop_time_direction():
     with pytest.raises(AssertionError):
         fs.time_direction = 2  # invalid, must be -1, 0, or 1
 
-def test_set_temporal_network_method(minimal_temp_network):
+def test_set_temporal_network_method(minimal_temp_network, caplog):
+
+    set_log_level("INFO")
     fs = FlowStability()
-    fs.set_temporal_network(events_table=minimal_temp_network.events_table)
+    with caplog.at_level(logging.INFO):
+        fs.set_temporal_network(events_table=minimal_temp_network.events_table)
+        print(caplog.text)
     assert isinstance(fs.temporal_network, type(minimal_temp_network))
 
 # You may add more advanced integration tests if you have the full dependency chain (e.g., test compute_laplacian_matrices)

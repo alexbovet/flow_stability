@@ -195,9 +195,16 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         if not kwargs:
             self.temporal_network = None
+            logger.info(
+                "No temporal network data provided."
+            )
         else:
             # set self.temporal_network
             self.temporal_network = ContTempNetwork(**kwargs)
+            logger.info(
+                "Successfully initiated temporal network: "
+                f"{ str(self.temporal_network) }"
+            )
         return self
 
     @property
