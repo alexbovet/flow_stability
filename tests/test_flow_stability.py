@@ -73,8 +73,8 @@ def test_properties_t_start_t_stop_time_direction():
 def test_set_temporal_network_method(minimal_temp_network, caplog):
 
     set_log_level("INFO")
-    fs = FlowStability()
     with caplog.at_level(logging.INFO):
+        fs = FlowStability()
         fs.set_temporal_network(events_table=minimal_temp_network.events_table)
         print(caplog.text)
     assert isinstance(fs.temporal_network, type(minimal_temp_network))

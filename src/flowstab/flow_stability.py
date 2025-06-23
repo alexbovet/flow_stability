@@ -134,6 +134,15 @@ class FlowStability(metaclass=StateMeta, states=States):
         self.time_direction = time_direction
         self._flow_clustering_forward = {}
         self._flow_clustering_backward = {}
+        logger.info("Successfully initiated a FlowStability instance!")
+
+    def __repr__(self):
+        return str(self.__class__) + \
+            f"\n- temporal network: {self.temporal_network}" \
+            f"\n- t_start: {self.t_start}" \
+            f"\n- t_stop: {self.t_stop}" \
+            f"\n- time_scale: {self.time_scale}"
+
 
     @include_doc_from(ContTempNetwork)
     @property
@@ -167,6 +176,12 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         if isinstance(temporal_network, ContTempNetwork):
             self._temporal_network = temporal_network
+            logger.info(
+                "Set the temporal network: "
+                f"{self.temporal_network}"
+            )
+        elif temporal_network is None:
+            logger.info("Set an empty temporal network.")
         else:
             logger.warning(
                 f"Object of type {type(temporal_network)} cannot be "
@@ -195,16 +210,9 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         if not kwargs:
             self.temporal_network = None
-            logger.info(
-                "No temporal network data provided."
-            )
         else:
             # set self.temporal_network
             self.temporal_network = ContTempNetwork(**kwargs)
-            logger.info(
-                "Successfully initiated temporal network: "
-                f"{ str(self.temporal_network) }"
-            )
         return self
 
     @property
