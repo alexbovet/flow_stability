@@ -145,6 +145,55 @@ class FlowStability(metaclass=StateMeta, states=States):
             f"\n- t_stop: {self.t_stop}" \
             f"\n- time_scale: {self.time_scale}"
 
+    def help(self, subject:str|None=None, verbose:bool=False):
+        """
+        """
+        subject_text = ""
+        if subject is not None:
+            subject_info = self.state.info.get(subject, "")
+            subject_howto = self.state.howto.get(subject, "")
+            if subject_info:
+                subject_text += f"-----\nSome details about '{subject}':\n"
+                subject_text += subject_info
+            if subject_howto and subject_howto != subject_info:
+                subject_text += f"\n\n-----\nHow to use '{subject}':\n"
+                subject_text += subject_howto
+            print(subject_text)
+        else:
+            next_parameters, next_method = self.state.next
+
+            parameter_help = ""
+            if next_parameters:
+                parameter_help += "\n-----\n"\
+                        "The following parameters need to be set "\
+                        "before the next step can be run:\n - "
+                parameter_help += '\n- '.join(next_parameters)
+            else:
+                parameter_help = "All required parameter are set. You can go "\
+                        "ahead and run the next step in the analysis."
+
+            parameter_help += '\nFor further details on a parameter simply '\
+                    "call this help function with the name of the parameter as"\
+                    "argument.\nExample:\n>>> my_flowstability.help('t_start')"
+
+            method_help = ""
+            if next_method:
+                method_help +=  "\n-----\n"\
+                        "The next step in the flow stability analysis "\
+                        f"would be to run '{next_method}'."
+            method_help += '\nFor further information on the next method to '\
+                    'run or any method of a flow stability analysis simply '\
+                    'call this help function with the name of the method as '\
+                    "argument.\nExample:\n"\
+                    ">>> my_flowstability.help('find_louvain_clustering')"
+            
+            help_text = '\n'.join([
+                "Flow stability analysis:",
+                f"{str(self)}" if verbose else "",
+                f"Next steps:\n-----------\n{parameter_help}\n{method_help}",
+            ])
+            print(help_text)
+
 
     @include_doc_from(ContTempNetwork)
     @property
@@ -621,7 +670,7 @@ class FlowStability(metaclass=StateMeta, states=States):
     @register(minimal_state=States.CLUSTERING, next_state=States.FINAL)
     def find_louvain_clustering(self, **kwargs):
         """
-        Find Louvain clusters for the flow integral clustering.
+        This method finds the Louvain clusters for a flow integral clustering.
 
         Parameters
         ----------
@@ -644,13 +693,13 @@ class FlowStability(metaclass=StateMeta, states=States):
                 _lambda = 1 / _ts
             if self.time_direction <= 0:
                 logger.info(
-                    f"\tBackwards in time."
+                    "\tBackwards in time."
                 )
                 n_loops = self.flow_clustering_backward[
                     _ts].find_louvain_clustering(**kwargs)
             if self.time_direction >= 0:
                 logger.info(
-                    f"\tForwards in time."
+                    "\tForwards in time."
                 )
                 n_loops = self.flow_clustering_forward[
                     _ts].find_louvain_clustering(**kwargs)
