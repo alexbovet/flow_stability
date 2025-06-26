@@ -101,3 +101,10 @@ def test_flow_stability_import_export(minimal_temp_network, caplog, tmp_path):
         with open(os.path.join(tmp_path, 'FS_minimal.p'), 'rb') as fobj:
             fs1 = pickle.load(fobj)
         assert hash(fs1)
+
+def test_fs_help(capfd, minimal_temp_network):
+    fs = FlowStability(temporal_network=minimal_temp_network)
+    with capfd:
+        fs.help()
+    captured = capfd.readout
+    assert 'next steps' in captured.out.lower()
