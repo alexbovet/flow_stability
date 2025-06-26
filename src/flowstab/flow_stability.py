@@ -153,10 +153,10 @@ class FlowStability(metaclass=StateMeta, states=States):
             subject_info = self.state.info.get(subject, "")
             subject_howto = self.state.howto.get(subject, "")
             if subject_info:
-                subject_text += f"-----\nSome details about '{subject}':\n"
+                subject_text += f"=====\nSome details about '{subject}':\n"
                 subject_text += subject_info
             if subject_howto and subject_howto != subject_info:
-                subject_text += f"\n\n-----\nHow to use '{subject}':\n"
+                subject_text += f"\n\n=====\nHow to use '{subject}':\n"
                 subject_text += subject_howto
             print(subject_text)
         else:
@@ -164,7 +164,7 @@ class FlowStability(metaclass=StateMeta, states=States):
 
             parameter_help = ""
             if next_parameters:
-                parameter_help += "\n-----\n"\
+                parameter_help += "\n=====\n"\
                         "The following parameters need to be set "\
                         "before the next step can be run:\n - "
                 parameter_help += '\n- '.join(next_parameters)
@@ -178,7 +178,7 @@ class FlowStability(metaclass=StateMeta, states=States):
 
             method_help = ""
             if next_method:
-                method_help +=  "\n-----\n"\
+                method_help +=  "\n=====\n"\
                         "The next step in the flow stability analysis "\
                         f"would be to run '{next_method}'."
             method_help += '\nFor further information on the next method to '\
@@ -190,7 +190,7 @@ class FlowStability(metaclass=StateMeta, states=States):
             help_text = '\n'.join([
                 "Flow stability analysis:",
                 f"{str(self)}" if verbose else "",
-                f"Next steps:\n-----------\n{parameter_help}\n{method_help}",
+                f"Next steps:\n===========\n{parameter_help}\n{method_help}",
             ])
             print(help_text)
 
