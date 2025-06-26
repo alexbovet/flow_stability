@@ -17,7 +17,8 @@ jobs:
           python-version: 3.9
       - run: |
           sudo apt-get update
-          sudo apt-get upgrade
+          sudo apt-mark hold python3
+          sudo apt-get upgrade -y
           sudo apt-get -y install intel-mkl
       - name: Try restoring cached venv
         id: cached-venv
