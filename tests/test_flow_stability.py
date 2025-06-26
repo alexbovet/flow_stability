@@ -2,6 +2,9 @@ import pytest
 import os
 import pickle
 import logging
+
+import numpy as np
+
 from flowstab import FlowStability, set_log_level
 
 def test_empty_init_sets_temporal_network_none():
@@ -24,29 +27,39 @@ def test_set_temporal_network_wrong_type_logs_warning(caplog):
     assert fs.temporal_network is None
     assert "cannot be used as temporal network" in caplog.text
 
-def test_set_time_scale_and_getter():
+def test_setting_time_scale():
+    # set with simple value
     fs = FlowStability()
     fs.time_scale = 2.0
     # Should return an iterator with the single value
     vals = list(fs.time_scale)
     assert vals == [2.0]
-
-def test_set_time_scale_with_list():
-    fs = FlowStability()
-    fs.time_scale = iter([1.0, 2.0])
-    vals = list(fs.time_scale)
-    assert vals == [1.0, 2.0]
-
-def test_set_time_scale_invalid_type():
-    fs = FlowStability()
-    with pytest.raises(TypeError):
-        fs.time_scale = "invalid"
-
-def test_set_time_scale_with_set_time_scale_method():
+    # check the `set_time_scale` method with simple values
     fs = FlowStability()
     fs.set_time_scale(value=4.0)
     vals = list(fs.time_scale)
     assert vals == [4.0]
+    # check the `set_time_scale` method whith `np.logspace'
+    fs = FlowStability()
+    start, stop, num = 1, 100, 20
+    fs.set_time_scale(start=start, stop=stop, num=num)
+    ref_vals = np.logspace(start=start, stop=stop, num=num)
+    vals = np.array(list(fs.time_scale))
+    np.testing.assert_allclose(vals, ref_vals)
+    fs = FlowStability()
+    fs.time_scale = [1.0, 2.0]
+    vals = list(fs.time_scale)
+    assert vals == [1.0, 2.0]
+    # make sure invalid types are detected
+    fs = FlowStability()
+    with pytest.raises(TypeError):
+        fs.time_scale = "invalid"
+    # make sure inpossible values are rejected
+    fs = FlowStability()
+    with pytest.raises(ValueError) as exc_info:
+        fs.time_scale = [-1111, 0, 1]
+    assert '-1111' in str(exc_info.value)
+    assert '0' in str(exc_info.value)
 
 def test_properties_t_start_t_stop_time_direction():
     fs = FlowStability()

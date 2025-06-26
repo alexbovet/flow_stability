@@ -307,17 +307,28 @@ class FlowStability(metaclass=StateMeta, states=States):
             If the input is not None, int, float, or an iterator of numbers.
         """
         if time_scale is None:
-            self._time_scale = [None, ]
+            _time_scale = [None, ]
         elif isinstance(time_scale, (int, float)):
-            self._time_scale = [time_scale]
+            _time_scale = [time_scale]
         elif isinstance(time_scale,
                         Iterable) and not isinstance(time_scale,
                                                      str):
             # we use a shallow copy
-            self._time_scale = copy(time_scale)
+            _time_scale = copy(time_scale)
         else:
             raise TypeError(f"Invalid type '{type(time_scale)}'.")
-
+        # make sure only valid values are provided
+        _invalid = []
+        for _ts in _time_scale:
+            if _ts is not None and _ts <= 0:
+                _invalid.append(_ts)
+        if _invalid:
+            _invalids = '\n- '.join(map(str, _invalid))
+            raise ValueError(
+                "Only positive values (or `None`) are allowed for the "
+                f"time scale. Invalid values provided:\n- {_invalids}"
+            )
+        self._time_scale = _time_scale
     @include_doc_from(np.logspace)
     def set_time_scale(self, value:int|float|None=None, **kwargs):
         """
