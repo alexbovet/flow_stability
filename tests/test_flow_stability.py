@@ -2,20 +2,7 @@ import pytest
 import os
 import pickle
 import logging
-import numpy as np
 from flowstab import FlowStability, set_log_level
-
-@pytest.fixture
-def minimal_temp_network():
-    # This fixture should return a ContTempNetwork instance as expected by FlowStability.
-    # You may need to adjust this if ContTempNetwork needs specific arguments.
-    from flowstab.temporal_network import ContTempNetwork
-    import pandas as pd
-    df = pd.DataFrame({"source_nodes": [0],
-                       "target_nodes": [1],
-                       "starting_times": [0],
-                       "ending_times": [1]})
-    return ContTempNetwork(events_table=df)
 
 def test_empty_init_sets_temporal_network_none():
     fs = FlowStability()
@@ -90,8 +77,6 @@ def test_set_temporal_network_method(minimal_temp_network, caplog):
 def test_flow_stability_import_export(minimal_temp_network, caplog, tmp_path):
         fs = FlowStability()
         fs.set_temporal_network(events_table=minimal_temp_network.events_table)
-        import json
-        json.dumps(fs)
         # hash the object
         assert hash(fs)
         # Export the fs to a pickle
@@ -102,9 +87,11 @@ def test_flow_stability_import_export(minimal_temp_network, caplog, tmp_path):
             fs1 = pickle.load(fobj)
         assert hash(fs1)
 
-def test_fs_help(capfd, minimal_temp_network):
+def test_fs_help(capsys, minimal_temp_network):
     fs = FlowStability(temporal_network=minimal_temp_network)
-    with capfd:
-        fs.help()
-    captured = capfd.readout
+    fs.help()
+    captured = capsys.readouterr()
     assert 'next steps' in captured.out.lower()
+    fs.help('set_temporal_network')
+    captured = capsys.readouterr()
+    assert 'some details about' in captured.out.lower()
