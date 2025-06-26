@@ -233,6 +233,7 @@ class FlowStability(metaclass=StateMeta, states=States):
             )
         elif temporal_network is None:
             logger.info("Set an empty temporal network.")
+            self._temporal_network = None
         else:
             logger.warning(
                 f"Object of type {type(temporal_network)} cannot be "
@@ -309,7 +310,9 @@ class FlowStability(metaclass=StateMeta, states=States):
             self._time_scale = [None, ]
         elif isinstance(time_scale, (int, float)):
             self._time_scale = [time_scale]
-        elif isinstance(time_scale, Iterable):
+        elif isinstance(time_scale,
+                        Iterable) and not isinstance(time_scale,
+                                                     str):
             # we use a shallow copy
             self._time_scale = copy(time_scale)
         else:
