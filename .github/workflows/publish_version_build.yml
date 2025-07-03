@@ -1,0 +1,191 @@
+name: Build Python Package
+
+on:
+  push:
+    branches:
+      - 'release-*'  # Trigger on branches starting with 'release-'
+
+env:
+  LABEL_PUBLISHED: 'release::published'
+  LABEL_BUILT: 'release::built'
+
+
+jobs:
+  prep_label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+      REPO: ${{ github.event.repository.name }}
+      EVENT: ${{ github.event.number }}  # This is either the issue or pr
+    setps:
+      - name: Attempt to create label ${{ env.LABEL_BUILT }}
+        run: |
+          gh label create ${{ env.LABEL_BUILT }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        continue-on-error: true  # make sure the next steps run also on failure
+      - name: Check if the pull request is labeled with ${{ env.LABEL_BUILT }}
+        id: built
+        run: |
+          if $( gh pr view ${{ env.EVENT }} --repo ${{ env.OWNER }}/${{ env.REPO }} --json "labels" --jq ".[].[].name" | grep --quiet ${{ env.LABEL_BUILT }}); then
+            echo "LABELED=true" >> $GITHUB_OUTPUT
+          else
+            echo "LABELED=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Remove the label ${{ env.LABEL_BUILT }}
+        if: ${{ steps.built.outputs.labeled == 'true' }}
+        run: |
+          gh pr edit ${{ env.EVENT }} --remove-label ${{ env.LABEL_BUILT }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        shell: bash
+
+
+  build-venv:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Try restoring cached venv
+        id: cached-venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
+      - name: Build venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv ./venv
+          # with mkl support
+          ./venv/bin/python -m pip install -r requirements/mkl.txt
+          ./venv/bin/python -m pip install .[testing]
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+      - name: Cache venv
+        uses: actions/cache/save@v4
+        with:
+          path: ./venv
+          # we can use the key from cached-venv
+          key: ${{ steps.cached-venv.outputs.cache-primary-key }}
+        if: steps.cached-venv.outputs.cache-hit != 'true'
+
+  build_for_release:
+    runs-on: ${{ matrix.os }}
+    needs: build-venv
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restoring venv
+        uses: actions/cache/restore@v4
+        with:
+          path: ./venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/requirements/base.txt') }}-${{ hashFiles('**/**.toml') }}
+
+      - name: Build wheel
+        run: |
+          venv/bin/python -m pip install build
+          venv/bin/python -m build
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with: 
+          name: wheel
+          path: dist
+          retention-days: 30
+
+  release-version:
+    if: ${{ github.event.pull_request.merged && startsWith(github.head_ref, 'release-') }}
+    needs: build_for_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+      REPO: ${{ github.event.repository.name }}
+      EVENT: ${{ github.event.number }}  # This is either the issue or pr
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      # check if the pr is labeled as published already
+      - name: Check if the pull request is labeled with ${{ env.LABEL_PUBLISHED }}
+        id: published
+        run: |
+          if $( gh pr view ${{ env.EVENT }} --repo ${{ env.OWNER }}/${{ env.REPO }} --json "labels" --jq ".[].[].name" | grep --quiet ${{ env.LABEL_PUBLISHED }}); then
+            echo "LABELED=true" >> $GITHUB_OUTPUT
+          else
+            echo "LABELED=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download package artifact
+        # we want to get the dist/ folder to publish its content
+        if: ${{ steps.published.outputs.labeled == 'false' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: wheel
+
+      - name: Get the version to release
+        if: ${{ steps.published.outputs.labeled == 'false' }}
+        id: release_version
+        run: |
+          git fetch --filter=tree:0 origin +refs/tags/*:refs/tags/*
+          echo "VERSION=$(echo ${{ github.head_ref }}|grep -Eo '[0-9]+.[0-9]+.[0-9]+')" >> $GITHUB_OUTPUT
+          echo "PREVIOUS_VERSION=`echo $(git tag --list --sort=version:refname | grep -E '^[0-9]+.[0-9]+.[0-9]+$' | tail -n1)`" >> $GITHUB_OUTPUT
+      - name: Remove previous releases of the target tag, if existing
+        if: ${{ steps.published.outputs.labeled == 'false' }}
+        run: |
+          if script -q -e -c "gh release view ${{ steps.release_version.outputs.version }} --repo ${{ env.OWNER }}/${{ env.REPO }}"; then
+            # removing previous release along with associated tag
+            gh release delete ${{ steps.release_version.outputs.version }} \
+              --cleanup-tag -y \
+              --repo ${{ env.OWNER }}/${{ env.REPO }}
+          else
+            # non-exist
+            echo "No trace of a previous release."
+          fi
+      - name: Prepare Release note
+        if: ${{ steps.published.outputs.labeled == 'false' }}
+        # this gets the first the changes to the previous clean tag (including manual edits)
+        run: |
+          awk '/<a name="${{ steps.release_version.outputs.version }}".*/{a=1};a;/<a name="${{ steps.release_version.outputs.previous_version }}"*/{exit}' CHANGELOG.md | head -n -1 >> body.md
+      - name: Create tag and release
+        if: ${{ steps.published.outputs.labeled == 'false' }}
+        run: |
+          gh release create ${{ steps.release_version.outputs.version }} \
+            ./dist/* \
+            --target ${{ github.event.pull_request.head.sha }} \
+            --latest \
+            --title "${{ steps.release_version.outputs.version }}" \
+            --notes-file body.md \
+            --repo ${{ env.OWNER }}/${{ env.REPO }}
+
+  add_built_label:
+    runs-on: ubuntu-latest
+    needs: build_for_release
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OWNER: ${{ github.repository_owner }}
+      REPO: ${{ github.event.repository.name }}
+      EVENT: ${{ github.event.number }}  # This is either the issue or pr
+    setps:
+      - name: Adding the label ${{ env.LABEL_BUILT }}
+        run: |
+          gh pr edit ${{ env.EVENT }} --add-label ${{ env.LABEL_BUILT }} --repo ${{ env.OWNER }}/${{ env.REPO }}
+        shell: bash
