@@ -44,7 +44,9 @@ ProcessException
     Exception raised for errors in the flow stability process.
 """
 from __future__ import annotations
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
+
+from copy import copy
 
 
 import numpy as np
@@ -134,6 +136,64 @@ class FlowStability(metaclass=StateMeta, states=States):
         self.time_direction = time_direction
         self._flow_clustering_forward = {}
         self._flow_clustering_backward = {}
+        logger.info("Successfully initiated a FlowStability instance!")
+
+    def __repr__(self):
+        return str(self.__class__) + \
+            f"\n- temporal network: {self.temporal_network}" \
+            f"\n- t_start: {self.t_start}" \
+            f"\n- t_stop: {self.t_stop}" \
+            f"\n- time_scale: {self.time_scale}"
+
+    def help(self, subject:str|None=None, verbose:bool=False):
+        """
+        """
+        subject_text = ""
+        if subject is not None:
+            subject_info = self.state.info.get(subject, "")
+            subject_howto = self.state.howto.get(subject, "")
+            if subject_info:
+                subject_text += f"=====\nSome details about '{subject}':\n"
+                subject_text += subject_info
+            if subject_howto and subject_howto != subject_info:
+                subject_text += f"\n\n=====\nHow to use '{subject}':\n"
+                subject_text += subject_howto
+            print(subject_text)
+        else:
+            next_parameters, next_method = self.state.next
+
+            parameter_help = ""
+            if next_parameters:
+                parameter_help += "\n=====\n"\
+                        "The following parameters need to be set "\
+                        "before the next step can be run:\n - "
+                parameter_help += '\n- '.join(next_parameters)
+            else:
+                parameter_help = "All required parameter are set. You can go "\
+                        "ahead and run the next step in the analysis."
+
+            parameter_help += '\nFor further details on a parameter simply '\
+                    "call this help function with the name of the parameter as"\
+                    "argument.\nExample:\n>>> my_flowstability.help('t_start')"
+
+            method_help = ""
+            if next_method:
+                method_help +=  "\n=====\n"\
+                        "The next step in the flow stability analysis "\
+                        f"would be to run '{next_method}'."
+            method_help += '\nFor further information on the next method to '\
+                    'run or any method of a flow stability analysis simply '\
+                    'call this help function with the name of the method as '\
+                    "argument.\nExample:\n"\
+                    ">>> my_flowstability.help('find_louvain_clustering')"
+            
+            help_text = '\n'.join([
+                "Flow stability analysis:",
+                f"{str(self)}" if verbose else "",
+                f"Next steps:\n===========\n{parameter_help}\n{method_help}",
+            ])
+            print(help_text)
+
 
     @include_doc_from(ContTempNetwork)
     @property
@@ -167,6 +227,13 @@ class FlowStability(metaclass=StateMeta, states=States):
         """
         if isinstance(temporal_network, ContTempNetwork):
             self._temporal_network = temporal_network
+            logger.info(
+                "Set the temporal network: "
+                f"{self.temporal_network}"
+            )
+        elif temporal_network is None:
+            logger.info("Set an empty temporal network.")
+            self._temporal_network = None
         else:
             logger.warning(
                 f"Object of type {type(temporal_network)} cannot be "
@@ -219,7 +286,7 @@ class FlowStability(metaclass=StateMeta, states=States):
 
     @register(next_state=States.LAPLAC)
     @time_scale.setter
-    def time_scale(self, time_scale:None|Iterator|int|float):
+    def time_scale(self, time_scale:None|Iterable|int|float):
         """
         Set the time scale(s) for the random walk's transition rate.
 
@@ -240,14 +307,28 @@ class FlowStability(metaclass=StateMeta, states=States):
             If the input is not None, int, float, or an iterator of numbers.
         """
         if time_scale is None:
-            self._time_scale = [None, ]
+            _time_scale = [None, ]
         elif isinstance(time_scale, (int, float)):
-            self._time_scale = [time_scale]
-        elif isinstance(time_scale, Iterator):
-            self._time_scale = list(time_scale)
+            _time_scale = [time_scale]
+        elif isinstance(time_scale,
+                        Iterable) and not isinstance(time_scale,
+                                                     str):
+            # we use a shallow copy
+            _time_scale = copy(time_scale)
         else:
             raise TypeError(f"Invalid type '{type(time_scale)}'.")
-
+        # make sure only valid values are provided
+        _invalid = []
+        for _ts in _time_scale:
+            if _ts is not None and _ts <= 0:
+                _invalid.append(_ts)
+        if _invalid:
+            _invalids = '\n- '.join(map(str, _invalid))
+            raise ValueError(
+                "Only positive values (or `None`) are allowed for the "
+                f"time scale. Invalid values provided:\n- {_invalids}"
+            )
+        self._time_scale = _time_scale
     @include_doc_from(np.logspace)
     def set_time_scale(self, value:int|float|None=None, **kwargs):
         """
@@ -603,7 +684,7 @@ class FlowStability(metaclass=StateMeta, states=States):
     @register(minimal_state=States.CLUSTERING, next_state=States.FINAL)
     def find_louvain_clustering(self, **kwargs):
         """
-        Find Louvain clusters for the flow integral clustering.
+        This method finds the Louvain clusters for a flow integral clustering.
 
         Parameters
         ----------
@@ -626,13 +707,13 @@ class FlowStability(metaclass=StateMeta, states=States):
                 _lambda = 1 / _ts
             if self.time_direction <= 0:
                 logger.info(
-                    f"\tBackwards in time."
+                    "\tBackwards in time."
                 )
                 n_loops = self.flow_clustering_backward[
                     _ts].find_louvain_clustering(**kwargs)
             if self.time_direction >= 0:
                 logger.info(
-                    f"\tForwards in time."
+                    "\tForwards in time."
                 )
                 n_loops = self.flow_clustering_forward[
                     _ts].find_louvain_clustering(**kwargs)

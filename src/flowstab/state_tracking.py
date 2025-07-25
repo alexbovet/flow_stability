@@ -122,9 +122,9 @@ class State:
             setattr(self, key, value)
 
     @property
-    def missing(self):
+    def missing_parameters(self):
         """
-        List of required properties not yet set for the current state.
+        List of required parameters not yet set for the current state.
 
         Returns
         -------
@@ -151,8 +151,8 @@ class State:
         tuple
             (list of missing properties, next method name or None)
         """
+        _to_set = self.missing_parameters
         _to_run = self._next_method.get(self.current)
-        _to_set = self.missing
         return _to_set, _to_run
         
 

@@ -176,3 +176,15 @@ def get_temporal_network_df_minimal():
     simple.starting_times = [0, 0.5, 1, 2, 3, 4, 4, 5, 5, 5]
     simple.ending_times =   [3, 1, 2, 7, 4, 5, 6, 6, 6, 7]
     return temporal_network_to_df(network=simple)
+
+@pytest.fixture(scope='function')
+def minimal_temp_network():
+    # This fixture should return a ContTempNetwork instance as expected by FlowStability.
+    # You may need to adjust this if ContTempNetwork needs specific arguments.
+    from flowstab.temporal_network import ContTempNetwork
+    import pandas as pd
+    df = pd.DataFrame({"source_nodes": [0],
+                       "target_nodes": [1],
+                       "starting_times": [0],
+                       "ending_times": [1]})
+    return ContTempNetwork(events_table=df)

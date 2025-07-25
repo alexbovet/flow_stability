@@ -10,15 +10,16 @@ jobs:
   build-venv:
     runs-on: ubuntu-24.04
     steps:
-      - run: |
-          sudo apt-get update
-          sudo apt-get upgrade
-          sudo apt-get -y install intel-mkl
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
           python-version: 3.9
+      - run: |
+          sudo apt-get update
+          sudo apt-mark hold python3
+          sudo apt-get upgrade -y
+          sudo apt-get -y install intel-mkl
       - name: Try restoring cached venv
         id: cached-venv
         uses: actions/cache/restore@v4

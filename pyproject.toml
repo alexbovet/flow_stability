@@ -8,7 +8,6 @@ description = "Framework for dynamic community detection in temporal networks."
 requires-python = ">=3.9"
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: GNU LGPL",
 ]
 # Fields to be filled by the build backend
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
@@ -38,15 +37,13 @@ file = ["tests/requirements.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["flowstab"]
-exclude = ["tests*"]
-# namespaces = false
+include = ["flowstab", "flowstab.scripts"]
 
 [tool.setuptools_scm]
 [build-system]
 requires = [
   "numpy",
-  "setuptools>=64",
+  "setuptools>=77.0.3",
   "setuptools_scm>=8",
   "cython",
 ]
